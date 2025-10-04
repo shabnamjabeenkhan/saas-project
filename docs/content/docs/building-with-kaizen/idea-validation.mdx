@@ -1,0 +1,263 @@
+---
+title: 'Idea Validation'
+description: 'Validate your startup idea before writing code'
+icon: Lightbulb
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Idea Validation
+
+<Warning>
+**Don't skip this step!** Most startups fail because they build something nobody wants. Validate first, build second.
+</Warning>
+
+## Why Validation Matters
+
+**Statistics:**
+- 42% of startups fail due to no market need
+- 90% of startups fail overall
+- Most founders waste months building the wrong thing
+
+**Validation prevents:**
+- ❌ Building features nobody wants
+- ❌ Wasting time and money
+- ❌ Losing motivation
+- ❌ Missing market opportunities
+
+## The Validation Process
+
+### Step 1: Use the Founder Blueprint
+
+Visit the **[Founder Blueprint Idea Validation Node](https://founder.codeandcreed.tech/)** to:
+
+1. **Define your problem** - What pain point are you solving?
+2. **Identify your customer** - Who has this problem?
+3. **Test assumptions** - Are people willing to pay?
+4. **Validate demand** - Do 100+ people want this?
+5. **Define MVP scope** - What's the minimum viable product?
+
+### Step 2: Customer Interviews
+
+**Goal**: Talk to 20-30 potential customers
+
+**Interview Script:**
+```
+1. "Tell me about how you currently solve [problem]"
+2. "What's frustrating about your current solution?"
+3. "If I built [solution], would you use it?"
+4. "Would you pay $X/month for this?"
+5. "What features are most important to you?"
+```
+
+**Red Flags:**
+- ❌ "That sounds interesting" (but no commitment)
+- ❌ "I might use it someday"
+- ❌ "Can you add [100 features]?"
+
+**Green Flags:**
+- ✅ "Where do I sign up?"
+- ✅ "I'd pay for this today"
+- ✅ "This would save me [specific time/money]"
+
+### Step 3: Pre-Sell Your Product
+
+**Best validation**: People paying before you build
+
+**Methods:**
+1. **Waitlist** - Collect emails with Clerk waitlist mode
+2. **Pre-orders** - Stripe payment links for early access
+3. **Founder's Pass** - Limited spots at discounted rate
+4. **Pilot Program** - Free for first 10 users in exchange for feedback
+
+<Note>
+**Target**: Get 100+ signups or 10+ pre-orders before building
+</Note>
+
+## Set Up Clerk Waitlist Mode
+
+### Configure Clerk for Validation
+
+**1. Enable Waitlist Mode in Clerk Dashboard:**
+```typescript
+// This prevents users from accessing the dashboard
+// Until you're ready to launch
+```
+
+**2. Update Your Config:**
+```typescript title="config.ts"
+export const config: AppConfig = {
+  features: {
+    auth: true,
+    payments: false,  // Disable until validated
+    convex: true,     // For storing waitlist
+  },
+  ui: {
+    showDashboard: false,  // Hide dashboard access
+    showPricing: false,    // Hide pricing until validated
+  },
+};
+```
+
+**3. Create Waitlist Landing Page:**
+- Show the problem you're solving
+- Highlight key benefits
+- Collect emails with Clerk
+- Send confirmation email with Resend
+
+### Waitlist Conversion Strategy
+
+**Email Sequence:**
+1. **Day 0**: Welcome + What to expect
+2. **Day 3**: Problem deep-dive + case study
+3. **Day 7**: Solution preview + beta invite
+4. **Day 14**: Exclusive founder offer
+5. **Day 21**: Last chance to join beta
+
+## Validation Metrics
+
+### Minimum Success Criteria
+
+Before building your full MVP:
+
+| Metric | Target | Why |
+|--------|--------|-----|
+| Waitlist Signups | 100+ | Shows interest |
+| Pre-orders | 10+ | Proves willingness to pay |
+| Customer Interviews | 20+ | Validates problem |
+| Email Open Rate | 30%+ | Confirms engagement |
+| Landing Page Conversion | 5%+ | Tests messaging |
+
+<Warning>
+If you can't hit these targets, **pivot or refine your idea** before building.
+</Warning>
+
+## MVP Scope Definition
+
+### What to Build First
+
+**Include (Core Features):**
+- ✅ One primary feature that solves the main problem
+- ✅ Authentication (Clerk)
+- ✅ Basic dashboard
+- ✅ Payment integration (Polar.sh)
+- ✅ Email notifications (Resend)
+
+**Exclude (Nice-to-Haves):**
+- ❌ Advanced analytics
+- ❌ Multiple integrations
+- ❌ Complex workflows
+- ❌ Mobile app
+- ❌ AI features (unless core to product)
+
+<Note>
+**Rule of thumb**: If you can remove it without breaking the core value proposition, **remove it**.
+</Note>
+
+### Feature Prioritization Framework
+
+Use the **RICE Score**:
+
+**RICE = (Reach × Impact × Confidence) / Effort**
+
+| Feature | Reach | Impact | Confidence | Effort | RICE Score |
+|---------|-------|--------|------------|--------|------------|
+| User Auth | 100% | 3 | 100% | 2 | 150 |
+| Dashboard | 100% | 3 | 100% | 5 | 60 |
+| Payments | 80% | 3 | 90% | 3 | 72 |
+| AI Chat | 20% | 2 | 50% | 8 | 2.5 |
+
+**Priority Order**: User Auth → Payments → Dashboard → AI Chat
+
+## Common Validation Mistakes
+
+### ❌ Mistake 1: Building First, Validating Later
+
+**Wrong:**
+```
+1. Build full app
+2. Launch
+3. Hope customers come
+```
+
+**Right:**
+```
+1. Validate problem
+2. Pre-sell solution
+3. Build MVP
+4. Launch to waitlist
+```
+
+### ❌ Mistake 2: Asking Friends and Family
+
+Friends will lie to make you feel good. Their feedback is worthless.
+
+**Talk to strangers who:**
+- Have the problem
+- Would pay to solve it
+- Don't know you personally
+
+### ❌ Mistake 3: Ignoring Negative Feedback
+
+If 8/10 people say they won't pay:
+- ❌ Don't ignore them and build anyway
+- ✅ Pivot or refine your value proposition
+
+### ❌ Mistake 4: Building Too Many Features
+
+**More features ≠ More value**
+
+Focus on one thing done exceptionally well.
+
+## Validation Checklist
+
+Before writing code:
+
+- [ ] Completed Founder Blueprint Idea Validation Node
+- [ ] Interviewed 20+ potential customers
+- [ ] Collected 100+ waitlist signups
+- [ ] Pre-sold to 10+ early customers
+- [ ] Defined clear MVP scope (1 core feature)
+- [ ] Set up Clerk waitlist mode
+- [ ] Created validation landing page
+- [ ] Prepared email nurture sequence
+- [ ] Identified first 10 beta testers
+- [ ] Set success metrics and timeline
+
+## Tools for Validation
+
+### Landing Page Builders
+- **Framer** - No-code, beautiful templates
+- **Webflow** - More customization
+- **Carrd** - Simple one-pagers
+- **Typedream** - Notion-style pages
+
+### Waitlist Management
+- **Clerk** (Built into Kaizen)
+- **Getwaitlist.com** - Dedicated waitlist software
+- **ConvertKit** - Email sequences
+
+### Customer Research
+- **Calendly** - Schedule interviews
+- **Loom** - Record product demos
+- **Typeform** - Beautiful surveys
+- **UserInterviews.com** - Find participants
+
+### Analytics
+- **Plausible** - Privacy-friendly
+- **PostHog** - Product analytics
+- **Google Analytics** - Free, comprehensive
+
+## Next Steps
+
+<Cards>
+  <Card title="Setup Guide" href="/setup/2-project-setup" description="Start building after validation" />
+  <Card title="Documentation Guide" href="/building-with-kaizen/documentation" description="Document your MVP scope" />
+  <Card title="Building Features" href="/building-with-kaizen/building-features" description="Plan and build features" />
+</Cards>
+
+**Once validated, proceed to:**
+1. [Project Setup](/setup/2-project-setup)
+2. [Documentation](/building-with-kaizen/documentation)
+3. [Rapid UI Prototyping](/building-with-kaizen/rapid-ui-prototyping)
+

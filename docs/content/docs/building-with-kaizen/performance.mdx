@@ -1,0 +1,260 @@
+---
+title: 'Performance Optimization'
+description: 'Make your app feel lightning fast with performance best practices'
+icon: Zap
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Performance Optimization
+
+Learn how to scan for performance issues and make your app feel faster with skeleton UIs and optimization techniques.
+
+## Scanning for Performance Issues
+
+### React Scan
+
+Use **[React Scan](https://github.com/aidenybai/react-scan)** to automatically detect performance problems.
+
+**Installation:**
+```bash
+bun install react-scan
+```
+
+**Setup:**
+```typescript title="app/root.tsx"
+import { scan } from 'react-scan';
+
+if (import.meta.env.DEV) {
+  scan({
+    enabled: true,
+    log: true, // Log re-renders to console
+  });
+}
+```
+
+**What React Scan Shows:**
+- ✅ Unnecessary re-renders
+- ✅ Slow components
+- ✅ Render frequency
+- ✅ Component tree visualization
+- ✅ Performance bottlenecks
+
+### Common Performance Issues
+
+**Problem 1: Excessive Re-renders**
+```typescript
+// ❌ Component re-renders on every parent update
+function ExpensiveComponent({ data }) {
+  return <div>{/* expensive rendering */}</div>;
+}
+
+// ✅ Use React.memo to prevent unnecessary re-renders
+const ExpensiveComponent = React.memo(({ data }) => {
+  return <div>{/* expensive rendering */}</div>;
+});
+```
+
+**Problem 2: Large Bundle Size**
+```typescript
+// ❌ Imports entire library
+import * as Icons from 'lucide-react';
+
+// ✅ Import only what you need
+import { User, Settings, Bell } from 'lucide-react';
+```
+
+**Problem 3: Unoptimized Images**
+```typescript
+// ❌ Large, unoptimized images
+<img src="/hero-image.png" alt="Hero" />
+
+// ✅ Optimized with proper sizing
+<img 
+  src="/hero-image-optimized.webp" 
+  alt="Hero"
+  width={800}
+  height={600}
+  loading="lazy"
+/>
+```
+
+**Problem 4: Slow Data Fetching**
+```typescript
+// ❌ Fetch on every render
+function Dashboard() {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    fetchData().then(setData);
+  }, []); // Runs on every render if deps change
+}
+
+// ✅ Use React Router loader
+export async function loader() {
+  return { data: await fetchData() };
+}
+
+export default function Dashboard({ loaderData }) {
+  return <div>{loaderData.data}</div>;
+}
+```
+
+## Making Your App Feel Faster
+
+### Skeleton UI
+
+Use skeleton screens to make perceived performance better.
+
+**Before (Blank screen while loading):**
+```typescript
+function Dashboard() {
+  const { data, isLoading } = useQuery();
+  
+  if (isLoading) return null; // ❌ Jarring blank screen
+  
+  return <DashboardContent data={data} />;
+}
+```
+
+**After (Skeleton UI):**
+```typescript
+import { Skeleton } from "~/components/ui/skeleton";
+
+function Dashboard() {
+  const { data, isLoading } = useQuery();
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+  
+  return <DashboardContent data={data} />;
+}
+```
+
+### Optimistic UI Updates
+
+Update the UI immediately, then sync with the server.
+
+```typescript
+import { useFetcher } from 'react-router';
+
+function LikeButton({ postId, initialLikes }) {
+  const fetcher = useFetcher();
+  
+  // Optimistically show the updated count
+  const likes = fetcher.formData 
+    ? parseInt(fetcher.formData.get("likes") as string)
+    : initialLikes;
+  
+  return (
+    <fetcher.Form method="post" action="/api/like">
+      <input type="hidden" name="postId" value={postId} />
+      <input type="hidden" name="likes" value={likes + 1} />
+      <button type="submit">
+        ❤️ {likes}
+      </button>
+    </fetcher.Form>
+  );
+}
+```
+
+### Loading States
+
+Show feedback for async operations.
+
+```typescript
+import { Loader2 } from 'lucide-react';
+
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <button disabled={isPending}>
+      {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {isPending ? "Saving..." : "Save"}
+    </button>
+  );
+}
+```
+
+### Lazy Loading Components
+
+Load components only when needed.
+
+```typescript
+import { lazy, Suspense } from 'react';
+import { Skeleton } from "~/components/ui/skeleton";
+
+// ❌ Heavy chart library loaded on every page
+import { HeavyChart } from './HeavyChart';
+
+// ✅ Load only when component is rendered
+const HeavyChart = lazy(() => import('./HeavyChart'));
+
+function Dashboard() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <HeavyChart data={data} />
+    </Suspense>
+  );
+}
+```
+
+## Performance Checklist
+
+**Before deploying:**
+- [ ] Run React Scan to find unnecessary re-renders
+- [ ] Use `React.memo` for expensive components
+- [ ] Implement skeleton loading states
+- [ ] Optimize images (WebP, proper sizing, lazy loading)
+- [ ] Code split heavy components
+- [ ] Use optimistic UI for interactions
+- [ ] Minimize bundle size (import only what you need)
+- [ ] Test on slow 3G network
+- [ ] Test on low-end devices
+- [ ] Run Lighthouse audit (aim for 90+ score)
+
+## Tools for Performance Testing
+
+### Lighthouse
+
+Built into Chrome DevTools.
+
+**How to use:**
+1. Open DevTools
+2. Go to "Lighthouse" tab
+3. Click "Generate report"
+4. Aim for 90+ in Performance
+
+### Chrome DevTools Performance
+
+Record and analyze runtime performance.
+
+**How to use:**
+1. Open DevTools → Performance
+2. Click Record
+3. Interact with your app
+4. Stop recording
+5. Analyze flame graph
+
+### Network Throttling
+
+Test on slow connections.
+
+**How to use:**
+1. Open DevTools → Network tab
+2. Select "Slow 3G" from dropdown
+3. Reload and test
+
+## Next Steps
+
+<Cards>
+  <Card title="Debugging Guide" href="/building-with-kaizen/debugging-guide" description="Fix performance bugs" />
+  <Card title="Production Deployment" href="/setup/8-production-deployment" description="Deploy optimized builds" />
+  <Card title="Observability" href="/building-with-kaizen/observability" description="Monitor performance in production" />
+</Cards>
+

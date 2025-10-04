@@ -1,0 +1,361 @@
+---
+title: 'MVP Development'
+description: 'Build an MVP in a weekend - for your own products or agency clients'
+icon: Rocket
+---
+
+<Note>
+  This page was last updated on: 15th May 2025
+
+  **Important:** Before starting MVP development:
+  1. Complete [Parent Company Setup](/company-building/company-setup) first - this is done ONCE for your business entity (Ignore this if you're just building for yourself for fun and no payments are involved)
+  2. Complete [Idea Validation](/company-building/idea-validation) for the specific product you're building
+  
+  This guide applies to BOTH:
+  - Building your own products (under your company)
+  - Building products for agency clients
+</Note>
+
+<Steps>
+
+  <Step title="Quick Prototype with an AI Site Builder">
+    With the insights and initial PRD from your Granola and Grok conversations (as detailed in the [Idea Validation](/company-building/idea-validation#initial-idea-refinement-with-granola--grok) page), use them to quickly create and **launch a live landing page**. This allows you to start gathering user interest immediately. Adding a waitlist at this stage is optional, but can be useful for collecting emails if you anticipate a longer development cycle (but waitlists aren't mandatory).
+    
+    This step focuses on creating your initial public-facing landing page. For this, consider AI-powered no-code tools like:
+    - [Lovable](https://lovable.dev/) - **Highly recommended for this stage for rapid public landing page creation and its smoother integration with Titan, especially if you choose to implement a waitlist.** Lovable allows for rapid landing page creation and offers integration with services like Clerk for easy waitlist setup if you choose to implement one. See their guide: [Lovable + Clerk Integration](https://docs.lovable.dev/integrations/clerk#step-by-step-integration-guide).
+    - [Emergent](https://app.emergent.sh/)
+    - [bolt.new](https://bolt.new/)
+    - [Chef by Convex](https://chef.convex.dev/)
+    - [Youware](https://www.youware.com/)
+    - [Tempo](https://www.tempo.new/) - includes wireframes and user flows
+    
+    The primary goal here is to get a functional public landing page deployed as fast as possible. You can iterate on its design later.
+    
+    These tools can help you:
+    - **Optionally start collecting emails for a waitlist.**
+    - Get user feedback on your core value proposition and initial branding.
+    - Test different messaging approaches before committing to more development.
+    - Create a visual presence for potential investors or early adopters.
+
+    Once your landing page is live and you 'think' you've nailed the core value proposition, get further feedback by:
+    1) (Optional) Deploying it and posting it to social media (LinkedIn, X, WhatsApp, etc.) in order to start collecting emails (if you've implemented a waitlist) and initial feedback
+    2) Posting it in the Community Discord Server #roast-my-site channel (Community members will give you constructive criticism as to why this is a bad idea or what you can do to improve it)
+    3) Using [LandingAnalyze](https://landinganalyze.com/) for free detailed analysis of copy, design, and conversion optimization
+
+    <Note>
+      While you might explore several AI site builders, we recommend prioritizing getting one version live quickly. **Our current favorite for this is [Lovable](https://lovable.dev/) due to its straightforward Clerk integration if you decide to set up a waitlist (see their [Clerk Integration Guide](https://docs.lovable.dev/integrations/clerk#step-by-step-integration-guide)).**
+      The exported files or the entire repository from this initial landing page (e.g., your Lovable project) should be saved. 
+      We will clone this prototype repository into a folder within your Titan project later to use as a direct reference.
+      If you decide to publish the landing page immediately (with or without a waitlist), the social media feedback will directly inform the features and design of your subsequent documentation and full MVP.
+    </Note>
+    
+  </Step>
+
+  <Step title="Product-Specific Setup">
+    Before diving into development, set up the product-specific infrastructure:
+
+    ### For Your Own Products
+    1. **Domain & Email**
+       - Purchase product domain (separate from your company domain)
+       - You'll either use your own personal email address or have a company email address already setup in [Parent Company Setup](/company-building/company-setup)
+
+    2. **Third-Party Services**
+       - Use your company's (or your own) existing accounts:
+         - Stripe (payment processing)
+         - Supabase (database)
+         - Clerk (auth)
+         - Plunk (emails)
+         - Vercel (deployment)
+       - Set up new project within each service
+
+      <Note>
+        For Agency owners, using your own accounts to setup and test the MVP is okay because the handover will be cleaner later when you transfer ownership of the services to the client.
+
+        See the [Account Management Guide](/agency-related/account-management-guide) page for more details on how this works and how to transfer ownership of each service to the client, later.
+      </Note>
+
+    ### For Agency Clients
+      **Client Prerequisites** (they must provide):
+       - Brand assets (logo, colors, fonts)
+       - Content and copy (ideally, but not required)
+
+    <Note>
+      See the [Account Management Guide](/agency-related/account-management-guide) page for more details on why you should use your own personal email address or have a company email address already setup in [Parent Company Setup](/company-building/company-setup) and don't need the client to setup any of the 3rd-party services for the stack (like Supabase, Clerk, Stripe, etc.).
+    </Note>
+
+    <Note>
+      For agency work, clients should own all services and domains. This ensures clean handover and avoids billing/ownership complications.
+    </Note>
+  </Step>
+
+  <Step title="Create a new Codebase">
+    Spin up a new project quickly with [Titan](/product-development/titan#building-with-titan)
+
+    <Note>
+      Just run 'Setup via CLI' step in the [Titan](https://blueprint.codeandcreed.tech/product-development/titan#building-with-titan) guide so that we simply create a new repository. 
+      
+      We will start building the actual product (MVP) in later steps, but there are a few things to do first, like generating the right documentation and embedding that in the codebase so that we have enough business and product context for the LLMs, and creating all the brand assets and landing page (especially if we want to start collecting emails and building a waitlist).
+    </Note>
+  </Step>
+
+  <Step title="Requirements & Documentation">
+    Import your Granola recording summary into Cursor and then use the below strategy to generate comprehensive documentation:
+
+    1. Have a high-level conversation with Cursor in 'Agent' mode to generate:
+      - Product Requirements Doc (PRD)
+      - Technical Design Doc
+      - Initial Database Schema
+      - Landing Page Copy
+      - Most common App User flows
+      - System Architecture Diagram
+      - UI/UX Design
+      - Brand Identity Guidelines
+
+    <Note>
+        For best results, use either `gemini-2.5-pro` (`gemini-2.5-pro-preview-05-06`) or `claude-4-sonnet-thinking`.
+    </Note>
+
+    Example prompt:
+    ```markdown
+    You are a full-stack senior engineer.
+
+    I want to first have a high-level conversation with you to understand the MVP version of the idea that I would like to build, and then generate all the required documentation:
+
+    This is my idea:
+
+    [idea]
+
+    Here are the customer interview summaries from Granola:
+    [paste Granola summaries]
+
+    Before we generate the below documentation, let's have a high-level conversation to understand the idea and ensure we're on the same page.
+
+    Ask me questions to help you understand the idea better. Ask about edge cases, pricing models, APIs I might use, websites I know similar to what I'm building, etc. etc.
+
+    Get as much context as possible from me about the idea.
+
+    Initially use my idea to first create a markdown file in the docs folder called 'idea.md' that captures the high-level idea and business model and only the 1 or 2 core features that users can't live without. Those are the only features that should be included in the MVP.
+
+    Everytime you ask me a clarifying question, ask me if I am satisfied with the current state of the 'idea.md' file. Once I reply with a 'yes' (or similar), then you can help me generate the following detailed documentation files (for each of the below, create a new markdown file in the docs folder):
+
+    1) A high level product requirements doc (PRD) detailing the core feature/s of the MVP only, following this format:
+      - Introduction: Problem statement and product vision (what is the painpoint we are solving)
+      - Objectives & Goals: Core purpose and ideal outcomes
+      - Target Users & Roles: User types and their actions
+      - Core Features for MVP: Must-have functionality (Just 1 or 2 core features that users can't live without)
+      - Future Scope: Features for later phases
+      - User Journey: Step-by-step flows for each role
+      - Tech Stack: Main Stack + 3rd Party libraries/providers/APIs to be used
+    2) A technical design doc (TDD) explaining what libraries and providers we should use to implement all the features (any 3rd party libraries if needed)
+    3) An updated database schema on top of my initial schema that lives at `db/schema/index.ts`
+
+      Create any connections to these initial tables as needed.
+
+      For each table, specify:
+      - Any necessary database indexes for performance optimization (considering common query patterns - i.e. whether this will be a read-heavy or write-heavy app)
+      - Row-Level Security (RLS) policies (since we're using Supabase) to control data access
+      - Foreign key relationships and cascade behavior
+
+      From our conversation, we would've extracted the recommendations for the pricing model, so based on that, decide whether I would need both a subscription pricing model or a one-time payment model.
+
+      Use this as a reference for the pricing model decision:
+
+      a. **Recurring Subscriptions**
+       - Use when you provide ongoing value
+       - Examples:
+         - SaaS tools used regularly
+         - Monitoring services
+         - Continuous access platforms
+       - Benefits:
+         - Predictable revenue
+         - Higher customer lifetime value
+         - Easier to scale
+
+      b. **One-Time Payments**
+        - Use when value is delivered once
+        - Examples:
+          - Digital downloads
+          - One-off transformations
+          - Limited-time access
+        - Benefits:
+          - Simpler to manage
+          - No recurring obligations
+          - Clear value proposition
+
+      c. **Hybrid Models**
+        - Combine both payment types
+        - Examples:
+          - Course platform with setup fee + monthly access
+          - Software with one-time purchase + optional subscription support
+        - Benefits:
+          - Maximizes revenue opportunities
+          - Caters to different user preferences
+          - Provides flexibility in pricing strategy
+
+      Product Type Considerations:
+        1. **Transformation Products**
+          - Focus on one-time payments
+          - Example: Fitness apps, course platforms
+          - Emphasize testimonials and results
+
+        2. **Utility Products**
+          - Focus on subscription models
+          - Example: Budget trackers, productivity tools
+          - Highlight integrations and features
+
+      Currency & Pricing Psychology:
+        - Align currencies with target demographics
+        - Use psychological pricing (e.g., $29 vs $30)
+        - Configure Stripe for local currency handling
+
+      If, for example, you think we should use a one-time payment model, then remove the subscriptions and subscription plans tables and remove the subscription_id from the invoices table.
+
+      If only subscription plans are needed, then remove the one-time payment related tables and fields and any connections to them in the database schema.
+
+      If both subscription plans and one-time payments are needed, then keep all the tables and fields and any connections to them in the database schema.
+
+      4) A list of the most common user flows
+
+      5) UI/UX Design of the main app/dashboard:
+      - Create a minimal UI design focusing on core functionality
+      - Explain the main user interactions and flows
+      - Highlight key UI components and their purpose
+      - Document accessibility considerations
+      - Define responsive design approach
+
+      6) System Architecture (in Mermaid.js):
+      Generate a high-level system design diagram showing:
+      - Key components and their relationships
+      - Data flow between services
+      - External API integrations
+      - Infrastructure layout
+
+      7) Brand Identity Guidelines:
+      Based on the visual design of the landing page prototype created in Step 2 (e.g., with Lovable) and your overall product vision:
+      - **Typography Recommendations:** Identify the primary fonts used in the prototype. Suggest a typographic hierarchy (headings, body text, captions) using these or complementary fonts that maintain the established style. Refer to [Google Fonts](https://fonts.google.com/) or [fontshare.com](https://www.fontshare.com/) for compatible options if variations are needed.
+      - **Logo Style Recommendations:** Based on the prototype's aesthetic and your product's industry/target audience, describe an ideal logo style (minimal, illustrated, text-based, abstract, etc.) that would integrate well. This description can then be used with a logo generation tool or given to a designer.
+      - **Color Palette Suggestions:** Identify the primary and secondary colors used in the prototype. Formalize this into a complete palette, suggesting 1-2 accent colors and neutrals that would complement this existing scheme and enhance the desired brand vibe for the entire product.
+
+      Add these docs to a 'docs' folder at the root of the codebase.
+    ```
+
+    <Note>
+      You can use the @web tag in agent-mode to let Cursor search the web for inspiration and verify details (font names, colors, etc.)
+    </Note>
+  </Step>
+
+  <Step title="Develop Full Brand Assets & Prepare Landing Page for Titan Integration">
+    In Step 2 ("Quick Prototype with AI No-Code Tools"), you prototyped an initial landing page design and potentially gathered feedback if you chose to launch it. In Step 5 ("Requirements & Documentation"), you generated 'Brand Identity Guidelines'. Now, let's develop your full brand assets and prepare to integrate your validated landing page design into Titan.
+
+    1. **Develop Full Brand Assets (Logo, Colors, Font/s)**: 
+
+      <Note>
+        Agency clients will and should provide their own brand assets.
+      </Note>
+
+       - Refer to your 'Brand Identity Guidelines' (from `docs/brand-identity-guidelines.md`) if you're building for yourself.
+       - Create/Finalise your comprehensive logo using tools like [logo.com](https://logo.com/), [logoshaper.co](https://www.logoshaper.co/), or [ray.so/icon](https://ray.so/icon) if the initial one was basic.
+       - Finalise your complete color palette (primary, secondary, accent, neutrals) and typography. Use [Design Inspiration libraries](/product-development/rapid-ui-prototyping#finding-inspiration) or a [Colour Palette tool](https://dub.sh/T0hQ9yw).
+       - If you're planning to use shadcn/ui components in your MVP, use [TweakCN](https://tweakcn.com/) to generate cohesive theme configurations that match your brand colors and create a professional, consistent design system.
+
+      <Note>
+        You can use this chrome extension to identify fonts on other websites: [WhatFont](https://chromewebstore.google.com/detail/whatfont/jabopobgcpjmedljpbcaablpmlmfcogm)
+      </Note>
+
+    2. **Prepare Landing Page for Titan Integration (or Refine Live Version)**:
+       - Your landing page prototype (e.g., from Lovable) serves as a validated design blueprint. The task now is to ensure its design is ready for your Titan project.
+       - **Option A (Refine Branding on Live AI-Built Page):** If you chose to deploy your AI-built landing page and it allows, apply your finalized brand assets (logo, colors, fonts) to it directly. Ensure legal pages (from the next step) are linked in its footer.
+       - **Option B (Prepare for Titan Rebuild/Integration):** If you plan to rebuild the landing page natively in your Titan-generated repo for maximum control (common for scaling), your AI-built landing page prototype serves as the validated blueprint. Your full brand assets will be applied during this Titan build process (see Step 8: Build MVP).
+
+    The goal is to have a polished brand identity and a clear plan for how your validated landing page design will live within your project.
+
+    Be sure to tag the `docs` folder (especially `brand-identity-guidelines.md`) when prompting with Composer or any AI tool for assistance with brand asset finalization.
+
+    Fonts should go in the public/fonts/ folder. Remove the default font in that folder (Sora.zip)
+
+    <Note>
+      **For Agency Work:** Use the client's provided brand assets and guidelines. If they don't have any, help them develop these using the tools mentioned above before proceeding.
+    </Note>
+
+    <Note>
+      While launching a landing page with a waitlist in Step 2 was optional, having that early version (live or not) provides a solid design foundation for this stage.
+    </Note>
+  </Step>
+
+  <Step title="Legal Pages">
+    Every product needs legal documentation to protect both you and your users. Instead of expensive legal consultations for your MVP, use AI to generate these essential pages:
+    
+    1. **Privacy Policy**
+       - Details how you collect, use, and protect user data
+       - Required for GDPR, CCPA, and most app stores
+    
+    2. **Terms of Service**
+       - Outlines rules for using your product
+       - Protects you from liability and misuse
+    
+    3. **Booking Terms** (if applicable)
+       - Specific terms for appointment/booking services
+       - Cancellation policies and scheduling rules
+    
+    4. **Refund Policy**
+       - Clear guidelines on when refunds are offered
+       - Process for requesting refunds
+    
+    ### Generate Legal Pages with AI
+    
+    Use this prompt with Cursor agent mode to generate all required legal pages for your MVP and save them to your documentation folder:
+    
+    <Note>
+      Update any variables in the prompt below with the correct values.
+    </Note>
+    
+    ```markdown
+    You are an excellent legal document specialist. I need your help to create three essential legal documents for my product: Privacy Policy, Terms of Service, and Refund Policy. Save each document as a separate markdown file in the /docs folder.
+    ...
+    ```
+    
+    <Note>
+      **For Agency Work:** Generate these documents using the client's company details and have them review and approve before implementation.
+    </Note>
+  </Step>
+
+  <Step title="Setup Local Development Tools & Build MVP">
+
+    <Warning>
+      Before building the MVP, set up essential development tools that will accelerate your workflow. Then continue to the [Titan](https://blueprint.codeandcreed.tech/product-development/titan#building-with-titan) guide.
+    </Warning>
+
+    ### Essential Tool Setup
+
+    Set up these tools in your project to maximize development speed:
+
+    1. **TaskMaster** - AI-powered task management
+    2. **CodeRabbit** - AI-Powered Code Reviews
+    3. **StageWise** - Precise UI refinements
+    4. **BrowserMCP** - Browser automation for testing
+    5. **Operative.sh MCP** - Automated manual web app testing
+
+    ### Building the MVP
+
+    With your documentation, brand assets, a clean landing page design (from Step 2 & 5), and development tools set up, it's time to build the core MVP features.
+
+    **Leveraging Your AI-Built Public Landing Page/Prototype:**
+    Keep the AI prototype project/files open as a direct reference when you build out the public-facing pages in your app.
+
+    **Focus:** Implement the 1-2 core features identified in your PRD. Ship quickly and iterate.
+  </Step>
+
+  <Step title="Beta Testing & Launch">
+    Once the core MVP is done (1 main feature that is tested and works end-to-end), spread the word to get initial feedback. See our [Marketing Guide](/company-building/marketing).
+
+    For your own products: Post to LinkedIn/socials, collect feedback via UserJot.  
+    For agency: set up analytics/feedback tools, train client team, and prepare handovers.
+  </Step>
+
+  <Step title="Decision Point (Kill or Scale)">
+    After 2-3 weeks of beta testing, decide:
+
+    **Kill Criteria**: No users, flat signups, high churn → document learnings and move on.  
+    **Scale Criteria**: 20+ active users OR $100+ MRR → keep building; focus on features users want, rapid bug fixes, and weekly releases. Consider co-founders.
+  </Step>
+</Steps>

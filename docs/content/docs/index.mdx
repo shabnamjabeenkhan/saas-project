@@ -1,0 +1,297 @@
+---
+title: Overview
+description: Complete guide to building and launching your startup from idea to production
+icon: 'Bolt'
+---
+
+<Note>
+Last updated: 1st October 2025
+</Note>
+
+Welcome to the **Startup Accelerator** documentation - your comprehensive guide to building, launching, and scaling a successful startup.
+
+## What is This Accelerator?
+
+This accelerator provides everything you need to go from idea to production-ready startup:
+
+- **Technical Stack**: Battle-tested tools and frameworks for rapid development
+- **Architecture Guidance**: Proven patterns for scalable applications  
+- **Cost Optimization**: Build profitably from day one with 80%+ margins
+- **Best Practices**: Lessons learned from successful startups
+- **Step-by-Step Guides**: From setup to deployment and beyond
+
+## Who is This Accelerator For?
+
+This accelerator is designed for **developers with a solid foundation in software engineering**:
+
+✅ You've completed the Frontend section of the Software Engineer Roadmap  
+✅ You understand HTML, CSS, JavaScript, and React fundamentals  
+✅ You have backend systems knowledge (databases, APIs, authentication)  
+✅ You're ready to build and ship a real product  
+
+**Not for absolute beginners** - You should have prior coding experience and understand software engineering concepts.
+
+## Before You Start Building
+
+### 1. Register Your Business Entity (Optional)
+
+<Note>
+Only required if you plan to accept payments from customers
+</Note>
+
+- **Register a parent company** in your country for legal protection
+- **Consider tax optimization**: Panama entities offer 0% tax for international businesses
+- **Consult a lawyer**: Get professional advice for your specific situation
+
+### 2. Validate Your Idea
+
+<Warning>
+Don't skip validation! Building without validation wastes time and money.
+</Warning>
+
+Use the [Founder Blueprint Idea Validation Node](https://founder.codeandcreed.tech/) to:
+- Test your assumptions
+- Interview potential customers
+- Validate market demand
+- Define your MVP scope
+
+See our [Idea Validation Guide](/building-with-kaizen/idea-validation) for step-by-step instructions.
+
+### 3. Join the Community
+
+Connect with other builders in the [AI MVP Builders Skool Community](https://www.skool.com/ai-mvp-builders/about) for:
+- Live workshops and Q&A sessions
+- Peer feedback and support
+- Networking with other founders
+- Access to exclusive resources
+
+## Our Philosophy
+
+We believe in:
+
+1. **Speed to Market**: Get your MVP live in days, not months
+2. **Cost Efficiency**: Maintain high profit margins even at scale (10,000+ DAUs at ~$200-300/month)
+3. **Modern Stack**: Use the best tools without unnecessary complexity
+4. **Focus on Product**: Let infrastructure handle itself so you can build features
+
+## Prerequisites
+
+Before getting started with this accelerator, ensure you have:
+
+1. **Frontend Knowledge** - Complete the Frontend section of the Software Engineer Roadmap (HTML, CSS, JS, and React fundamentals)
+2. **Backend Systems Knowledge** - Complete the [Systems Expert Fundamentals Course](https://www.algoexpert.io/systems/fundamentals)
+3. **Business Fundamentals** - Understanding of SaaS business models, customer acquisition, and product-market fit
+
+## Tech Stacks We Use
+
+### Kaizen - Full-Stack SaaS Boilerplate
+
+Our primary tech stack for rapid SaaS development.
+
+**Repository**: [github.com/code-and-creed/kaizen](https://github.com/code-and-creed/kaizen)
+
+<Cards>
+  <Card title="React Router v7" href="#react-router-v7" description="Modern full-stack React framework with SSR" />
+  <Card title="Convex" href="#convex" description="Real-time database and serverless functions" />
+  <Card title="Clerk" href="#clerk" description="Authentication as a Service" />
+  <Card title="Polar.sh" href="#polarsh" description="Subscription billing and payments" />
+  <Card title="Resend" href="#resend" description="Email as a Service" />
+  <Card title="Railway" href="#deployment-platforms" description="Production deployments" />
+</Cards>
+
+#### React Router v7
+
+Modern full-stack React framework with server-side rendering.
+
+**Key Features:**
+- Framework Mode with built-in SSR
+- File-based routing via `app/routes.ts`
+- Automatic type generation for routes
+- Progressive enhancement
+
+```typescript title="app/routes.ts"
+import { type RouteConfig, index, route } from "@react-router/dev/routes";
+
+export default [
+  index("routes/home.tsx"),
+  route("products/:id", "routes/product.tsx"),
+] satisfies RouteConfig;
+```
+
+#### Convex
+
+Real-time database and serverless backend functions.
+
+**Key Features:**
+- Automatic real-time updates
+- End-to-end type safety
+- Serverless functions in `convex/` directory
+- Built-in Clerk authentication integration
+
+```typescript title="convex/users.ts"
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+```
+
+#### Clerk
+
+Authentication as a Service with multi-provider support.
+
+**Key Features:**
+- Email/password, Google, GitHub authentication
+- JWT integration with Convex
+- Pre-built React components
+- Built-in security features
+
+#### Polar.sh
+
+Subscription billing and payment processing.
+
+**Key Features:**
+- Recurring payment management
+- Pre-built checkout flows
+- Webhook integration
+- Multi-currency support
+- Revenue analytics
+
+#### Resend
+
+Transactional email delivery service.
+
+**Key Features:**
+- Reliable email delivery
+- HTML template support
+- Webhook tracking (delivered, opened, clicked)
+- Custom domain support
+
+```typescript
+import { Resend } from 'resend';
+
+await resend.emails.send({
+  from: 'noreply@yourapp.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  html: '<h1>Welcome to our app!</h1>',
+});
+```
+
+#### Deployment Platforms
+
+Deploy your application with zero configuration:
+
+**Railway** - Simple, powerful deployment platform
+- Docker-based deployments
+- PR preview environments
+- Built-in database hosting
+- Edge functions
+- Built-in analytics
+
+**Railway** - Modern infrastructure platform
+- Simple Git-based deployments
+- Automatic HTTPS and custom domains
+- Built-in databases and services
+- Pay-as-you-go pricing
+
+## Quick Start with Kaizen
+
+Get started with Kaizen in minutes:
+
+```bash
+# Clone the repository
+git clone https://github.com/code-and-creed/kaizen.git your-project-name
+cd your-project-name
+
+# Install dependencies
+bun install
+
+# Set up your environment
+cp .env.example .env.local
+
+# Start development
+bun run dev
+```
+
+## Documentation Sections
+
+<Cards>
+  <Card title="Setup Guide" href="/setup/1-prerequisites" description="9-step guide from zero to production" />
+  <Card title="Deploy in 5 Minutes" href="/building-with-kaizen/deploy-in-5-mins" description="Get Kaizen running and deployed quickly" />
+  <Card title="Building Features" href="/building-with-kaizen/rapid-ui-prototyping" description="Learn to build beautiful UIs quickly" />
+  <Card title="Project Documentation" href="/project-documentation/overview" description="Architecture, costs, and technical decisions" />
+  <Card title="Learnings" href="/learnings/overview" description="Community experiences and tips" />
+</Cards>
+
+## Your Startup Journey
+
+### Step 1: Setup Your Tech Stack
+
+Follow our comprehensive setup guide:
+
+1. **[Prerequisites](/setup/1-prerequisites)** - Required knowledge and API keys
+2. **[Project Setup](/setup/2-project-setup)** - Clone and install dependencies
+3. **[Basic Configuration](/setup/3-basic-configuration)** - Verify static functionality
+4. **[Authentication Setup](/setup/4-authentication-setup)** - Enable Clerk + Convex
+5. **[Payments Setup](/setup/5-payments-setup)** - Configure Polar.sh billing
+6. **[Email Setup](/setup/6-email-setup)** - Add Resend transactional emails
+7. **[AI Setup](/setup/7-ai-setup)** - Enable OpenAI chat functionality
+8. **[Production Deployment](/setup/8-production-deployment)** - Deploy to Railway
+9. **[Development Workflow](/setup/9-development-workflow)** - Maintain and extend your app
+
+### Step 2: Understand Your Architecture
+
+Learn about the technical decisions, costs, and architecture:
+
+- **[Architecture](/project-documentation/architecture)** - System design and component interactions
+- **[Cost Estimation](/project-documentation/cost-estimation)** - Projected costs at different scales
+- **[Database Schema](/project-documentation/database-schema)** - Data models and relationships
+- **[User Flows](/project-documentation/user-flows)** - User journeys and interaction patterns
+
+### Step 3: Build and Ship
+
+- **[Rapid UI Prototyping](/building-with-kaizen/rapid-ui-prototyping)** - Build beautiful interfaces fast
+- **[Database Migrations](/building-with-kaizen/database-migrations)** - Manage schema changes safely
+- **[Observability](/building-with-kaizen/observability)** - Monitor errors and uptime
+
+## Why This Approach Works
+
+Traditional startup development involves:
+- ❌ Months of infrastructure setup
+- ❌ Complex DevOps configuration
+- ❌ High operational costs
+- ❌ Slow iteration cycles
+
+Our accelerator approach:
+- ✅ Production-ready in days
+- ✅ Zero infrastructure management
+- ✅ Pay only for what you use
+- ✅ Ship features daily
+
+## Cost Structure
+
+All services have **generous free tiers**.
+
+Even as your startup grows, costs remain minimal:
+- **10,000+ DAUs**: ~$200-300/month
+- **Profit Margin**: 80%+
+- **Scaling**: Automatic with zero configuration
+
+These third-party services abstract away significant infrastructure work, letting you focus solely on building your product and acquiring customers.
+
+## Next Steps
+
+Ready to build your startup? Start with:
+
+1. **[Review Prerequisites](/setup/1-prerequisites)** - Make sure you have the required knowledge
+2. **[Setup Your Project](/setup/2-project-setup)** - Get the codebase running locally
+3. **[Read Project Documentation](/project-documentation/overview)** - Understand the architecture and decisions
+
+<Note>
+Have questions? Check out our [Learnings](/learnings/overview) section for community insights and common pitfalls to avoid.
+</Note>

@@ -1,0 +1,312 @@
+---
+title: 'PR Reviews'
+description: 'How to structure PRs and test changes so engineers are happy to review'
+icon: GitPullRequest
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+Great code reviews are the foundation of maintainable software and healthy engineering teams. 
+
+It's where knowledge is shared, bugs are caught, and code is improved.
+
+Poor PRs create frustration, delay deployments, and erode team trust. Learn how to write PRs that engineers love reviewing.
+
+## Why PR Reviews Matter
+
+### For Individual Growth
+- **Knowledge sharing:** Learn from others' approaches
+- **Quality improvement:** Catch bugs and design issues early
+- **Skill development:** Exposure to different coding styles and techniques
+
+### For Team Health
+- **Consistency:** Maintain code quality standards
+- **Collaboration:** Build shared understanding of the codebase
+- **Trust:** Ensure changes are thoroughly vetted
+
+### For Business Success
+- **Reliability:** Fewer bugs in production
+- **Velocity:** Faster, more confident deployments
+- **Scalability:** Code that can be maintained as the team grows
+
+## Writing Great PRs
+
+### 1. Start with a Clear Description
+
+**Bad PR description:**
+```
+Fix bug
+```
+
+**Good PR description:**
+```
+Fix user authentication timeout issue
+
+## Problem
+Users were being logged out after 30 minutes of inactivity, but the session timeout was set to 2 hours. This caused confusion and support tickets.
+
+## Solution
+Updated session timeout configuration from 30 minutes to 2 hours to match user expectations.
+
+## Testing
+- Verified login sessions persist for 2+ hours
+- Confirmed logout still works when explicitly clicked
+- No impact on existing user sessions
+
+## Screenshots
+[Before/After screenshots of session behavior]
+
+Fixes #123
+```
+
+**What makes a great description:**
+- **Context:** Why is this change needed?
+- **Solution:** What did you change and why?
+- **Testing:** How did you verify it works?
+- **Impact:** What might break or be affected?
+- **Visuals:** Screenshots, videos, or diagrams when helpful
+
+### 2. Keep PRs Small and Focused
+
+**Anti-patterns:**
+❌ 500+ line PRs with multiple features
+❌ Mixing refactoring with new features
+❌ Including unrelated formatting changes
+
+**Best practices:**
+✅ Single responsibility per PR
+✅ Under 200-300 lines when possible
+✅ Related changes bundled together
+✅ Breaking changes isolated
+
+### 3. Write Self-Documenting Code
+
+**Before review:**
+- Run your own tests
+- Check for linting errors
+- Review your own code first
+- Add comments for complex logic
+
+**Code quality checklist:**
+- [ ] No console.logs or debugging code
+- [ ] Proper error handling
+- [ ] TypeScript types are correct
+- [ ] Tests pass locally
+- [ ] No linting errors
+
+## The Review Process
+
+### For Authors: Preparing for Review
+
+**1. Self-review first:**
+- Read through your code like a reviewer would
+- Check for obvious bugs or issues
+- Ensure code follows team conventions
+
+**2. Test thoroughly:**
+- Unit tests for new functionality
+- Integration tests for API changes
+- Manual testing of user-facing features
+- Edge cases and error conditions
+
+**3. Provide context:**
+- Link to relevant tickets/issues
+- Mention related PRs or discussions
+- Explain design decisions if they're not obvious
+
+### For Reviewers: Effective Reviewing
+
+**1. Review mindset:**
+- Assume positive intent
+- Focus on improvement, not criticism
+- Ask questions when unclear
+- Suggest alternatives when appropriate
+
+**2. Review systematically:**
+- **Functionality:** Does it work as described?
+- **Code quality:** Is it readable and maintainable?
+- **Testing:** Are edge cases covered?
+- **Performance:** Any obvious bottlenecks?
+- **Security:** Any vulnerabilities introduced?
+
+**3. Provide actionable feedback:**
+❌ "This is bad"
+✅ "Consider using early return here to reduce nesting"
+
+## Common PR Issues and Solutions
+
+### Issue: Vague Requirements
+
+**Problem:** PR description doesn't explain why the change is needed.
+
+**Solution:**
+- Always include business context
+- Link to user stories or tickets
+- Explain the problem being solved
+
+### Issue: Large, Unfocused PRs
+
+**Problem:** Too many changes to review effectively.
+
+**Solution:**
+- Break into smaller PRs
+- Use feature flags for incremental rollout
+- Separate refactoring from feature work
+
+### Issue: Poor Testing
+
+**Problem:** Changes break existing functionality.
+
+**Solution:**
+- Run full test suite before submitting
+- Add tests for new functionality
+- Consider integration tests for complex features
+
+### Issue: No Documentation Updates
+
+**Problem:** Code changes without corresponding docs.
+
+**Solution:**
+- Update READMEs for API changes
+- Add code comments for complex logic
+- Update user-facing documentation
+
+## Review Feedback Guidelines
+
+### Giving Feedback
+
+**Be specific and actionable:**
+❌ "This function is too long"
+✅ "Consider breaking this function into smaller functions - the authentication logic could be extracted into `validateCredentials()`"
+
+**Use "I" statements:**
+❌ "You didn't handle this edge case"
+✅ "I'm concerned about this edge case - what happens if the user passes null?"
+
+**Offer solutions:**
+❌ "This is inefficient"
+✅ "This loop could be optimized using a Map for O(1) lookups instead of O(n) array searches"
+
+### Receiving Feedback
+
+**Don't take it personally:**
+- Feedback is about the code, not you
+- Experienced developers still get feedback
+- Use it as a learning opportunity
+
+**Respond constructively:**
+- Thank reviewers for their time
+- Ask clarifying questions
+- Explain your reasoning when challenged
+- Be willing to make changes
+
+**Know when to push back:**
+- Have data to support your approach
+- Explain trade-offs clearly
+- Suggest alternatives if you disagree
+
+## Code Review Checklist
+
+### For Authors
+- [ ] PR description is clear and comprehensive
+- [ ] Changes are focused and minimal
+- [ ] Tests pass and cover edge cases
+- [ ] No linting or type errors
+- [ ] Self-reviewed for obvious issues
+- [ ] Documentation updated if needed
+
+### For Reviewers
+- [ ] Code is functional and meets requirements
+- [ ] Code is readable and well-structured
+- [ ] Appropriate tests are included
+- [ ] No security vulnerabilities
+- [ ] Performance implications considered
+- [ ] Follows team coding standards
+
+## Advanced PR Techniques
+
+### Draft PRs
+- Use GitHub's draft mode for work-in-progress
+- Get early feedback on approach
+- Mark as ready when complete
+
+### Stacked PRs
+- Break complex features into dependent PRs
+- Each builds on the previous
+- Easier to review incrementally
+
+### Automated Tools
+- **CodeRabbit:** AI-powered code review
+- **SonarQube:** Automated code quality checks
+- **Dependabot:** Automated dependency updates
+- **Pre-commit hooks:** Run checks before commits
+
+## Team Culture and Communication
+
+### Setting Expectations
+
+**Define review timelines:**
+- Urgent changes: 2-4 hours
+- Normal changes: 1 business day
+- Large/complex changes: 2-3 business days
+
+**Review capacity:**
+- Consider reviewer workload
+- Rotate reviewers to distribute knowledge
+- Pair programming for complex changes
+
+### Building Review Culture
+
+**Positive reinforcement:**
+- Celebrate good PRs publicly
+- Share learnings from reviews
+- Recognize thorough reviews
+
+**Continuous improvement:**
+- Regular review retrospectives
+- Update guidelines based on feedback
+- Train new team members
+
+## Remote Work Considerations
+
+### Async Communication
+- Use detailed PR descriptions
+- Include screenshots/videos for UI changes
+- Tag reviewers appropriately
+- Set clear expectations for response times
+
+### Video Reviews
+- Record screen walkthroughs for complex changes
+- Use tools like Loom for detailed explanations
+- Schedule live review sessions for major changes
+
+## Measuring Review Effectiveness
+
+### Metrics to Track
+- **Review time:** From submission to merge
+- **Review quality:** Bug rates post-deployment
+- **Team satisfaction:** Survey feedback on review process
+- **Knowledge sharing:** Cross-team learning opportunities
+
+### Process Improvements
+- Regular process reviews
+- A/B testing different approaches
+- Tool and workflow optimization
+- Training and onboarding updates
+
+## Next Steps
+
+1. **Audit your PR process** - How long do reviews take? What's working well?
+2. **Update your PR template** - Include the checklist above
+3. **Train your team** - Share these best practices
+4. **Implement tools** - Set up automated checking
+5. **Measure and improve** - Track metrics and iterate
+
+Great PRs lead to great code and great teams. Invest in your review process - it's one of the highest-leverage activities in software development.
+
+## Related Resources
+
+- [How to Make Your Code Reviewer Fall in Love with You](https://mtlynch.io/code-review-love/)
+- [The Art of Pull Requests](https://github.com/thoughtbot/guides/tree/main/code-review)
+- [Code Review Guidelines for Humans](https://conventionalcomments.org/)
+- [Google's Code Review Guidelines](https://google.github.io/eng-practices/review/reviewer/)

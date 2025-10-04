@@ -1,0 +1,17 @@
+{
+  "title": "Project Documentation",
+  "description": "Document your Idea, Decisions, and Technical Architecture",
+  "icon": "FileText",
+  "root": true,
+  "pages": [
+    "index",
+    "idea",
+    "architecture",
+    "user-flows",
+    "database-schema",
+    "cost-estimation",
+    "features",
+    "learnings"
+  ]
+}
+

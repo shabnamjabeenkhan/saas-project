@@ -1,0 +1,379 @@
+---
+title: 'Analytics'
+description: 'Setting up user analytics, conversion tracking, and business intelligence'
+icon: BarChart
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+Data is your startup's compass. Without analytics, you're flying blind - guessing what features to build, which marketing channels work, and why customers churn. This guide shows you how to set up comprehensive analytics from day one.
+
+## Analytics Fundamentals
+
+### Why Analytics Matter
+
+**Without analytics:**
+❌ Build features nobody wants
+❌ Waste marketing budget
+❌ Don't know why users leave
+❌ Can't measure product success
+
+**With analytics:**
+✅ Understand user behavior
+✅ Optimize conversion funnels
+✅ Identify growth opportunities
+✅ Make data-driven decisions
+
+### Analytics Hierarchy
+
+**1. Business Metrics (What matters to your company)**
+- Revenue, growth rate, customer acquisition cost
+- Monthly active users, retention rates
+- Customer lifetime value, churn rate
+
+**2. Product Metrics (How users interact with your product)**
+- Feature usage, user flows, engagement
+- Conversion rates, funnel drop-offs
+- Performance metrics, error rates
+
+**3. Technical Metrics (System health)**
+- Page load times, uptime, error rates
+- API response times, database performance
+- Infrastructure costs, scaling metrics
+
+## Setting Up Analytics
+
+### 1. Website Analytics
+
+**Google Analytics 4 (Free, Recommended)**
+```javascript
+// Add to your HTML head
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID');
+</script>
+```
+
+**Privacy-compliant alternatives:**
+- **Plausible:** Privacy-first, GDPR compliant
+- **Fathom:** Lightweight, privacy-focused
+- **Simple Analytics:** No cookies, transparent pricing
+
+### 2. Product Analytics
+
+**PostHog (Recommended for Kaizen)**
+- **Event tracking:** User actions and feature usage
+- **Funnel analysis:** Conversion flow optimization
+- **A/B testing:** Feature experimentation
+- **User segmentation:** Behavioral cohorts
+
+**Setup:**
+```javascript
+// Install PostHog
+npm install posthog-js
+
+// Initialize in your app
+import posthog from 'posthog-js'
+posthog.init('your-project-api-key', { api_host: 'https://app.posthog.com' })
+
+// Track events
+posthog.capture('user_signed_up', { plan: 'pro' })
+```
+
+### 3. Business Intelligence
+
+**For startups (under 100 employees):**
+- **Google Data Studio:** Free, connects to most sources
+- **Mixpanel:** Product analytics with BI features
+- **Amplitude:** Advanced user analytics
+
+**For growing companies:**
+- **Tableau:** Powerful visualization
+- **Looker:** Enterprise BI
+- **Power BI:** Microsoft ecosystem
+
+## Essential Metrics to Track
+
+### User Acquisition
+
+**Traffic Sources:**
+- Organic search, paid ads, social media
+- Referral sources, direct traffic
+- Channel performance and ROI
+
+**Conversion Metrics:**
+- Visitor to sign-up rate
+- Sign-up to activation rate
+- Activation to paying customer rate
+- Overall funnel conversion
+
+### User Engagement
+
+**Product Usage:**
+- Daily/Weekly/Monthly active users
+- Feature adoption rates
+- Session duration and frequency
+- User flow completion rates
+
+**Quality Metrics:**
+- Task success rates
+- Error rates and frustration points
+- Support ticket volume
+- Net Promoter Score (NPS)
+
+### Business Metrics
+
+**Revenue Metrics:**
+- Monthly Recurring Revenue (MRR)
+- Annual Recurring Revenue (ARR)
+- Average Revenue Per User (ARPU)
+- Customer Lifetime Value (LTV)
+
+**Growth Metrics:**
+- Month-over-month growth rate
+- Customer acquisition cost (CAC)
+- Payback period (CAC vs. LTV)
+- Churn rate and retention
+
+## Setting Up Conversion Tracking
+
+### 1. Goal Tracking
+
+**Google Analytics Goals:**
+- Account creation
+- Feature usage milestones
+- Purchase completion
+- Trial-to-paid conversion
+
+**Custom Events:**
+```javascript
+// Track important user actions
+gtag('event', 'sign_up', {
+  method: 'email',
+  value: 1
+});
+
+gtag('event', 'feature_used', {
+  feature_name: 'export_pdf',
+  user_type: 'premium'
+});
+```
+
+### 2. Funnel Analysis
+
+**Identify drop-off points:**
+- Sign-up flow completion
+- Onboarding sequence
+- Feature adoption paths
+- Upgrade conversion funnels
+
+**Optimization opportunities:**
+- Simplify complex steps
+- Add progress indicators
+- Provide help at friction points
+- A/B test improvements
+
+### 3. Attribution Tracking
+
+**UTM Parameters:**
+```
+?utm_source=newsletter&utm_medium=email&utm_campaign=product-launch
+```
+
+**Track marketing performance:**
+- Campaign ROI by channel
+- Customer acquisition cost
+- Long-term value attribution
+- Multi-touch attribution models
+
+## User Behavior Analysis
+
+### Heatmaps and Session Recording
+
+**Tools:**
+- **Hotjar:** Heatmaps, session recordings, feedback polls
+- **FullStory:** Advanced session replay
+- **LogRocket:** Error tracking with session replay
+
+**What to analyze:**
+- User click patterns
+- Form abandonment points
+- Navigation confusion
+- Feature discovery issues
+
+### A/B Testing Framework
+
+**Testing workflow:**
+1. **Identify hypothesis:** "Changing button color from blue to green will increase conversions"
+2. **Create variants:** Control vs. test versions
+3. **Split traffic:** 50/50 or statistical significance-based
+4. **Measure results:** Statistical significance, confidence intervals
+5. **Implement winner:** Roll out successful variant
+
+**Tools:**
+- **Google Optimize:** Free A/B testing
+- **VWO:** Advanced testing platform
+- **Optimizely:** Enterprise A/B testing
+
+## Data Privacy & Compliance
+
+### GDPR & CCPA Compliance
+
+**Data collection principles:**
+- **Lawful basis:** Consent, legitimate interest, contract
+- **Data minimization:** Collect only what's needed
+- **Purpose limitation:** Use data only for stated purposes
+- **Storage limitation:** Keep data only as long as needed
+
+**Implementation:**
+- Cookie consent banners
+- Data subject access requests
+- Right to erasure/deletion
+- Data portability features
+
+### Analytics Privacy Settings
+
+**Google Analytics:**
+- IP anonymization
+- Data retention controls
+- Consent mode implementation
+- Region-specific restrictions
+
+**Privacy-first alternatives:**
+- **Plausible:** No personal data collection
+- **Fathom:** Minimal data collection
+- **Matomo:** Self-hosted analytics
+
+## Advanced Analytics Techniques
+
+### Cohort Analysis
+
+**Track user behavior over time:**
+- Acquisition cohorts: Users who signed up in same month
+- Behavioral cohorts: Users who performed specific actions
+- Retention analysis: How long users stay engaged
+
+**Key insights:**
+- Product-market fit indicators
+- Churn prediction
+- Feature impact measurement
+
+### Predictive Analytics
+
+**Churn prediction:**
+- Identify at-risk users
+- Proactive retention campaigns
+- Personalized interventions
+
+**Lifetime value modeling:**
+- Predict future revenue
+- Optimize acquisition spend
+- Segment high-value customers
+
+## Analytics Tools Integration
+
+### Unified Analytics Stack
+
+**Data collection layer:**
+- **Segment:** Customer data platform
+- **Snowplow:** Event data collection
+- ** RudderStack:** Open-source CDP
+
+**Analysis layer:**
+- **Mixpanel/PostHog:** Product analytics
+- **Amplitude:** Advanced user analytics
+- **Heap:** Automatic event tracking
+
+**Business intelligence:**
+- **Tableau/Looker:** Data visualization
+- **Power BI:** Microsoft ecosystem
+- **Metabase:** Open-source BI
+
+### API Integrations
+
+**Connect your tools:**
+```javascript
+// Example: Send events to multiple tools
+function trackEvent(eventName, properties) {
+  // Google Analytics
+  gtag('event', eventName, properties);
+  
+  // PostHog
+  posthog.capture(eventName, properties);
+  
+  // Custom analytics API
+  fetch('/api/analytics', {
+    method: 'POST',
+    body: JSON.stringify({ eventName, properties })
+  });
+}
+```
+
+## Common Analytics Mistakes
+
+### 1. Tracking Too Much Data
+
+**Problem:** Overwhelmed by data, can't find insights.
+
+**Solution:** Focus on 3-5 key metrics that drive decisions.
+
+### 2. Poor Data Quality
+
+**Problem:** Inconsistent naming, missing data, duplicates.
+
+**Solution:** Establish naming conventions, validation rules, data cleaning processes.
+
+### 3. Not Acting on Insights
+
+**Problem:** Collect data but don't use it for decisions.
+
+**Solution:** Regular review meetings, experiment prioritization, data-driven culture.
+
+### 4. Privacy Non-Compliance
+
+**Problem:** Data collection violates privacy laws.
+
+**Solution:** Legal review, consent management, data minimization.
+
+## Building Analytics Culture
+
+### Team Alignment
+
+**Analytics training:**
+- Basic metrics literacy
+- Tool usage training
+- Data interpretation skills
+
+**Regular rituals:**
+- Weekly metrics reviews
+- Monthly data deep-dives
+- Quarterly analytics strategy updates
+
+### Data-Driven Decision Making
+
+**Framework:**
+1. **Identify problem:** What decision needs to be made?
+2. **Gather data:** What information do we need?
+3. **Analyze options:** What does the data suggest?
+4. **Make decision:** Balance data with intuition and constraints
+5. **Measure results:** Did the decision work? Learn and iterate
+
+## Next Steps
+
+1. **Set up basic tracking** - Google Analytics + PostHog
+2. **Define key metrics** - Focus on 3-5 critical numbers
+3. **Create dashboards** - Real-time visibility into business health
+4. **Establish review cadence** - Weekly metrics meetings
+5. **Build experimentation culture** - A/B testing framework
+
+Analytics is your startup's nervous system. Set it up early, maintain it diligently, and let data guide your growth decisions.
+
+## Related Resources
+
+- [PostHog Academy](https://posthog.com/academy) - Product analytics education
+- [Google Analytics Academy](https://analytics.google.com/analytics/academy/) - Free GA certification
+- [Reforge Analytics Course](https://www.reforge.com/) - Advanced analytics for startups
+- [Data-Driven Growth](https://www.datadriven.growth/) - Analytics newsletter and resources

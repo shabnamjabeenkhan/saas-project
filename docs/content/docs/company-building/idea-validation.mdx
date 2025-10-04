@@ -1,0 +1,128 @@
+---
+title: 'Idea Validation'
+description: 'Quick idea validation before building'
+icon: CheckCircle
+---
+
+> While some founders can afford to invest heavily in building first, most should validate their ideas before significant development. Find the right balance for your situation, but lean towards validation if resources are limited.
+
+## Finding Ideas
+
+### Pre-Building Validation Steps
+1. Identify real user pain points through conversations
+2. Get commitment (ideally financial) from potential users
+3. Analyze market size and competition
+4. Assess your resources and risk tolerance
+
+### Criteria for Good Ideas
+1. Solves a really painful problem ('painkillers' over 'vitamins')
+2. Has a large market potential
+
+### Idea Sources
+1. App Store Review Method - Find a top app in your domain, read 100 bad reviews, and build a better version. These reviews tell you exactly what to fix for free.
+2. **AppGaps** ([link](https://www.findappgaps.com/)) - AI-powered tool that analyzes thousands of app reviews to uncover hidden opportunities and validated startup ideas. Features:
+   - Real-time app store review monitoring
+   - AI analysis to identify patterns and opportunities
+   - Comprehensive gap analysis reports
+   - Automated idea validation insights
+   - Step-by-step validation guides
+3. **Sonar** ([link](https://www.sonar.wtf/)) - AI tool that scans Reddit for user frustrations and pain points to discover validated startup opportunities with built-in demand
+4. **Sprint.dev** ([link](https://www.sprint.dev/tools)) - AI-powered idea generator that helps you generate and refine ideas for hackathons. Get started by creating your first idea.
+5. Reddit Research Method (Go to Reddit, search for "alternatives", find pain points of existing products, build a better alternative -> better UI, better UX, better pricing, or better features etc.). This approach is lower risk since these products have proven market demand - you're just taking market share by addressing their weaknesses.
+6. Off the cuff ideas when you're bored or frustrated with something (Note them down in your place of choosing - Google Docs, Todoist, Notion, etc.)
+7. [Code & Creed Community Idea Vault](https://docs.google.com/document/d/1l-voAUs-zEIBMgnd9zBZ7B4MfnfjedNNYOQ_p1U7JWQ/edit?tab=t.0)
+8. [Big Ideas Database](https://www.bigideasdb.com/)
+9. [thekoerneroffice](https://www.instagram.com/thekoerneroffice)
+10. Network with friends/professionals in their industry to identify pain points
+
+<Note>
+  Many of your first users will simply be word of mouth, especially if you don't have a large online presence. That's okay. Don't be afraid to speak to potential customers in person, cold-dm, cold-email, or even cold-call. If your product solves a genuine pain point, people will be happy to help you.
+
+  Reference [The Mom Test](https://wilselby.com/2020/06/the-mom-test-summary-and-insights/) for how to guide those conversations.
+</Note>
+
+This framework helps identify validated market opportunities where users are actively seeking better solutions.
+
+### Our Recommended Idea Validation Workflow with Granola + Grok
+
+Before diving deep into market research or prototyping, it's crucial to refine and stress-test your initial idea. This ensures your subsequent research is more focused and your core concept is as solid as possible.
+
+1.  **Customer Discovery & Initial PRD with Granola:**
+    -   Set up [Granola](https://www.granola.ai/) to record and transcribe yourself (if you're the first user) or a call with a potential client/user.
+    -   Let Granola enhance your notes and create a structured summary. This summary will highlight key pain points, needs, and desires.
+    -   **This Granola summary becomes the input for Grok.** Use it as the very first version of your Product Requirements Document (PRD) or idea brief. It's based on real conversations, not assumptions.
+
+2.  **Stress-Test Your Idea with Grok (as a Critical Investor):**
+    -   Take your **Granola summary (initial PRD/idea brief)** and have a conversation with Grok (or a similar advanced AI model with strong reasoning capabilities).
+    -   Instruct Grok to act as a highly critical technical investor or a devil's advocate. Its goal is to rigorously probe your idea, identify every potential weak spot, challenge assumptions, and explore potential pitfalls.
+    -   After identifying weaknesses, Grok should then help you brainstorm solutions, mitigations, or pivots to strengthen the idea.
+    -   Prompt Example for Grok:
+        ```
+        CONTEXT: I am developing a new product/service idea and have an initial summary based on customer discovery. I need you to help me stress-test this idea to make it as robust as possible before I invest further time and resources.
+
+        Assume that the founder only has about £2,000 - £3,000 of runway for now (timeline of a few months), and they will spend £1,000 just to build it initially.
+
+        YOUR ROLE: Act as a highly critical and skeptical technical investor/serial entrepreneur. Your primary goal is to be a devil's advocate. Do not be agreeable. Probe deeply into every aspect of my idea, identify all potential weaknesses, flawed assumptions, market misjudgments, technical hurdles, and competitive threats. Be relentless in finding reasons why this idea might fail or struggle.
+
+        MY IDEA SUMMARY:
+        ---
+        [Insert summary or idea]
+        ---
+
+        INSTRUCTIONS:
+        1.  **Analyze Weaknesses:** Based on the summary, list out all the potential weak spots, critical questions that haven't been answered, costs they may incur, and reasons this idea might not succeed. Consider aspects like:
+            *   Problem/Solution Fit: Is the problem real and significant? Does the proposed solution truly address it effectively?
+            *   Market: Is the target market well-defined? Is it large enough? Is it accessible?
+            *   Competition: Who are the direct/indirect competitors? What are their strengths/weaknesses? How will this idea differentiate?
+            *   Monetization: Is the proposed business model viable? Are there clear revenue streams?
+            *   Technical Feasibility: Are there significant technical challenges or dependencies?
+            *   Scalability: Can this idea scale effectively?
+            *   Uniqueness/Defensibility: What makes this idea unique or hard to copy?
+            *   **Sensitive Data & Compliance:** Does the idea involve handling sensitive user data (e.g., PII, financial info, health data)? If so, what are the potential compliance obligations (e.g., GDPR, HIPAA, CCPA) and risks? (I believe Supabase has a pricing plan for this?)
+        2.  **Challenge Assumptions:** Identify any underlying assumptions in my idea and challenge them.
+        3.  **Devil's Advocate Questions:** Ask me a series of tough, probing questions that a skeptical investor would ask.
+        4.  **Brainstorm Solutions/Mitigations:** Once you have thoroughly critiqued the idea and I have responded to your questions, shift to a constructive role. For each major weakness identified, help me brainstorm potential solutions, mitigations, or pivots to strengthen the idea.
+        5.  **Formulate Final MVP PRD:** Based on our entire discussion (critique, Q&A, solutions), synthesise a concise Product Requirements Document (PRD) for the Minimum Viable Product (MVP). This PRD must focus on **only one core feature** that is essential to validate the most critical aspect of the refined idea. The PRD should include:
+            *   Refined Problem Statement
+            *   Target User for MVP
+            *   The Single Core MVP Feature (and its acceptance criteria)
+            *   Key Success Metric for this MVP feature
+        6.  **Suggest Names:** Finally, based on the now strengthened and clarified product concept (and the MVP PRD), suggest 5 unique and catchy names for the product/service. Provide a brief rationale for each name.
+
+        Remember the Tech Stack for the app will be the following so assume we'll be using the best of the services provided by them for each part of the app:
+
+        - [Framework] (NextJS 15 with App Router)
+        - [Authentication Service] (Clerk)
+        - [Database] (Supabase, PostgreSQL)
+        - [ORM/Database Layer] (Drizzle)
+        - [Payment Processing] (Stripe)
+        - [Email Service] (Plunk)
+        - [External APIs] (List any third-party integrations)
+        - [Deployment Platform] (Vercel)
+
+        Also find out if we need to use any additional 3rd party libraries/providers for the app.
+
+        ---
+
+        The final output either be a 'No, not viable', including detailed reasoning (i.e. related to cost or general viability). Mention the difficulties etc.
+
+        OR if it feels viable to do and build, then use the following template to come up with a validation report for them that includes everything they would want to know about their idea: cost estimation, security/compliance, difficulties/risks, etc.
+
+        Make sure that the output is in markdown and simplify some of the technical terms in order to make it digestible for a non-technical person.
+        ```
+
+    -   This iterative process with Grok should result in a significantly more refined and defensible idea and a clear MVP focus.
+
+<Note>
+  Make sure you select 'Deep Research' before you start the conversation.
+</Note>
+
+### (Optional) Automated Paid Market Validation
+
+- Use [ValidateMySaaS](https://www.validatemysaas.com/) for a quick validation report
+- Check competitor pricing and reviews
+- Estimate market size via Google Trends
+
+<Note>
+  Balance is key. While validation is crucial, don't get stuck in analysis paralysis. Set a timeframe for validation (usually a few days), then make a decision. If you have strong signals from potential users or your own conviction plus resources, move forward with your [MVP Development](/company-building/mvp-development).
+</Note>

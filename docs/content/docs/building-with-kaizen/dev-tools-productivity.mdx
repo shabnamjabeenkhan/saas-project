@@ -1,0 +1,257 @@
+---
+title: 'Dev Tools & Productivity'
+description: 'Essential tools and workflows for 10x developer productivity'
+icon: Wrench
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Dev Tools & Productivity
+
+Master the tools and workflows that will 10x your development speed.
+
+## Choosing Your Stack
+
+### Tool Selection Framework
+
+Visit **[tools.codeandcreed.tech](https://tools.codeandcreed.tech)** to choose the best set of tools for your budget.
+
+**Categories:**
+- Code editors (Cursor, Zed, VS Code)
+- AI assistants (Claude, GitHub Copilot, Cursor AI)
+- Terminal tools (Warp, Alacritty)
+- Database clients (Drizzle Studio, Prisma Studio)
+- API testing (Insomnia, Postman, Bruno)
+
+<Note>
+Most development in this accelerator uses **"vibe coding"** - rapid prototyping with AI assistance.
+</Note>
+
+## Git Workflow Best Practices
+
+### Avoid Lazy Commits
+
+<Warning>
+**Lazy commits kill productivity and collaboration!** They make debugging and code review nearly impossible.
+</Warning>
+
+Read: [The Hidden Cost of Lazy Commits in Startups](https://www.reddit.com/r/SaaS/comments/1n7fj2s/the_hidden_cost_of_lazy_commits_in_startups_a/)
+
+**Bad Commit Messages:**
+```bash
+❌ "fix"
+❌ "update"
+❌ "changes"
+❌ "asdf"
+❌ "wip"
+```
+
+**Good Commit Messages:**
+```bash
+✅ "feat: Add Clerk authentication to dashboard routes"
+✅ "fix: Resolve infinite loop in useSubscription hook"
+✅ "docs: Update setup guide with Railway deployment steps"
+✅ "refactor: Extract payment logic into separate hook"
+```
+
+### AI-Powered Git Commits
+
+Use AI tools to generate meaningful commit messages automatically:
+
+**Popular Tools:**
+- [Commitizen](https://github.com/commitizen/cz-cli)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- AI commit message generators in Cursor/Zed
+
+**Example Workflow:**
+```bash
+# Stage your changes
+git add .
+
+# Let AI generate the commit message
+# (built into Cursor/Zed)
+# Or use: git commit -m "$(ai-commit-msg)"
+```
+
+## Agent Orchestration
+
+### Work on Multiple Things Simultaneously
+
+**Key to 10x productivity**: Don't wait for one task to finish before starting another.
+
+**Parallel Workflows:**
+
+```bash
+# Terminal 1: Main dev server
+bun run dev
+
+# Terminal 2: Convex backend
+npx convex dev
+
+# Terminal 3: Webhook testing (when needed)
+ngrok http 5173
+
+# Terminal 4: Run tests
+bun run test:watch
+
+# Terminal 5: Documentation server
+bun run docs:dev
+```
+
+### Multi-Context Development
+
+**Run multiple AI chat sessions** for different tasks:
+- **Session 1**: Debugging authentication issue
+- **Session 2**: Planning new feature architecture
+- **Session 3**: Writing documentation
+- **Session 4**: Code review and refactoring
+
+<Note>
+**Pro Tip**: Use different browser tabs or windows for each AI session. Keep context separate!
+</Note>
+
+## Voice-to-Code: 2-3x Your Speed
+
+<Note>
+**Remember**: You can artificially 2-3x your typing speed by **talking to your machine**!
+</Note>
+
+### When to Use Voice
+
+**Best for:**
+- ✅ Long prompts and explanations
+- ✅ Describing bugs and errors
+- ✅ Planning features and architecture
+- ✅ Writing documentation
+- ✅ Code reviews and feedback
+
+**Not ideal for:**
+- ❌ Writing actual code (use AI generation instead)
+- ❌ Terminal commands (typing is faster)
+- ❌ Quick edits (keyboard shortcuts win)
+
+### Voice Dictation Setup
+
+**macOS:**
+1. System Preferences → Keyboard → Dictation
+2. Enable Enhanced Dictation (offline mode)
+3. Set keyboard shortcut (e.g., `Fn Fn`)
+
+**AI Tools with Voice:**
+- Cursor: Built-in voice input
+- Claude: Web interface supports voice
+- Perplexity: Voice search available
+
+## AI Foundations Course
+
+**Coming Soon**: Lee Robinson's AI Foundations Course
+
+This course will cover:
+- AI-assisted development workflows
+- Effective prompting strategies
+- Building with AI tools
+- Agent orchestration patterns
+- Production AI best practices
+
+<Note>
+Check back for updates or join the [AI MVP Builders Community](https://www.skool.com/ai-mvp-builders/about) for early access.
+</Note>
+
+## Recommended Tools by Category
+
+### Code Editors
+
+**Cursor** (Recommended for AI-first development)
+- Built-in Claude integration
+- Context-aware code completion
+- Chat with your codebase
+- Multi-file edits
+
+**Zed** (Recommended for performance)
+- Blazing fast
+- Multiplayer collaboration
+- AI integration
+- Lightweight and minimal
+
+**VS Code** (Recommended for extensions)
+- Massive extension ecosystem
+- Stable and mature
+- Good AI plugin support
+
+### Terminal Emulators
+
+**Warp** (Recommended)
+- AI-powered command suggestions
+- Block-based output
+- Workflows and shortcuts
+- Team collaboration
+
+**Alacritty**
+- Fastest terminal emulator
+- GPU-accelerated
+- Minimal and configurable
+
+### API Testing
+
+**Bruno** (Recommended)
+- Git-friendly (files, not databases)
+- Offline-first
+- Open source
+- Similar to Postman
+
+**Insomnia**
+- Clean interface
+- GraphQL support
+- Environment variables
+
+### Database Clients
+
+**Drizzle Studio**
+- Works with Drizzle ORM
+- Visual schema editor
+- Query builder
+
+**Prisma Studio**
+- Works with Prisma ORM
+- Beautiful UI
+- Data browser
+
+## Productivity Extensions
+
+### VS Code / Cursor Extensions
+
+**Essential:**
+- Prettier - Code formatting
+- ESLint - Linting
+- Tailwind CSS IntelliSense
+- GitHub Copilot
+- Error Lens - Inline error display
+
+**Nice to Have:**
+- GitLens - Advanced git features
+- Better Comments - Color-coded comments
+- Auto Rename Tag - HTML/JSX tag syncing
+- Path Intellisense - File path autocomplete
+
+### Browser Extensions
+
+**For Development:**
+- React Developer Tools
+- Redux DevTools
+- Pesticide (CSS debugging)
+- JSON Formatter
+- ColorZilla
+
+**For Productivity:**
+- Notion Web Clipper
+- Grammarly
+- Loom (Screen recording)
+
+## Next Steps
+
+<Cards>
+  <Card title="Rapid UI Prototyping" href="/building-with-kaizen/rapid-ui-prototyping" description="Build UIs 10x faster" />
+  <Card title="Building Features" href="/building-with-kaizen/building-features" description="Plan and implement features" />
+  <Card title="Debugging Guide" href="/building-with-kaizen/debugging-guide" description="Fix any bug efficiently" />
+</Cards>
+

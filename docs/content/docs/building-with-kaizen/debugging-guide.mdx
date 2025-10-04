@@ -1,0 +1,418 @@
+---
+title: 'Debugging Guide'
+description: 'Fix any bug efficiently with systematic debugging approaches'
+icon: Bug
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Debugging Guide
+
+Learn how to debug any issue systematically using AI assistance and the right tools.
+
+<Note>
+**Context is key!** The more context you provide, the faster you'll solve the bug.
+</Note>
+
+## The Debugging Process
+
+<Steps>
+<Step>
+
+### 1. Deep Scan of the Codebase
+
+**Ask AI to analyze the problem area:**
+
+```
+"Do a deep scan of the [specific area] of the codebase and create 
+a plan of attack based on how confident you are on where the problem 
+is coming from. Create a Mermaid diagram too to help with visualization."
+```
+
+**What AI will do:**
+1. Scan relevant files
+2. Identify potential problem areas
+3. Rank by confidence level
+4. Create visual diagram of data/control flow
+5. Propose investigation steps
+
+**Example Response:**
+```
+Based on my analysis, here are the most likely causes:
+
+1. **95% confident**: Clerk JWT token not being forwarded to Convex
+   - File: app/routes/dashboard.tsx
+   - Line: 42-48
+
+2. **70% confident**: Missing environment variable in production
+   - File: .env.production
+   - Check: VITE_CONVEX_URL
+
+3. **40% confident**: Race condition in subscription check
+   - File: convex/subscriptions.ts
+   - Line: 15-20
+```
+
+</Step>
+
+<Step>
+
+### 2. Provide Maximum Context
+
+**Attach everything relevant:**
+
+✅ **Screenshots** - Show the error visually  
+✅ **Terminal logs** - Full error stack traces  
+✅ **Browser console** - JavaScript errors  
+✅ **Network tab** - Failed requests  
+✅ **Code snippets** - Relevant file sections  
+✅ **Environment** - Dev vs production, OS, browser  
+
+**Example Prompt:**
+```
+I'm getting this error when users try to subscribe:
+
+[Screenshot of error]
+
+Terminal output:
+[Paste full logs]
+
+Browser console:
+[Paste console errors]
+
+Network tab shows:
+- POST /api/subscribe → 500 Internal Server Error
+
+Relevant code in @convex/subscriptions.ts
+
+This happens:
+- Only in production (works locally)
+- For all users
+- Started after deploying yesterday
+- Payments were working before
+
+What's the issue and how do I fix it?
+```
+
+</Step>
+
+<Step>
+
+### 3. Narrow Down the Root Cause
+
+**Reflect on multiple potential causes:**
+
+**Great Debugging Prompt:**
+```
+Analyse the problem thoroughly and reflect on 5-7 different potential 
+root causes. From those, distill it down to the 1-2 most likely sources 
+of the issue. Propose a simple and clean solution that fixes the bug 
+without introducing messy or unnecessary code. 
+
+Refer to my @package.json to check which libraries are in use - this 
+will help ensure your solution aligns with the existing dependencies 
+and avoids redundant suggestions.
+```
+
+**Why this works:**
+- Forces comprehensive analysis
+- Avoids jumping to conclusions
+- Considers library compatibility
+- Focuses on clean solutions
+
+</Step>
+
+<Step>
+
+### 4. Test the Fix
+
+**Verify the solution:**
+
+1. **Reproduce the bug** - Confirm you can trigger it
+2. **Apply the fix** - Implement suggested solution
+3. **Test happy path** - Does it work normally?
+4. **Test edge cases** - What about unusual inputs?
+5. **Test in production** - Deploy and verify
+
+**Before marking as fixed:**
+- [ ] Bug no longer reproduces
+- [ ] No new bugs introduced
+- [ ] Edge cases handled
+- [ ] Error logging added
+- [ ] Documentation updated
+
+</Step>
+</Steps>
+
+## UI Debugging
+
+### Chrome Extensions for UI Issues
+
+**1. Outline All Elements**
+
+[Chrome Extension: Outline All Elements](https://chromewebstore.google.com/detail/outline-all-elements/nppiigcgjgghnpdflckpalmdmpnfglfa)
+
+**Use for:**
+- Debugging layout issues
+- Finding overflow problems
+- Identifying z-index conflicts
+- Visualizing box model
+
+**2. React Developer Tools**
+
+**Use for:**
+- Inspecting component tree
+- Viewing props and state
+- Profiling performance
+- Tracking re-renders
+
+**3. Pesticide**
+
+**Use for:**
+- CSS debugging
+- Layout visualization
+- Margin/padding issues
+
+### Common UI Bugs
+
+**Problem: Layout Broken on Mobile**
+
+```typescript
+// ❌ Fixed width
+<div className="w-[800px]">
+
+// ✅ Responsive width
+<div className="w-full max-w-4xl">
+```
+
+**Problem: Elements Overlapping**
+
+```typescript
+// Check z-index conflicts
+// Use browser DevTools → Elements → Computed → z-index
+```
+
+**Problem: Infinite Re-renders**
+
+```typescript
+// ❌ Causes infinite loop
+useEffect(() => {
+  setState(value);
+}, [state]);
+
+// ✅ Proper dependency
+useEffect(() => {
+  setState(value);
+}, [value]);
+```
+
+## Backend/API Debugging
+
+### Convex Debugging
+
+**Check Convex Dashboard:**
+1. **Logs Tab** - View function execution logs
+2. **Data Tab** - Inspect database state
+3. **Functions Tab** - Test queries/mutations
+4. **Console** - Manual function execution
+
+**Add Logging:**
+```typescript
+// convex/subscriptions.ts
+export const subscribe = mutation({
+  handler: async (ctx, args) => {
+    console.log('Subscribe called with:', args);
+    
+    const user = await ctx.db.get(args.userId);
+    console.log('User found:', user);
+    
+    // ... rest of logic
+  },
+});
+```
+
+**Common Convex Issues:**
+
+**Problem: "Unauthenticated"**
+```typescript
+// Check Clerk JWT is being sent
+// Verify in Convex Dashboard → Settings → Clerk Integration
+// Ensure CLERK_ISSUER_URL is correct
+```
+
+**Problem: "Document not found"**
+```typescript
+// Always check if document exists
+const doc = await ctx.db.get(id);
+if (!doc) {
+  throw new Error(`Document ${id} not found`);
+}
+```
+
+### Webhook Debugging
+
+**Use ngrok for Local Testing:**
+```bash
+ngrok http 5173
+```
+
+**Update webhook URLs in:**
+1. Polar.sh Dashboard
+2. Resend Dashboard  
+3. `.env.local` → `FRONTEND_URL`
+4. `vite.config.ts` → `allowedHosts`
+
+**Webhook Debugging Tips:**
+```typescript
+// Log full webhook payload
+export const handleWebhook = httpAction(async (ctx, request) => {
+  const body = await request.text();
+  console.log('Webhook received:', body);
+  
+  // Verify signature
+  const signature = request.headers.get('webhook-signature');
+  console.log('Signature:', signature);
+  
+  // ... process webhook
+});
+```
+
+## Authentication Debugging
+
+### Clerk Issues
+
+**Problem: Infinite redirect loop**
+```typescript
+// Check routes.ts - ensure public routes are marked
+// Verify ClerkProvider wraps entire app
+// Check Clerk Dashboard → Paths configuration
+```
+
+**Problem: "Invalid token"**
+```typescript
+// Token expired - check Clerk session timeout
+// Token format wrong - verify JWT template
+// Token not sent - check headers in Network tab
+```
+
+### Session Debugging
+
+```typescript
+// Log session state
+import { useAuth } from '@clerk/react-router';
+
+const { isLoaded, isSignedIn, userId } = useAuth();
+console.log({ isLoaded, isSignedIn, userId });
+```
+
+## Payment Debugging
+
+### Polar.sh Issues
+
+**Test in Sandbox Mode:**
+```bash
+# Use sandbox.polar.sh for testing
+VITE_POLAR_SANDBOX=true
+```
+
+**Common Payment Errors:**
+
+**Problem: Webhook not received**
+1. Check ngrok URL is current
+2. Verify webhook signature secret
+3. Check Polar.sh Dashboard → Webhooks → Delivery logs
+
+**Problem: Payment succeeded but subscription not created**
+```typescript
+// Check webhook handler
+// Ensure idempotency key is used
+// Verify database write succeeded
+```
+
+## Performance Debugging
+
+### React Scan
+
+Use [React Scan](https://github.com/aidenybai/react-scan) to find performance issues:
+
+```bash
+bun install react-scan
+```
+
+```typescript
+// Add to entry point
+import { scan } from 'react-scan';
+
+if (import.meta.env.DEV) {
+  scan({
+    enabled: true,
+    log: true,
+  });
+}
+```
+
+**What it shows:**
+- Unnecessary re-renders
+- Slow components
+- Render frequency
+- Component tree
+
+### Common Performance Issues
+
+**Problem: Slow page load**
+```typescript
+// ❌ Large bundle
+import * as Icons from 'lucide-react';
+
+// ✅ Import only what you need
+import { User, Settings } from 'lucide-react';
+```
+
+**Problem: Janky scrolling**
+```typescript
+// Use React.memo for expensive components
+const ExpensiveComponent = React.memo(({ data }) => {
+  // ... expensive rendering
+});
+```
+
+## Error Monitoring
+
+### Sentry Integration
+
+See [Observability](/building-with-kaizen/observability) for full Sentry setup.
+
+**Quick Check:**
+```typescript
+// Test Sentry is working
+import * as Sentry from '@sentry/react';
+
+Sentry.captureMessage('Test error from development');
+```
+
+## Debugging Checklist
+
+**Before asking for help:**
+- [ ] Read the full error message
+- [ ] Checked browser console
+- [ ] Checked terminal/server logs
+- [ ] Reproduced the bug consistently
+- [ ] Searched for the error online
+- [ ] Tried AI assistance with full context
+- [ ] Checked official documentation
+
+**When asking for help:**
+- [ ] Provide full error message
+- [ ] Include screenshot
+- [ ] Share relevant code
+- [ ] Explain what you've tried
+- [ ] Specify environment (dev/prod, OS, browser)
+
+## Next Steps
+
+<Cards>
+  <Card title="Building Features" href="/building-with-kaizen/building-features" description="Plan and build features" />
+  <Card title="Performance" href="/building-with-kaizen/performance" description="Optimize your app" />
+  <Card title="Observability" href="/building-with-kaizen/observability" description="Monitor errors in production" />
+</Cards>
+

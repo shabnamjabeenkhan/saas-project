@@ -1,0 +1,189 @@
+---
+title: 'Email Setup'
+icon: Mail
+---
+<YouTube id="UqJJktxCY9U" />
+
+Enable transactional email functionality with Resend via Convex.
+
+## Update Configuration
+
+Enable email in `config.ts`:
+
+```typescript
+export const config: AppConfig = {
+  features: {
+    auth: true,
+    payments: true,
+    convex: true,
+    email: true,       // ✅ Enable email
+    monitoring: false,
+  },
+  services: {
+    clerk: { enabled: true },
+    polar: { enabled: true },
+    convex: { enabled: true },
+    resend: {
+      enabled: true,   // ✅ Enable Resend
+      apiKey: process.env.RESEND_API_KEY,
+      webhookSecret: process.env.RESEND_WEBHOOK_SECRET,
+    },
+  },
+  ui: {
+    showPricing: true,
+    showDashboard: true,
+    showChat: false,
+    showAuth: true,
+  },
+};
+```
+
+## Set Up Resend Account
+
+1. **Create Resend Account**
+   - Go to [resend.com](https://resend.com)
+   - Create account and verify email
+
+2. **Generate API Key**
+   - Go to **API Keys** section
+   - Create new key with **Full Access** permissions
+   - Copy the key (starts with `re_`)
+
+## Choose Email Setup Approach
+
+### Option A: Quick Testing (Recommended for Development)
+- Use Resend's built-in sandbox domain
+- Sender email: `onboarding@resend.dev`
+- Works immediately, no domain verification needed
+- Can only send to your Resend account email
+
+### Option B: Custom Domain (Production Ready)
+- Verify your own domain for branded emails
+- Go to **Domains** → **Add Domain**
+- Add required DNS records (TXT, MX, CNAME)
+- Wait for verification (minutes to hours)
+- Sender email: `noreply@yourdomain.com`
+
+## Configure Environment Variables
+
+<Warning>
+These variables must be added to your **Convex Dashboard** (not local .env file).
+</Warning>
+
+<Steps>
+<Step>
+
+### Add Variables to Convex Dashboard
+Go to Convex Dashboard → Settings → Environment Variables:
+
+```bash
+RESEND_API_KEY=re_...
+SENDER_EMAIL=onboarding@resend.dev  # For testing
+# OR (after domain verification)
+SENDER_EMAIL=noreply@yourdomain.com  # For production
+COMPANY_NAME=Your Company Name
+```
+
+</Step>
+</Steps>
+
+## Set Up Email Webhooks
+
+<Steps>
+<Step>
+
+### Get Convex HTTP URL
+Find your deployment URL (ends in `.convex.site`)
+
+</Step>
+
+<Step>
+
+### Configure Webhook in Resend
+Go to Resend Dashboard → **Webhooks** → **Add Endpoint**
+- URL: `https://your-deployment.convex.site/resend-webhook`
+- Enable all `email.*` events
+- Generate and copy webhook secret
+
+</Step>
+
+<Step>
+
+### Add Webhook Secret to Convex
+```bash
+RESEND_WEBHOOK_SECRET=whsec_...
+```
+
+</Step>
+</Steps>
+
+## Test Email Functionality
+
+<Steps>
+<Step>
+
+### Restart Development Server
+```bash
+bun run dev
+```
+
+</Step>
+
+<Step>
+
+### Access Email Test Form
+Navigate to `/dashboard` (must be authenticated)
+
+- Find the "Test Email" form
+- **Important**: Use your Resend account email as recipient for testing
+
+</Step>
+
+<Step>
+
+### Send Test Email
+```bash
+# Send to your Resend account email
+# Check spam folder - sandbox emails often go there
+```
+
+</Step>
+
+<Step>
+
+### Verify Delivery
+- Check Resend Dashboard → **Logs** for success
+- Confirm email received in inbox/spam
+
+</Step>
+</Steps>
+
+## Email Features Available
+
+With Resend configured, your app can now send:
+
+- **Welcome emails** for new users
+- **Password reset** emails
+- **Subscription confirmations**
+- **Payment receipts**
+- **Custom transactional emails**
+
+## Common Issues
+
+### Emails Not Sending
+- **API Key**: Verify RESEND_API_KEY in Convex environment variables
+- **Sender Email**: Must match verified domain or use sandbox domain
+- **Recipient**: For testing, use your Resend account email only
+
+### Webhook Events Not Processing
+- **Webhook URL**: Must be accessible (ngrok for local development)
+- **Secret**: RESEND_WEBHOOK_SECRET must be set in Convex
+- **Events**: Ensure all email.* events are enabled
+
+### Emails Going to Spam
+- **Sandbox domain**: `onboarding@resend.dev` often goes to spam
+- **Custom domain**: Use verified domain for better deliverability
+
+## Next Steps
+
+With email working, proceed to [Step 7: AI Setup](7-ai-setup) to add OpenAI-powered chat functionality.

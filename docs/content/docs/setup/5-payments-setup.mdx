@@ -1,0 +1,177 @@
+---
+title: 'Payments Setup'
+icon: CreditCard
+---
+<YouTube id="UqJJktxCY9U" />
+
+Enable subscription billing and payments with Polar.sh.
+
+<Warning>
+This step requires ngrok for webhook testing. Make sure you installed it in Step 1.
+</Warning>
+
+## Update Configuration
+
+Enable payments in `config.ts`:
+
+```typescript
+export const config: AppConfig = {
+  features: {
+    auth: true,
+    payments: true,      // ✅ Enable payments
+    convex: true,
+    email: false,
+    monitoring: false,
+  },
+  services: {
+    clerk: { enabled: true },
+    polar: {
+      enabled: true,     // ✅ Enable Polar.sh
+      accessToken: process.env.POLAR_ACCESS_TOKEN,
+      organizationId: process.env.POLAR_ORGANIZATION_ID,
+      webhookSecret: process.env.POLAR_WEBHOOK_SECRET,
+    },
+    convex: { enabled: true },
+  },
+  ui: {
+    showPricing: true,   // ✅ Show pricing page
+    showDashboard: true,
+    showChat: false,
+    showAuth: true,
+  },
+};
+```
+
+## Set Up ngrok for Webhooks
+
+1. **Start ngrok**
+   ```bash
+   ngrok http 5173
+   ```
+   - Copy the HTTPS URL (e.g., `https://abc123.ngrok.io`)
+
+2. **Update Environment Variables**
+   Add to `.env.local`:
+   ```bash
+   FRONTEND_URL=https://abc123.ngrok.io
+   ```
+
+3. **Update Vite Configuration**
+   Modify `vite.config.ts`:
+   ```typescript
+   export default defineConfig({
+     // ... existing config
+     server: {
+       allowedHosts: ["abc123.ngrok.app"], // Replace with your ngrok subdomain
+     },
+   });
+   ```
+
+## Configure Polar.sh
+
+<Steps>
+<Step>
+
+### Get Polar Environment Variables
+- **POLAR_ACCESS_TOKEN**: Settings → General → Developers → New Token (All scopes, no expiration)
+- **POLAR_ORGANIZATION_ID**: Settings → General → Profile → Identifier
+- **POLAR_SERVER**: Set to `sandbox` for development
+
+</Step>
+
+<Step>
+
+### Add Variables to Convex Dashboard
+Go to Convex Dashboard → Settings → Environment Variables
+
+Add all three variables above, plus:
+```
+FRONTEND_URL=https://abc123.ngrok.io
+```
+
+</Step>
+
+<Step>
+
+### Set Up Webhook
+Get your Convex HTTP URL (ends in `.convex.site`)
+
+In Polar Dashboard: Settings → Webhooks → Add Endpoint
+- URL: `https://your-deployment.convex.site/payments/webhook`
+- Format: **Raw**
+- Generate secret and copy it
+- Add `POLAR_WEBHOOK_SECRET=whsec_...` to Convex environment variables
+
+</Step>
+</Steps>
+
+## Create Subscription Products
+
+1. **In Polar Dashboard**
+   - Create organization (if not done)
+   - Create subscription plan with pricing tiers
+   - Configure products and pricing
+
+## Test Payment Flow
+
+<Steps>
+<Step>
+
+### Restart Development Servers
+```bash
+# Stop and restart both servers
+bun run dev
+npx convex dev  # In separate terminal
+```
+
+</Step>
+
+<Step>
+
+### Test with ngrok URL
+Use `https://abc123.ngrok.io` in browser
+
+- Sign up/login with test account
+- Navigate to pricing page
+- Click on subscription plan
+
+</Step>
+
+<Step>
+
+### Use Test Payment Card
+Use Stripe test card: `4242 4242 4242 4242`
+- Any future date
+- Any CVC (123)
+
+</Step>
+
+<Step>
+
+### Verify Success
+- Verify redirect to success page
+- Check dashboard for subscription status
+
+</Step>
+</Steps>
+
+## Common Issues
+
+### Webhook Failures
+- **ngrok URL changed**: Update all references to new ngrok URL
+- **Environment variables**: Ensure all Polar variables in Convex dashboard
+- **Webhook secret**: Must be added to Convex environment variables
+
+### Payment Processing Errors
+- **Sandbox mode**: Ensure POLAR_SERVER=sandbox in Convex environment
+- **Test card**: Only use Stripe test card numbers in sandbox
+- **Frontend URL**: Must match ngrok URL exactly
+
+### Subscription Status Not Updating
+- **Convex functions**: Ensure Convex dev server is running
+- **Webhook events**: Check Polar dashboard for webhook delivery status
+- **Database sync**: Subscription data should appear in Convex after successful payment
+
+## Next Steps
+
+With payments working, proceed to [Step 6: Email Setup](6-email-setup) to add transactional email functionality.

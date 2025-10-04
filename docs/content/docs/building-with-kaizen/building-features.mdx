@@ -1,0 +1,301 @@
+---
+title: 'Building Features'
+description: 'Plan, build, and review features efficiently with AI assistance'
+icon: Hammer
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Building Features
+
+Learn how to build any feature quickly and correctly using spec-driven development and AI assistance.
+
+## The Feature Development Process
+
+<Steps>
+<Step>
+
+### 1. Plan First (Voice is Best!)
+
+<Note>
+**Remember**: Talk to your machine using voice input. It's 2-3x faster than typing!
+</Note>
+
+**Before writing any code:**
+1. Explain what you want to build (use voice!)
+2. Describe the user experience
+3. Identify data requirements
+4. List edge cases and error states
+
+**Example Voice Prompt:**
+```
+"I want to add a feature where users can export their time entries 
+as a PDF invoice. When they click 'Export Invoice' on the dashboard, 
+it should open a modal where they select date range, then generate 
+a professional-looking PDF with their logo, client info, line items, 
+and total. The PDF should be emailed to them via Resend."
+```
+
+</Step>
+
+<Step>
+
+### 2. Use Spec-Driven Development
+
+Use tools like [Samurai Agent](https://github.com/suzuking1192/samurai-agent) for spec-driven development.
+
+**What is Spec-Driven Development?**
+- Write detailed specification BEFORE coding
+- AI generates implementation plan
+- Review and approve plan
+- AI implements based on approved spec
+
+<Warning>
+**Don't skip the spec!** Writing code without a plan leads to:
+- Incomplete features
+- Missed edge cases
+- Bugs and rework
+- Wasted time
+</Warning>
+
+**Example Spec:**
+```markdown
+# Feature: PDF Invoice Export
+
+## User Story
+As a freelancer, I want to export my time entries as a professional 
+PDF invoice so I can send it to clients for payment.
+
+## Acceptance Criteria
+- [ ] "Export Invoice" button on dashboard
+- [ ] Modal with date range picker
+- [ ] Preview of invoice before export
+- [ ] PDF includes company logo, client info, line items
+- [ ] Email sent via Resend with PDF attached
+- [ ] Loading state while generating
+- [ ] Success/error notifications
+
+## Technical Requirements
+- Use @react-pdf/renderer for PDF generation
+- Store invoice metadata in Convex
+- Send email via Resend API
+- Handle failures gracefully
+
+## Edge Cases
+- No time entries in selected range
+- Email delivery failure
+- PDF generation timeout
+- Invalid date range
+```
+
+</Step>
+
+<Step>
+
+### 3. Remind AI to Use Context7 MCP
+
+**Always remind your AI assistant to use Context7 MCP** for up-to-date library documentation.
+
+**Example Prompt:**
+```
+"Before we start, please use Context7 MCP to fetch the latest docs 
+for @react-pdf/renderer so you have accurate API information."
+```
+
+This ensures:
+- ✅ Accurate API usage
+- ✅ Latest best practices
+- ✅ Correct installation commands
+- ✅ Up-to-date examples
+
+</Step>
+
+<Step>
+
+### 4. Review the Plan
+
+**Before implementation, review the AI's plan:**
+
+**Check for:**
+- ✅ All acceptance criteria covered?
+- ✅ Edge cases handled?
+- ✅ Performance considerations?
+- ✅ Security implications?
+- ✅ Testing strategy?
+
+**Ask clarifying questions:**
+```
+"What happens if the PDF generation fails?"
+"How do we handle large date ranges (1000+ entries)?"
+"Where should we store the generated PDFs?"
+"What if the user's email bounces?"
+```
+
+**Example AI Review:**
+- [Aravind's Tweet on AI Code Review](https://x.com/aravindputrevu/status/1967958142626697419?t=TM7DuFYNKm9YD2A-6RDI5g&s=19)
+- [BigAIGuy's Tweet on Feature Planning](https://x.com/bigaiguy/status/1967970906560749677?t=8s5aMoc57plDbP5k7QNESw&s=19)
+
+</Step>
+
+<Step>
+
+### 5. Implement the Feature
+
+**Only once you're happy with the plan:**
+
+```
+"The plan looks good. Please implement this feature now.
+Start with the UI components, then the PDF generation logic,
+then the email sending. Show me each step as you go."
+```
+
+**Implementation Tips:**
+- Work in small increments
+- Test each part before moving on
+- Ask for explanations if unclear
+- Request refactoring if code looks messy
+
+</Step>
+
+<Step>
+
+### 6. Code Review with CodeRabbit
+
+**Use CodeRabbit to review the changes:**
+
+[CodeRabbit](https://coderabbit.ai/) automatically:
+- Reviews PRs for bugs and issues
+- Suggests improvements
+- Checks best practices
+- Finds security vulnerabilities
+
+**Manual Review Checklist:**
+- [ ] Code is readable and well-documented
+- [ ] No hardcoded values (use env vars)
+- [ ] Error handling in place
+- [ ] Loading states for async operations
+- [ ] TypeScript types are correct
+- [ ] No console.logs left in code
+
+</Step>
+
+<Step>
+
+### 7. Test the Feature
+
+**Manual Testing:**
+1. Happy path (everything works)
+2. Error paths (things break)
+3. Edge cases (unusual inputs)
+4. Mobile responsiveness
+5. Different user roles
+
+**Automated Testing** (if applicable):
+```typescript
+// Example test
+it('generates PDF invoice for date range', async () => {
+  const entries = await getTimeEntries(userId, startDate, endDate);
+  const pdf = await generateInvoice(entries);
+  expect(pdf).toBeDefined();
+  expect(pdf.pageCount).toBeGreaterThan(0);
+});
+```
+
+</Step>
+</Steps>
+
+## AI-Assisted Feature Building
+
+### Useful Prompts
+
+**Planning:**
+```
+"I want to build [feature]. Help me create a detailed spec 
+including user stories, acceptance criteria, technical requirements, 
+and edge cases. Use the spec-driven development approach."
+```
+
+**Implementation:**
+```
+"Based on the approved spec, implement [feature]. 
+Use Context7 MCP for @react-pdf/renderer docs. 
+Show me the implementation plan before coding."
+```
+
+**Refactoring:**
+```
+"This code works but looks messy. Refactor it to be:
+- More readable
+- Better typed
+- Properly abstracted
+- Following React best practices"
+```
+
+**Debugging:**
+```
+"The PDF generation is failing with this error: [paste error].
+Here's the relevant code: @file.ts
+What's wrong and how do I fix it?"
+```
+
+## Real-World Examples
+
+### Example 1: Add Reel Wong's Component Pattern
+
+**Watch**: [Rexan Wong's Thread](https://x.com/rexan_wong/status/1967789508717650388?t=IAzDm0rwUpCFwsW9rVCdyg&s=19)
+
+**Pattern:**
+- Visual component library
+- One-click install
+- Customizable themes
+- TypeScript support
+
+### Example 2: Builder.io Visual Development
+
+**Watch**: [Steve's Thread](https://x.com/Steve8708/status/1968053663014023273?t=GOxNrEtvPk3b7QaVek-twA&s=19)
+
+**Pattern:**
+- Visual page builder
+- React component generation
+- AI-assisted design
+- Export to code
+
+### Example 3: React in 100 Seconds
+
+**Watch**: [Fireship's Video](https://youtu.be/IgKNWCB98Gc?feature=shared)
+
+**Pattern:**
+- Component composition
+- State management
+- Hooks usage
+- Best practices
+
+## Feature Development Checklist
+
+**Before coding:**
+- [ ] Feature is validated (users want it)
+- [ ] Spec is written and approved
+- [ ] AI has access to Context7 MCP
+- [ ] Plan is reviewed and makes sense
+
+**During coding:**
+- [ ] Working in small increments
+- [ ] Testing each part
+- [ ] Asking clarifying questions
+- [ ] Documenting decisions
+
+**After coding:**
+- [ ] Code review (CodeRabbit or manual)
+- [ ] All edge cases tested
+- [ ] Error handling in place
+- [ ] Documentation updated
+- [ ] Learnings added to `learnings.md`
+
+## Next Steps
+
+<Cards>
+  <Card title="Rapid UI Prototyping" href="/building-with-kaizen/rapid-ui-prototyping" description="Build beautiful UIs quickly" />
+  <Card title="Debugging Guide" href="/building-with-kaizen/debugging-guide" description="Fix any bug efficiently" />
+  <Card title="Performance" href="/building-with-kaizen/performance" description="Optimize app performance" />
+</Cards>
+

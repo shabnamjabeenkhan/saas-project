@@ -1,0 +1,119 @@
+---
+title: 'Scaling'
+description: 'Buy more time by scaling your infrastructure'
+icon: TrendingUp
+---
+
+<Not>
+  Last updated: 11th July 2025
+</Not>
+
+## Infrastructure
+
+If your product starts to get a lot of traffic then you may need to scale your infrastructure...
+
+Our current deployment platform (Vercel) has been great for us so far, but bills can get expensive when we scale.
+
+The next step is to move to your own infrastructure.
+
+<Note>
+  Don't even think about this until you have a serious amount of traffic.
+</Note>
+
+### Self-Hosting Options
+
+If you want to scale while maintaining cost efficiency, self-hosting is the way to go.
+
+What does that mean?
+
+- You deploy your own web server, database server, configure your own SSL certificates, application proxy, etc.
+- You'll be responsible for the hardware and infrastructure.
+- You'll be responsible for the maintenance and updates.
+- You'll be responsible for the security.
+
+Fear not, we know some foolproof ways to do this:
+
+1. **Bare Metal VPS Setup ($200/month)**
+   - Using providers like Hetzner, you can get:
+     - 80 dedicated cores
+     - 128GB RAM
+     - 2TB NVMe SSD
+     - Capable of handling up to 1M monthly active users
+   - [Detailed guide on Hetzner self-hosting setup](https://grski.pl/self-host)
+
+2. **Global Bare Metal Servers**
+   - [Latitude.sh](https://www.latitude.sh/) - Enterprise-grade infrastructure with:
+     - 23 global edge locations across 5 continents
+     - API, CLI, and SDKs for automation
+     - Terraform provider for Infrastructure as Code
+     - DDoS protection included
+     - Ideal for AI/ML workloads and high-performance computing
+
+3. **Containerized Deployment Options**
+   - [Coolify](https://coolify.io/) - Self-hosting platform for easy deployment
+   - [Dokploy](https://www.dokploy.com/) - Simplified VPS deployment solution
+
+4. **Self-Hosted Database Solutions**
+   - [Self-hosted Supabase ($3/month)](https://blog.melbournedev.com/blog/post/how-to-self-host-supabase-for-3-dollars) - Complete guide to self-host Supabase on a budget:
+     - Full Postgres database functionality
+     - Real-time subscriptions
+     - Auto-generated APIs
+     - Dashboard interface
+
+### Docker Log Management
+To prevent Docker logs from consuming excessive disk space, configure log rotation limits:
+
+1. Create/edit `/etc/docker/daemon.json`:
+```json
+{
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "20m",
+    "max-file": "3"
+  }
+}
+```
+
+2. Restart Docker daemon:
+```bash
+sudo systemctl restart docker
+```
+
+3. Recreate containers to apply new config:
+```bash
+docker compose up -d --force-recreate
+```
+
+<Note>
+The "local" log driver is optimized for disk usage and performance with automatic size limits and rotation, preventing logs from consuming your entire disk space.
+</Note>
+
+## Team Scaling & Recruitment
+
+### AI-Powered Recruitment Tools
+
+As your company grows, finding the right talent becomes critical. Modern AI tools can significantly accelerate the hiring process:
+
+- [Juicebox (PeopleGPT)](https://juicebox.ai/) - AI recruitment search engine:
+  - Search 800M+ candidate profiles using natural language
+  - No Boolean search required - just describe what you need
+  - Real-time analysis of profiles, websites, and publications
+  - Instant access to contact details and email integration
+  - Personalized AI email templates for outreach at scale
+  - Parse job descriptions to auto-configure search queries
+
+### Recruitment Best Practices
+- **Define Clear Requirements**: Use specific prompts to get precise candidate matches
+- **Personalized Outreach**: Leverage AI-generated templates while maintaining authentic communication
+- **Multi-Channel Approach**: Combine AI tools with traditional networking and referrals
+- **Quality over Quantity**: Focus on building relationships with top candidates rather than mass outreach
+
+### Professional Support Services
+
+If you need additional expertise:
+- [CTO-as-a-Service](https://cto-as-a-service.io/) - Technical leadership and guidance
+- [CFO-as-a-Service](https://www.cfo-as-a-service.be/) - Financial planning and management
+
+<Note>
+Self-hosting can offer significant cost savings compared to cloud services, but requires more hands-on management and infrastructure knowledge.
+</Note>

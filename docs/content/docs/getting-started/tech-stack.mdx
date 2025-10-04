@@ -1,0 +1,166 @@
+---
+title: Tech Stack Deep Dive
+description: Detailed breakdown of each technology in the Kaizen stack
+---
+
+## React Router v7
+
+Modern full-stack React framework with SSR. React Router v7 represents a significant evolution in React routing, providing a complete framework for building modern web applications.
+
+### Key Features
+- **Framework Mode**: Unlike traditional routers, React Router v7 is a full framework
+- **Server-Side Rendering**: Built-in SSR capabilities
+- **File-based Routing**: Routes are defined in `app/routes.ts`
+- **Type Safety**: Automatic type generation for all route parameters and data
+- **Progressive Enhancement**: Works without JavaScript
+
+### Route Configuration
+```typescript
+// app/routes.ts
+import { type RouteConfig, index, route } from "@react-router/dev/routes";
+
+export default [
+  index("routes/home.tsx"),
+  route("products/:id", "routes/product.tsx", [
+    index("routes/product-overview.tsx"),
+    route("reviews", "routes/product-reviews.tsx"),
+  ]),
+] satisfies RouteConfig;
+```
+
+### Route Components
+```tsx
+// routes/product.tsx
+import type { Route } from "./+types/product";
+
+export async function loader({ params }: Route.LoaderArgs) {
+  return { product: await getProduct(params.id) };
+}
+
+export default function Product({ loaderData }: Route.ComponentProps) {
+  return <div>{loaderData.product.name}</div>;
+}
+```
+
+## Convex
+
+Real-time database and serverless functions. Convex provides a complete backend-as-a-service solution with real-time capabilities.
+
+### Key Features
+- **Real-time**: Automatic real-time updates to all connected clients
+- **Type Safety**: End-to-end type safety between frontend and backend
+- **Serverless Functions**: Database queries and mutations run on Convex's servers
+- **File-based API**: Functions are organized in the `convex/` directory
+- **Authentication**: Built-in integration with Clerk JWT tokens
+
+### Function Types
+- **Queries**: Read-only operations that can be called from the frontend
+- **Mutations**: Write operations for modifying data
+- **Actions**: Server-side operations that can call external APIs
+
+### Example Query
+```typescript
+// convex/users.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+export const getUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+```
+
+## Clerk
+
+Authentication as a Service Provider. Clerk handles all authentication needs including sign-up, sign-in, password resets, and social logins.
+
+### Key Features
+- **Multi-provider Authentication**: Email/password, Google, GitHub, etc.
+- **JWT Integration**: Seamless integration with Convex
+- **User Management**: Complete user profile management
+- **Security**: Built-in security features like rate limiting and fraud detection
+- **React Components**: Pre-built UI components for authentication flows
+
+### React Integration
+```tsx
+import { ClerkProvider, SignIn, SignUp, UserButton } from '@clerk/clerk-react';
+
+function App() {
+  return (
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <SignIn />
+      <SignUp />
+      <UserButton />
+    </ClerkProvider>
+  );
+}
+```
+
+## Polar.sh
+
+Subscription billing and payments. Polar.sh provides a complete subscription management solution with a focus on developer experience.
+
+### Key Features
+- **Subscription Management**: Handle recurring payments and billing
+- **Checkout Pages**: Pre-built checkout flows
+- **Webhook Integration**: Real-time payment event handling
+- **Multi-currency**: Support for various currencies
+- **Analytics**: Built-in revenue analytics
+
+### Integration Flow
+1. Create products and prices in Polar dashboard
+2. Generate checkout URLs from your Convex functions
+3. Handle webhooks for payment events
+4. Update user subscriptions in your database
+
+## Resend
+
+Email as a Service Provider. Resend provides a modern email API with excellent deliverability and developer experience.
+
+### Key Features
+- **Transactional Emails**: Reliable delivery for important emails
+- **Template Support**: Send HTML emails with templates
+- **Webhook Integration**: Track email events (delivered, opened, clicked)
+- **Analytics**: Email performance metrics
+- **Domains**: Custom domain support for branded emails
+
+### Sending Emails
+```typescript
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+await resend.emails.send({
+  from: 'noreply@yourapp.com',
+  to: 'user@example.com',
+  subject: 'Welcome!',
+  html: '<h1>Welcome to our app!</h1>',
+});
+```
+
+## OpenAI
+
+AI chat capabilities (optional). OpenAI's GPT models can be integrated to provide AI-powered features in your application.
+
+### Use Cases
+- **AI Chat**: Customer support chatbots
+- **Content Generation**: Auto-generate content or responses
+- **Data Analysis**: Process and analyze user data
+- **Personalization**: AI-powered recommendations
+
+## Railway
+
+Deployments without worrying about infrastructure. Railway provides a simple, powerful deployment platform with Docker support, automatic scaling, and infrastructure-as-code.
+
+### Key Features
+- **Docker-Native**: Deploy from Dockerfiles, Docker images, or auto-detected buildpacks
+- **Auto-Scaling**: Automatic CPU/RAM scaling and horizontal scaling (up to 32 vCPUs, 32+ GB RAM)
+- **PR Environments**: Automatic preview deployments for pull requests
+- **Built-in Databases**: PostgreSQL, MySQL, MongoDB, Redis with automatic backups
+- **Observability**: Build/deploy logs, metrics dashboards, and health check monitoring
+- **Custom Domains**: Free TLS certificates with automatic renewal
+- **High-Speed Networking**: Up to 10 Gbps transfer with private networking support
+- **Templates**: 800+ pre-built templates for common stacks
+

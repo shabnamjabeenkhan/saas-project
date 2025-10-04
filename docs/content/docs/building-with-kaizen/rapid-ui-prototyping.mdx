@@ -1,0 +1,296 @@
+---
+title: Rapid UI Prototyping
+description: Learn to build beautiful and functional UIs quickly using modern tools
+icon: Paintbrush
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Rapid UI Prototyping
+
+Building beautiful user interfaces doesn't have to be slow or complicated. With the right tools and techniques, you can create production-ready UIs in record time.
+
+## Design System Selection
+
+### Choose a Theme/Design System
+
+Visit **[tweakcn.com](https://tweakcn.com)** to choose a beautiful theme/design system that fits your brand.
+
+**Popular Options:**
+- Shadcn themes (minimal, modern)
+- Radix themes (accessible)
+- Park UI (playful)
+- Aceternity UI (animated)
+
+### Component Discovery
+
+Use **[design.codeandcreed.tech](https://design.codeandcreed.tech)** to:
+- Browse component libraries
+- Find the right components for your needs
+- **One-click install** components into your project
+
+<Note>
+This saves hours of searching and manually copying components!
+</Note>
+
+## AI-Powered UI Building
+
+### Real-World Examples
+
+**1. Rexan Wong's Component Pattern**
+
+[Watch: Rexan Wong's Tweet](https://x.com/rexan_wong/status/1967789508717650388?t=IAzDm0rwUpCFwsW9rVCdyg&s=19)
+
+**Takeaways:**
+- Visual component showcase
+- Copy-paste ready
+- Customizable themes
+- TypeScript support
+
+**2. Builder.io Visual Development**
+
+[Watch: Steve's Tweet](https://x.com/Steve8708/status/1968053663014023273?t=GOxNrEtvPk3b7QaVek-twA&s=19)
+
+**Takeaways:**
+- Visual page builder
+- AI-assisted design
+- Export to React code
+- Real-time preview
+
+**3. React in 100 Seconds**
+
+[Watch: Fireship's Video](https://youtu.be/IgKNWCB98Gc?feature=shared)
+
+**Takeaways:**
+- Component composition basics
+- Modern React patterns
+- Best practices
+- Performance tips
+
+## Mastering UI/UX
+
+### Essential Resources
+
+**1. Refactoring UI**
+
+[RefactoringUI.com](https://www.refactoringui.com)
+
+**Learn:**
+- Visual hierarchy
+- Color and contrast
+- Spacing and layout
+- Typography
+- Forms design
+
+**2. Denis Jeliazkov's UI Tips**
+
+[Twitter Thread](https://x.com/DenisJeliazkov/status/1969053908090966117)
+
+**Key Principles:**
+- White space is your friend
+- Consistency breeds familiarity
+- Visual weight guides attention
+- Color has meaning
+
+## OG Image Generation
+
+### Choose Your OG Image
+
+Use **[ogimage.click](https://ogimage.click)** to:
+- Generate beautiful Open Graph images
+- Customize for social sharing
+- A/B test different designs
+- Export for production
+
+**Why OG images matter:**
+- First impression on social media
+- Increases click-through rates
+- Professional appearance
+- Brand consistency
+
+**Example:**
+```html
+<meta property="og:image" content="https://yourdomain.com/og-image.png" />
+<meta property="twitter:image" content="https://yourdomain.com/og-image.png" />
+```
+
+## The v0 + Cursor Workflow (Recommended)
+
+### Overview
+The most efficient way to build UIs in Kaizen is combining [v0](https://v0.dev) (Vercel's AI-powered UI generator) with Cursor's AI-assisted development environment.
+
+### Step 1: Design with v0
+1. **Describe your component** in natural language to v0
+2. **Get instant UI mockups** with working code
+3. **Iterate rapidly** by describing changes
+4. **Copy the generated code** to your project
+
+### Step 2: Integrate with Cursor
+1. **Paste the code** into your component files
+2. **Use Cursor's AI** to adapt the code to your existing design system
+3. **Fix any integration issues** with AI assistance
+4. **Test and refine** the component
+
+### Example Workflow
+```bash
+# Generate a pricing page component with v0
+"Create a modern pricing page with 3 tiers, featuring monthly/yearly toggle, popular plan highlighting, and smooth animations"
+```
+
+Copy the generated code and paste it into `app/components/pricing-page.tsx`, then use Cursor to:
+- Adapt it to use your existing Tailwind config
+- Integrate with your Convex data layer
+- Add proper TypeScript types
+- Ensure responsive design
+
+## UI Component Library
+
+Kaizen comes with a comprehensive UI component library built on shadcn/ui and Tailwind CSS.
+
+### Available Components
+- **Forms**: Input, Select, Checkbox, Radio, Textarea
+- **Feedback**: Alert, Toast, Loading states
+- **Layout**: Card, Tabs, Accordion, Sheet
+- **Navigation**: Breadcrumb, Pagination, Sidebar
+- **Data Display**: Table, Badge, Avatar, Tooltip
+
+### Usage Example
+```tsx
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export function UserProfile({ user }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{user.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Input placeholder="Email" value={user.email} />
+        <Button>Update Profile</Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Design System Principles
+
+### Color Palette
+- **Primary**: Blue (`#3b82f6`) for CTAs and important actions
+- **Secondary**: Gray (`#6b7280`) for supporting text and borders
+- **Success**: Green (`#10b981`) for positive actions
+- **Warning**: Yellow (`#f59e0b`) for caution states
+- **Error**: Red (`#ef4444`) for errors and destructive actions
+
+### Typography Scale
+- **Display**: 3rem (48px) - Page titles
+- **Heading 1**: 2rem (32px) - Section headers
+- **Heading 2**: 1.5rem (24px) - Component headers
+- **Body Large**: 1.125rem (18px) - Important body text
+- **Body**: 1rem (16px) - Regular body text
+- **Body Small**: 0.875rem (14px) - Supporting text
+
+### Spacing Scale
+Use consistent spacing units: 0.25rem, 0.5rem, 0.75rem, 1rem, 1.5rem, 2rem, 3rem, 4rem, 6rem, 8rem
+
+### Component Patterns
+
+#### Loading States
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+function LoadingCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-4 w-[250px]" />
+        <Skeleton className="h-4 w-[200px]" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+#### Error Boundaries
+```tsx
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+function ErrorFallback({ error }) {
+  return (
+    <Alert variant="destructive">
+      <AlertDescription>
+        Something went wrong: {error.message}
+      </AlertDescription>
+    </Alert>
+  );
+}
+```
+
+## Performance Optimization
+
+### Image Optimization
+```tsx
+import { OptimizedImage } from "@/components/ui/optimized-image";
+
+<OptimizedImage
+  src="/hero-image.jpg"
+  alt="Hero"
+  width={800}
+  height={600}
+  priority
+/>
+```
+
+### Code Splitting
+```tsx
+import { lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const HeavyComponent = lazy(() => import("./HeavyComponent"));
+
+function MyPage() {
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <HeavyComponent />
+    </Suspense>
+  );
+}
+```
+
+## Testing UI Components
+
+### Unit Tests with Vitest
+```typescript
+// components/Button.test.tsx
+import { render, screen } from "@testing-library/react";
+import { Button } from "./Button";
+
+describe("Button", () => {
+  it("renders children correctly", () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByText("Click me")).toBeInTheDocument();
+  });
+});
+```
+
+### Visual Regression Testing
+Use tools like Chromatic or Playwright to catch visual regressions automatically.
+
+## Deployment Checklist
+
+Before deploying your UI changes:
+
+- [ ] Run `bun run typecheck` to ensure type safety
+- [ ] Test on multiple screen sizes (mobile, tablet, desktop)
+- [ ] Check for accessibility issues with screen readers
+- [ ] Verify loading states work correctly
+- [ ] Test error boundaries with invalid data
+- [ ] Run performance audits with Lighthouse
+- [ ] Check for console errors in production build
+

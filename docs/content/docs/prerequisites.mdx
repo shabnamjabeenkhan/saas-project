@@ -1,0 +1,255 @@
+---
+title: 'Prerequisites'
+description: 'Everything you need before starting your startup journey'
+icon: CircleCheck
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+Before you begin building with Kaizen, ensure you meet these requirements and understand the foundational concepts.
+
+## Required Knowledge & Skills
+
+### 1. Complete the Foundations Roadmap
+
+You must have:
+- ✅ **StackMastery Score > 80%** - Take the assessment at [stackmastery.dev](https://www.stackmastery.dev/)
+- ✅ **Frontend Fundamentals** - HTML, CSS, JavaScript, and React
+- ✅ **Backend Systems Knowledge** - Complete the [Systems Expert Fundamentals Course](https://www.algoexpert.io/systems/fundamentals)
+- ✅ **Kaizen Tech Stack** - Watch the [Kaizen Tech Stack Tutorial](https://youtube.com/playlist?list=PLUxlPfFPDnAEI0roJMdV49n29gFFzmEQ5&feature=shared)
+
+<Warning>
+If you don't meet these prerequisites, **pause here** and complete the required learning first. Building without this foundation will be frustrating and slow.
+</Warning>
+
+### 2. MacBook Setup
+
+Ensure your development environment is fully configured:
+- ✅ Latest macOS version installed
+- ✅ Homebrew package manager installed
+- ✅ Git configured with SSH keys
+- ✅ Node.js installed (v24.x.x recommended)
+- ✅ Terminal and shell configured (zsh/bash)
+- ✅ Code editor installed (Cursor, VS Code, or Zed)
+
+<Note>
+Having setup issues? Use AI web search (Perplexity, Grok) to troubleshoot. Don't stay stuck!
+</Note>
+
+## Business Setup (Optional)
+
+### Register Your Parent Company
+
+<Note>
+Only required if you plan to accept payments from customers
+</Note>
+
+**Options:**
+1. **Local Entity**: Register in your country for simplicity
+2. **Panama Entity**: 0% tax on international business income
+3. **Consult a Professional**: Get legal/tax advice for your specific situation
+
+**When to register:**
+- ✅ Before accepting payments
+- ✅ Before signing contracts with clients
+- ✅ After validating your idea (don't register too early)
+
+## Problem Solving Mindset
+
+### Maintain the Right State of Mind
+
+**1. Practice Gratitude & Stay Positive**
+- Building is hard. You'll encounter bugs, errors, and frustration
+- Remember: There is always support available
+- **Reach out to mentors** for encouragement (e.g., Jameel Finch)
+
+**2. How to Find Answers to Anything**
+- **Agent Web Search**: Use built-in Cursor search or Perplexity
+- **Context7 MCP**: Access up-to-date documentation for any library
+- **Official Docs**: When all else fails, skim the official documentation
+
+**3. Get Rid of Ego & Laziness**
+
+<Warning>
+**Don't stay stuck!** If you can't solve something after 30 minutes, **ask for help!**
+</Warning>
+
+Pride keeps you stuck. Humility gets you unstuck. Ask:
+- AI assistants (Claude, Cursor, etc.)
+- Community members in Skool
+- Experienced developers
+
+## Understanding AI Development
+
+### Why LLMs Can't "Actually" Build Software
+
+Read this important article: [Why LLMs Can't Build Software](https://zed.dev/blog/why-llms-cant-build-software)
+
+**Key Takeaways:**
+- LLMs are **tools**, not replacement developers
+- You need to build **intuition** over time
+- Context matters more than prompts
+- Understanding the stack is non-negotiable
+
+### Prompting Best Practices
+
+**Think of AI as a Junior Developer:**
+
+```
+❌ Bad Prompt:
+"Add authentication"
+
+✅ Good Prompt:
+"I need to add Clerk authentication to the app. 
+We're using React Router v7 with Convex backend. 
+The login should redirect to /dashboard after success.
+Here's my current route structure: [paste routes.ts]"
+```
+
+**First Principles of Prompting:**
+1. **Give Context**: Always explain what you're trying to achieve
+2. **Be Specific**: Include file paths, error messages, and relevant code
+3. **Provide Examples**: Show what you want the output to look like
+4. **Don't Max Out Context**: Too much context reduces AI effectiveness
+
+<Note>
+**Pro Tip**: Attach screenshots, terminal logs, and error traces. Visual context is powerful!
+</Note>
+
+### Context Window Management
+
+Don't overload the AI with unnecessary files. Research shows **effectiveness drops as context window fills up**.
+
+**Best Practices:**
+- Include only relevant files
+- Use `@filename` to reference specific files
+- Summarize large files instead of pasting them
+- Clear context between unrelated tasks
+
+## Productivity Multipliers
+
+### Voice-to-Code: 2-3x Your Speed
+
+<Note>
+**Remember**: You can artificially 2-3x your typing speed by **talking to your machine**!
+</Note>
+
+Use voice dictation for:
+- Writing prompts
+- Explaining bugs
+- Documenting features
+- Planning architecture
+
+### Agent Orchestration
+
+**Master working on multiple things simultaneously:**
+- Use multiple terminal windows
+- Run dev server + Convex + ngrok in parallel
+- Have multiple AI chat sessions for different tasks
+- Context-switch efficiently between features
+
+**Recommended Course:**
+- **Lee Robinson's AI Foundations Course** (Coming soon)
+
+### Choose the Right Tools
+
+Visit [tools.codeandcreed.tech](https://tools.codeandcreed.tech) to find the best development tools for your budget.
+
+**Key Tools:**
+- **AI-Powered Git Commits**: Never write lazy commit messages again
+- **Agent Tools**: Orchestrate multiple AI assistants
+- **Productivity Extensions**: Enhance your editor
+
+<Warning>
+**Avoid lazy commits!** Read: [The Hidden Cost of Lazy Commits in Startups](https://www.reddit.com/r/SaaS/comments/1n7fj2s/the_hidden_cost_of_lazy_commits_in_startups_a/)
+
+Use AI-powered git commit tools to generate meaningful commit messages.
+</Warning>
+
+## Development Environment Setup
+
+### Install Node.js
+
+Use the latest stable version (currently v24.x.x):
+
+**Mac/Linux:**
+```bash
+nvm install stable
+nvm use stable
+```
+
+**Verify Installation:**
+```bash
+node -v  # Should show v24.x.x
+npm -v   # Should show latest npm
+```
+
+### Install ngrok (For Webhook Testing)
+
+```bash
+brew install ngrok
+```
+
+## API Keys Preparation
+
+<Warning>
+**Agency Users**: Create all accounts using your **agency's company email** and transfer ownership later. See the [Account Management Guide](/agency-related/account-management-guide) for details.
+</Warning>
+
+### Required for All Setups
+- **GitHub Repository**: Create an empty private repository
+  - Use SSH URL format: `git@github.com:username/repo-name.git`
+
+### For Authentication Setup
+- **Clerk Account**: [clerk.com](https://clerk.com)
+  - Create new Application → Select "React Router" framework
+  - Enable Email/Password + Google authentication
+  - Copy: `VITE_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
+
+### For Database Setup
+- **Convex Account**: [convex.dev](https://convex.dev)
+  - We'll configure this during the setup process
+
+### For Payments Setup
+- **Polar.sh Account**: [sandbox.polar.sh](https://sandbox.polar.sh)
+  - Create organization and subscription plan
+  - Copy API keys from Settings
+
+### For Email Setup
+- **Resend Account**: [resend.com](https://resend.com)
+  - Generate Full Access API key
+  - Copy the key (starts with `re_`)
+
+### For AI Chat Setup
+- **OpenAI Account**: [openai.com](https://openai.com)
+  - Generate API key from API Keys section
+  - Copy: `OPENAI_API_KEY`
+
+## Tech Stack Overview
+
+Kaizen uses a modern, production-ready stack:
+
+- **React Router v7** - Full-stack React framework with SSR
+- **Convex** - Real-time database and serverless functions
+- **Clerk** - Authentication as a Service
+- **Polar.sh** - Subscription billing and payments
+- **Resend** - Email as a Service
+- **OpenAI** - AI chat capabilities (optional)
+- **Railway (or Self-Hosting)** - Deployment platforms
+
+## Cost Considerations
+
+All services offer generous free tiers. Expected costs for a growing app (10,000+ DAUs):
+- **Total**: $200-300/month with 80%+ profit margin
+- Services abstract infrastructure complexity while maintaining cost efficiency
+
+## Next Steps
+
+<Cards>
+  <Card title="Setup Guide" href="/setup/2-project-setup" description="Start building your project" />
+  <Card title="Idea Validation" href="/building-with-kaizen/idea-validation" description="Validate before you build" />
+  <Card title="Join Community" href="https://www.skool.com/ai-mvp-builders/about" description="Connect with other builders" />
+</Cards>
+
+Once you have all prerequisites ready, proceed to [Step 2: Project Setup](/setup/2-project-setup).
+

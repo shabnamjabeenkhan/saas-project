@@ -1,0 +1,412 @@
+---
+title: 'Documentation is King'
+description: 'Build comprehensive documentation for clarity and execution'
+icon: FileText
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Documentation is King
+
+<Note>
+**Keep your documentation up to date = [Joggr.ai](https://www.joggr.ai/)**
+
+Automated documentation updates save time and prevent drift.
+</Note>
+
+## Why Documentation Matters
+
+**Without docs:**
+- ❌ Lose context between sessions
+- ❌ Repeat the same mistakes
+- ❌ Confuse AI assistants with missing context
+- ❌ Struggle to onboard team members
+- ❌ Forget why you made decisions
+
+**With good docs:**
+- ✅ Clear execution roadmap
+- ✅ Better AI assistance (context!)
+- ✅ Faster onboarding
+- ✅ Decision history
+- ✅ Reduced bugs and rework
+
+## What are Markdown Files?
+
+**Markdown** (`.md` or `.mdx` files) is a lightweight markup language for formatting text.
+
+Markdown lets you write formatted documents using plain text. It's the standard for technical documentation, README files, and developer notes.
+
+**Example:**
+```markdown
+# Heading 1
+## Heading 2
+
+**Bold text** and *italic text*
+
+- Bullet point 1
+- Bullet point 2
+
+[Link text](https://example.com)
+
+\`\`\`javascript
+const code = "syntax highlighting";
+\`\`\`
+```
+
+## Essential Documentation Files
+
+### Create a `docs/` Folder
+
+These are the **main files** you want in a `docs/` folder for clear execution:
+
+```
+docs/
+├── README.md                 # Project overview
+├── idea.md                   # Problem, solution, target customer
+├── architecture.md           # System design and tech decisions
+├── user-flows.md             # User journeys and workflows
+├── database-schema.md        # Data models and relationships
+├── cost-estimation.md        # Projected costs at scale
+├── features.md               # Feature roadmap and priorities
+├── api-reference.md          # API endpoints (if applicable)
+└── learnings.md              # What you learned while building
+```
+
+### 1. `idea.md` - Your North Star
+
+**Contents:**
+- Problem statement
+- Target customer
+- Value proposition
+- Competitive landscape
+- Success metrics
+
+**Example:**
+```markdown
+# Idea: TaskFlow
+
+## Problem
+Freelancers waste 2-3 hours daily on manual invoicing and time tracking.
+
+## Target Customer
+- Freelance designers and developers
+- $50-150/hour rate
+- 5-15 clients simultaneously
+- Non-technical
+
+## Solution
+One-click time tracking with automatic invoice generation.
+
+## Success Metrics
+- 100 paying users in 6 months
+- $10K MRR by month 12
+- 30%+ conversion from free to paid
+```
+
+### 2. `architecture.md` - Technical Design
+
+**Contents:**
+- System architecture diagram (Mermaid)
+- Tech stack choices and why
+- Data flow
+- Third-party integrations
+- Security considerations
+
+**Example:**
+```markdown
+# Architecture
+
+## System Overview
+
+\`\`\`mermaid
+graph TB
+    Client[Client Browser]
+    Frontend[Frontend - React Router v7]
+    Backend[Backend - Convex]
+    Auth[Auth - Clerk]
+    
+    Client --> Frontend
+    Frontend --> Backend
+    Frontend --> Auth
+    Auth --> Backend
+\`\`\`
+
+## Why Convex?
+- Real-time updates for collaborative features
+- Serverless (no infrastructure management)
+- Type-safe end-to-end
+- Built-in Clerk integration
+```
+
+### 3. `user-flows.md` - User Journeys
+
+**Contents:**
+- Onboarding flow
+- Core feature workflows
+- Payment flows
+- Error states
+
+**Example:**
+```markdown
+# User Flows
+
+## Onboarding Flow
+
+1. User lands on homepage
+2. Clicks "Start Free Trial"
+3. Signs up with Clerk (email or Google)
+4. Completes profile setup
+5. Sees onboarding checklist
+6. Creates first project
+7. Invited to upgrade
+
+## Core Feature: Time Tracking
+
+1. User clicks "Start Timer"
+2. Selects project and task
+3. Timer runs in background
+4. User clicks "Stop Timer"
+5. Entry saved automatically
+6. Option to add notes
+```
+
+### 4. `database-schema.md` - Data Models
+
+**Contents:**
+- Tables/collections
+- Relationships
+- Indexes
+- Example data
+
+**Example:**
+```markdown
+# Database Schema
+
+## Users Table
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | ID | Primary key |
+| email | String | User email |
+| name | String | Full name |
+| createdAt | Number | Timestamp |
+| subscription | ID | Ref to subscriptions |
+
+## Projects Table
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | ID | Primary key |
+| userId | ID | Ref to users |
+| name | String | Project name |
+| client | String | Client name |
+| rate | Number | Hourly rate |
+```
+
+### 5. `features.md` - Roadmap
+
+**Contents:**
+- MVP features (Phase 1)
+- Post-launch features (Phase 2)
+- Future ideas (Phase 3)
+- Feature priorities
+
+**Example:**
+```markdown
+# Feature Roadmap
+
+## Phase 1: MVP (Launch in 30 days)
+
+- [ ] User authentication (Clerk)
+- [ ] Time tracking
+- [ ] Invoice generation
+- [ ] Payment processing (Polar.sh)
+- [ ] Email notifications (Resend)
+
+## Phase 2: Post-Launch (30-90 days)
+
+- [ ] Team collaboration
+- [ ] Expense tracking
+- [ ] Reports and analytics
+- [ ] Mobile app
+
+## Phase 3: Future Ideas (90+ days)
+
+- [ ] AI time predictions
+- [ ] Accounting integrations
+- [ ] Multi-currency support
+```
+
+### 6. `learnings.md` - Knowledge Base
+
+**Contents:**
+- New concepts learned
+- Best practices discovered
+- Mistakes made and fixed
+- Performance optimizations
+
+**Example:**
+```markdown
+# Learnings
+
+## Week 1: Authentication
+
+### Learned
+- Clerk JWT integration with Convex
+- How to protect routes with middleware
+- Difference between session tokens and refresh tokens
+
+### Mistakes
+- Forgot to add Clerk issuer URL to Convex
+- Used wrong environment variables in production
+
+## Week 2: Payments
+
+### Learned
+- Polar.sh webhook signature verification
+- How to handle failed payments gracefully
+- Subscription lifecycle states
+
+### Best Practices
+- Always verify webhook signatures
+- Use idempotency keys for payments
+- Store payment metadata in database
+```
+
+## Building Docs with AI
+
+### Method 1: Conversation-Driven Documentation
+
+**Steps:**
+1. Open your AI assistant
+2. Have a conversation about your project
+3. Ask AI to structure it into markdown
+4. Copy into docs file
+
+**Example Prompt:**
+```
+I'm building a time tracking app for freelancers. 
+Let me explain the problem, solution, and target customer...
+
+[Explain for 5-10 minutes]
+
+Now, take everything I just said and structure it into 
+a professional idea.md file using markdown.
+```
+
+### Method 2: Template + Fill
+
+**Steps:**
+1. Ask AI for a documentation template
+2. Fill in your specific details
+3. Expand sections as needed
+
+**Example Prompt:**
+```
+Create a comprehensive architecture.md template for a SaaS app
+using React Router v7, Convex, Clerk, and Polar.sh. 
+
+Include sections for:
+- System overview
+- Tech stack rationale  
+- Data flow
+- Security
+- Third-party integrations
+```
+
+### Method 3: Extract from Codebase
+
+**Steps:**
+1. Point AI to your codebase
+2. Ask it to generate documentation
+3. Review and refine
+
+**Example Prompt:**
+```
+Review my Convex schema in @convex/schema.ts and 
+generate a database-schema.md file that documents:
+- All tables
+- Field types
+- Relationships
+- Indexes
+```
+
+## Keeping Documentation Updated
+
+### Use Joggr.ai for Automation
+
+[Joggr.ai](https://www.joggr.ai/) automatically:
+- Detects code changes
+- Updates relevant docs
+- Suggests new sections
+- Flags outdated content
+
+### Manual Update Workflow
+
+**After each feature:**
+1. Update `features.md` (mark complete)
+2. Add to `learnings.md` (what you learned)
+3. Update `user-flows.md` (if flow changed)
+4. Update `architecture.md` (if system changed)
+
+**Weekly Review:**
+- Read through all docs
+- Fix outdated information
+- Add new learnings
+- Refine roadmap
+
+## Documentation Tools
+
+### Markdown Editors
+
+**Obsidian** (Recommended)
+- Local-first
+- Graph view of linked notes
+- Plugins ecosystem
+- Free for personal use
+
+**Notion**
+- Collaborative
+- Database views
+- AI features
+- Free for small teams
+
+**Typora**
+- Minimal and beautiful
+- Live preview
+- Export to PDF/HTML
+- One-time purchase
+
+### Diagramming Tools
+
+**Mermaid** (Built into Fumadocs)
+- Code-based diagrams
+- Version controlled
+- Easy to update
+
+**Excalidraw**
+- Hand-drawn style
+- Quick sketches
+- Collaborative
+- Free
+
+**Lucidchart**
+- Professional diagrams
+- Templates library
+- Team features
+- Free tier available
+
+## Next Steps
+
+<Cards>
+  <Card title="Architecture" href="/project-documentation/architecture" description="See example architecture docs" />
+  <Card title="Database Schema" href="/project-documentation/database-schema" description="See example schema docs" />
+  <Card title="User Flows" href="/project-documentation/user-flows" description="See example flow diagrams" />
+</Cards>
+
+**Start documenting:**
+1. Create `docs/` folder in your project
+2. Copy the templates above
+3. Fill in your specific details
+4. Keep updated as you build
+

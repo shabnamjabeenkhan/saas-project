@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm run test:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)",
+      "Bash(npm audit:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:tweakcn.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.youtube.com)",
+      "mcp__YouTubeTranscript__get-transcript",
+      "Bash(time zsh:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(ls:*)",
+      "Bash(for i in {1..3})",
+      "Bash(do time:*)",
+      "Bash(done)",
+      "Bash(exec zsh)",
+      "Bash(for i in {1..5})",
+      "Bash(echo $HOME)",
+      "Bash(echo $ZDOTDIR)",
+      "Bash(brew install:*)",
+      "Bash(echo \"Current shell: $SHELL\")",
+      "Bash(echo:*)",
+      "Bash(rm:*)",
+      "Bash(source:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": []
+  }
+}

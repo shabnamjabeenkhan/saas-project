@@ -1,0 +1,388 @@
+---
+title: 'Production Deployment'
+description: Complete guide for deploying your Kaizen application to production
+icon: Rocket
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+<Warning>
+You'll need to purchase a domain before deploying to production. Services like Clerk and Polar require a verified domain for production environments. Purchase a domain from providers like Namecheap, Porkbun, GoDaddy, or Google Domains before proceeding with production deployment.
+</Warning>
+
+When you're ready to deploy your application to production, follow this comprehensive deployment guide.
+
+## Prerequisites
+
+- ✅ Purchased domain name
+- ✅ Application working locally with all features configured
+- ✅ All API keys and environment variables gathered
+- ✅ Database schema finalized
+
+## Production Deployment Checklist
+
+### 1. Domain Setup
+
+#### Purchase Domain
+Choose and purchase a domain from a registrar like:
+- Namecheap
+- Porkbun
+- GoDaddy
+- Google Domains
+- Cloudflare Registrar
+
+#### Configure DNS
+Railway will provide DNS instructions when you add your custom domain. Typically:
+- Add `CNAME` record pointing to Railway's provided target
+- Or use their nameservers for automatic configuration
+
+### 2. Clerk Production Setup
+
+#### Create Production App
+1. Go to your Clerk Dashboard
+2. Click "Add Application"
+3. Choose your purchased domain
+4. Configure authentication methods (same as development)
+
+#### Configure DNS
+Add the DNS records provided by Clerk to your domain registrar:
+- TXT records for domain verification
+- CNAME records for authentication flow
+
+#### Create JWT Template
+1. Go to **Configure** → **JWT Templates**
+2. Click **New template** → **Convex**
+3. **Save** the template (important!)
+4. Copy the **Issuer** URL
+
+#### Copy Production API Keys
+From Clerk Dashboard → **API Keys**:
+- `VITE_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+
+### 3. Polar.sh Production Setup
+
+#### Create Production Organization
+1. Go to [polar.sh](https://polar.sh)
+2. Create a new organization
+3. Set up the same products/prices as your sandbox
+
+#### Copy Production Variables
+From Polar Dashboard → **Settings** → **General**:
+- **Access Token**: Settings → General → Developers → New Token (all scopes, no expiration)
+- **Organization ID**: Settings → General → Profile → Identifier
+- **Server**: Set to `production`
+
+#### Configure Webhook
+1. Get your Convex production HTTP URL (ends in `.convex.site`)
+2. In Polar Dashboard → **Settings** → **Webhooks**
+3. Add endpoint: `https://your-prod-deployment.convex.site/payments/webhook`
+4. Format: **Raw**
+5. Generate new secret and copy it
+
+### 4. Convex Production Setup
+
+#### Switch to Production Environment
+1. Go to your Convex Dashboard
+2. Switch to **Production** environment
+3. All environment variables need to be reconfigured for production
+
+#### Configure Environment Variables
+Add all environment variables to Convex Production:
+
+**Authentication:**
+```bash
+VITE_CLERK_FRONTEND_API_URL=https://your-app.clerk.accounts.dev  # From Clerk JWT template
+```
+
+**Payments:**
+```bash
+POLAR_ACCESS_TOKEN=polar_...
+POLAR_ORGANIZATION_ID=...
+POLAR_SERVER=production
+POLAR_WEBHOOK_SECRET=whsec_...
+FRONTEND_URL=https://yourdomain.com
+```
+
+**Email (if enabled):**
+```bash
+RESEND_API_KEY=re_...
+SENDER_EMAIL=noreply@yourdomain.com
+COMPANY_NAME=Your Company Name
+RESEND_WEBHOOK_SECRET=whsec_...
+```
+
+**AI Chat (if enabled):**
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+#### Generate Deploy Key
+1. Go to Convex Dashboard → **Settings**
+2. Click **Generate Production Deploy Key**
+3. Copy the key (starts with `convex_`)
+
+### 5. Deploy to Railway
+
+#### Create Railway Project
+1. Go to [railway.app](https://railway.app)
+2. Click **New Project**
+3. Select **Deploy from GitHub repo**
+4. Choose your repository
+
+#### Configure Build Settings
+Railway will auto-detect your React Router application.
+
+**Build Command:** (auto-detected)
+```
+npx convex deploy --cmd 'bun run build'
+```
+
+**Start Command:** (auto-detected)
+```
+bun run start
+```
+
+#### Set Environment Variables
+
+**IMPORTANT: Environment variables are split between Railway and Convex Dashboard**
+
+##### Railway Environment Variables (Settings → Variables)
+
+Set these in **Railway's dashboard** - these are for your frontend/Node.js server:
+
+```bash
+# Core Configuration
+NODE_ENV=production
+
+# Convex - Client & Server
+VITE_CONVEX_URL=https://your-deployment.convex.cloud     # ⚠️ REQUIRED at build time
+CONVEX_DEPLOYMENT=prod:your-deployment-name              # Server-side only
+CONVEX_URL=https://your-deployment.convex.cloud          # Server-side only
+CONVEX_DEPLOY_KEY=convex_...                             # For deployment
+
+# Clerk Authentication
+VITE_CLERK_PUBLISHABLE_KEY=pk_live_...                   # ⚠️ REQUIRED at build time
+CLERK_SECRET_KEY=sk_live_...                             # Server-side secret
+
+# Frontend URL (used by Convex for redirects)
+FRONTEND_URL=https://your-app.up.railway.app
+```
+
+##### Convex Environment Variables (Convex Dashboard → Settings → Environment Variables)
+
+Set these in **Convex Dashboard** - these are for your Convex backend functions:
+
+```bash
+# Clerk (for Convex auth integration)
+CLERK_SECRET_KEY=sk_live_...                             # Same as Railway
+CLERK_WEBHOOK_SECRET=whsec_...                           # From Clerk webhooks
+
+# Polar.sh (if using payments)
+POLAR_ACCESS_TOKEN=polar_...
+POLAR_ORGANIZATION_ID=org_...
+POLAR_WEBHOOK_SECRET=whsec_...
+POLAR_SERVER=production
+
+# OpenAI (if using AI features)
+OPENAI_API_KEY=sk-...
+
+# Resend (if using email)
+RESEND_API_KEY=re_...
+RESEND_WEBHOOK_SECRET=whsec_...
+SENDER_EMAIL=noreply@yourdomain.com
+COMPANY_NAME=Your Company Name
+```
+
+##### Quick Reference: Where Does Each Variable Go?
+
+| Variable | Railway | Convex | Notes |
+|----------|---------|--------|-------|
+| `VITE_CONVEX_URL` | ✅ | ❌ | Client-side, embedded at build time |
+| `VITE_CLERK_PUBLISHABLE_KEY` | ✅ | ❌ | Client-side, embedded at build time |
+| `CONVEX_DEPLOYMENT` | ✅ | ❌ | Server-side deployment name |
+| `CONVEX_URL` | ✅ | ❌ | Server-side Convex URL |
+| `CONVEX_DEPLOY_KEY` | ✅ | ❌ | For automatic deployments |
+| `CLERK_SECRET_KEY` | ✅ | ✅ | Both need it (same value) |
+| `CLERK_WEBHOOK_SECRET` | ❌ | ✅ | Only Convex needs this |
+| `FRONTEND_URL` | ✅ | ❌ | Server-side, for redirects |
+| `POLAR_*` | ❌ | ✅ | Only Convex backend needs these |
+| `OPENAI_API_KEY` | ❌ | ✅ | Only Convex backend needs this |
+| `RESEND_*` | ❌ | ✅ | Only Convex backend needs these |
+
+**Key Points:**
+- 🔑 **`VITE_` prefixed variables** = Railway/VPS only (embedded in client bundle at build time)
+- 🔒 **API keys/secrets for backend operations** = Convex only
+- 🔄 **`CLERK_SECRET_KEY`** = Both (same value in both places)
+- 🌐 **`FRONTEND_URL`** = Railway/VPS only (your app's public URL)
+
+<Note>
+**Adding New Build-Time Environment Variables**
+
+If you need to add new environment variables that should be available at build time (especially `VITE_` prefixed variables), you must update the `Dockerfile`:
+
+```dockerfile
+# Add new ARG declarations
+ARG VITE_CONVEX_URL
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_YOUR_NEW_VARIABLE  # Add your new variable here
+
+# Add corresponding ENV declarations
+ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_YOUR_NEW_VARIABLE=$VITE_YOUR_NEW_VARIABLE  # Add your new variable here
+```
+
+Then set the variable in Railway's environment variables. Railway will automatically pass these to the Docker build process.
+</Note>
+
+#### Configure Custom Domain
+1. Go to **Settings** → **Domains**
+2. Click **Add Domain**
+3. Enter your custom domain
+4. Update DNS records as instructed
+
+#### Deploy
+Railway will automatically deploy on git push.
+
+## Testing Production Deployment
+
+### 1. Domain Configuration
+- ✅ Visit `https://yourdomain.com` - should load your app
+- ✅ Visit `https://www.yourdomain.com` - should redirect or load
+- ✅ SSL certificate should be active (padlock icon)
+
+### 2. Authentication Testing
+- ✅ Sign up flow works
+- ✅ Sign in flow works
+- ✅ Password reset works
+- ✅ Social logins work (if configured)
+
+### 3. Payment Testing
+- ✅ Pricing page loads
+- ✅ Checkout flow works
+- ✅ Test payment succeeds
+- ✅ Webhook events are processed
+- ✅ Subscription status updates correctly
+
+### 4. Email Testing
+- ✅ Email sending works
+- ✅ Emails arrive in inbox (check spam)
+- ✅ Email links work correctly
+
+### 5. Core Features
+- ✅ All main functionality works
+- ✅ Real-time features work
+- ✅ Error handling works
+- ✅ Performance is acceptable
+
+## Post-Deployment Tasks
+
+### 1. Monitoring Setup
+- Set up error tracking (Sentry)
+- Configure performance monitoring
+- Set up uptime monitoring
+
+### 2. Backup Configuration
+- Ensure database backups are configured
+- Test backup restoration process
+
+### 3. Security Review
+- Review all environment variables
+- Ensure no sensitive data is exposed
+- Verify HTTPS everywhere
+
+### 4. Documentation
+- Update any internal documentation
+- Document production environment setup
+- Create runbooks for common issues
+
+## Troubleshooting Common Issues
+
+### Build Failures
+- Check that all environment variables are set in Railway
+- Verify Convex deploy key is correct
+- Ensure build command is correct: `npx convex deploy --cmd 'bun run build'`
+- Check Railway build logs for specific errors
+
+### Authentication Issues
+- Verify Clerk production app is configured correctly
+- Check that JWT template is created and saved
+- Ensure domain is verified in Clerk
+
+### Payment Issues
+- Confirm Polar webhook URL is correct
+- Check webhook secret matches
+- Verify Polar server is set to `production`
+
+### Domain Issues
+- Wait for DNS propagation (can take 24-48 hours)
+- Check DNS records are configured correctly
+- Clear DNS cache if needed
+
+## Maintenance
+
+### Regular Tasks
+- Monitor error rates and performance
+- Keep dependencies updated (carefully!)
+- Review and rotate API keys periodically
+- Monitor costs across all services
+
+### Scaling Considerations
+- Monitor usage patterns
+- Plan for traffic spikes
+- Consider CDN optimization
+- Database performance monitoring
+
+## Support
+
+If you encounter issues during deployment:
+
+1. Check the [troubleshooting section](#troubleshooting-common-issues)
+2. Review the [setup guide](/building-with-kaizen/setup-guide) again
+3. Check GitHub Issues for similar problems
+4. Create a new issue if needed
+
+### 6. Deploy Documentation to Production
+
+Kaizen includes a complete documentation site built with Fumadocs. You can deploy it as a subdomain (e.g., `docs.yourdomain.com`) for easy access.
+
+#### Configure Documentation Deployment
+1. In your Railway dashboard, create a new project for the documentation
+2. Connect your GitHub repository
+3. Set the **Root Directory** to `docs/` in the project settings
+
+#### Set Build Configuration
+Railway will auto-detect the Next.js app in the `docs/` folder.
+
+**Build Command:** (auto-detected)
+```
+cd docs && bun run build
+```
+
+**Start Command:** (auto-detected)
+```
+cd docs && bun start
+```
+
+#### Configure Domain
+1. In Railway project settings, go to **Settings** → **Domains**
+2. Add your documentation subdomain (e.g., `docs.yourdomain.com`)
+3. Configure DNS records as instructed by Railway
+
+#### Environment Variables
+Copy any environment variables your documentation needs (usually none for basic setup)
+
+#### Deploy
+Click **Deploy** - your documentation will be available at your configured subdomain
+
+### Documentation Maintenance
+
+- **Automatic Updates**: Documentation deploys automatically when you push changes to the `docs/` folder
+- **Versioning**: Consider creating versioned documentation for major releases
+- **Search**: Fumadocs includes built-in search functionality
+- **Analytics**: Add analytics tracking to understand documentation usage
+
+<Note>
+🎉 Congratulations! Your Kaizen application and documentation are now live in production. Start building amazing features for your users!
+</Note>

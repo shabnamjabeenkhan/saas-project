@@ -1,0 +1,116 @@
+---
+title: 'Project Setup'
+icon: FolderOpen
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+Clone the Kaizen repository and set up your development environment.
+
+## Clone and Initialize
+
+<Steps>
+<Step>
+
+### Create GitHub Repository
+Create a fresh, empty repository on GitHub (private recommended)
+
+Copy the SSH URL (not HTTPS): `git@github.com:username/repo-name.git`
+
+</Step>
+
+<Step>
+
+### Clone Kaizen and Set Up Project
+```bash
+git clone https://github.com/code-and-creed/kaizen.git your-project-name
+cd your-project-name
+rm -rf .git
+git init
+git remote add origin your-github-repo-url
+```
+
+</Step>
+
+<Step>
+
+### Install Dependencies
+```bash
+bun install
+```
+
+<Note>
+Bun handles dependency resolution automatically, no additional flags needed.
+</Note>
+
+</Step>
+
+<Step>
+
+### Set Up Environment
+```bash
+cp .env.example .env.local
+```
+
+</Step>
+
+<Step>
+
+### Run the Web Server
+```bash
+bun run build
+bun run dev
+```
+
+Visit `http://localhost:5173` in incognito mode to see your app running.
+
+</Step>
+
+<Step>
+
+### Run the Docs Server
+```bash
+bun run docs:dev
+```
+
+Visit `http://localhost:3000` in incognito mode to see the documentation.
+
+</Step>
+</Steps>
+
+## Configuration Overview
+
+Kaizen uses a progressive configuration system. You'll enable features step-by-step:
+
+```typescript
+// config.ts - We'll modify this as we go
+export const config: AppConfig = {
+  features: {
+    auth: false,      // Step 4: Enable authentication
+    payments: false,  // Step 5: Enable payments
+    convex: false,    // Step 4: Enable database
+    email: false,     // Step 6: Enable email
+    monitoring: false,
+  },
+  // ... service configurations
+};
+```
+
+## File Structure
+
+After setup, your project structure will look like:
+
+```
+your-project-name/
+├── app/                 # React Router routes and components
+├── convex/              # Serverless functions and database schema
+├── docs/                # Documentation site
+├── public/              # Static assets
+├── config.ts            # Feature configuration
+├── .env.local           # Environment variables
+└── package.json         # Dependencies and scripts
+```
+
+## Next Steps
+
+With your project cloned and dependencies installed, proceed to [Step 3: Basic Configuration](3-basic-configuration) to verify everything works without external services.

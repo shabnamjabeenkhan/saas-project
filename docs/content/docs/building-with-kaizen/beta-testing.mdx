@@ -1,0 +1,340 @@
+---
+title: 'Beta Testing & Launch'
+description: 'Launch your MVP and collect feedback from early users'
+icon: Rocket
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Beta Testing & Launch
+
+Learn when your MVP is ready to launch and how to collect feedback from beta testers efficiently.
+
+## Don't Ship Too Fast
+
+<Warning>
+**Shipping too early can hurt your reputation and waste your beta testers' goodwill.**
+</Warning>
+
+### How to Know Your MVP is Ready
+
+Read: **[Denis Jeliazkov's Thread on MVP Readiness](https://x.com/DenisJeliazkov/status/1969099171455254824)**
+
+**Checklist before launching:**
+- [ ] Core feature works end-to-end
+- [ ] Authentication is stable
+- [ ] Payments process successfully (if applicable)
+- [ ] No critical bugs in happy path
+- [ ] Onboarding flow is clear
+- [ ] Mobile responsive
+- [ ] Error messages are helpful
+- [ ] Loading states implemented
+- [ ] Email notifications work
+- [ ] You've dogfooded it yourself for 1 week
+
+<Note>
+**Rule of thumb**: If you wouldn't pay for it in its current state, it's not ready.
+</Note>
+
+## Bug Reporting Tools
+
+### Fast Bug Reporting for Beta Testers
+
+Make it **ridiculously easy** for beta testers to report bugs.
+
+**1. Brie.io**
+
+[Brie.io](https://brie.io) - One-click bug reports with screenshots and console logs
+
+**Features:**
+- Automatic screenshot capture
+- Console logs attached
+- Network requests logged
+- User session recording
+- Slack/Discord integration
+
+**Installation:**
+```bash
+bun install @brie-io/react
+```
+
+**2. CanYouShowMe.com**
+
+[CanYouShowMe.com](https://canyoushowme.com) - Record screen and report issues
+
+**Features:**
+- Screen recording
+- Voice narration
+- Click tracking
+- Form abandonment detection
+
+**3. Jam.dev**
+
+[Jam.dev](https://jam.dev) - Browser extension for instant bug reports
+
+**Features:**
+- One-click bug capture
+- Automatic environment details
+- Console logs included
+- Network activity logged
+- Works across all sites
+
+**How to add to your app:**
+```html
+<!-- Add to your <head> -->
+<script src="https://jam.dev/sdk.js"></script>
+```
+
+## Beta Testing Strategy
+
+### Finding Beta Testers
+
+**Where to find testers:**
+1. **Your waitlist** - Email them first
+2. **Product Hunt Ship** - Build in public
+3. **Reddit** (relevant subreddits)
+4. **Twitter** - Thread asking for testers
+5. **Indie Hackers** community
+6. **Friends/colleagues** (but get honest feedback)
+
+**How many testers:**
+- **Start with 10-20** close testers
+- Get feedback and iterate
+- Expand to 50-100 wider beta
+- Then public launch
+
+### Beta Tester Onboarding
+
+**Email Template:**
+```
+Subject: You're in! Early access to [Product Name]
+
+Hey [Name],
+
+Thanks for signing up for early access! 🎉
+
+You can access the beta here: [link]
+
+What we're looking for:
+- Try to [core action] at least once
+- Report any bugs you find (use the bug report button)
+- Tell us what's confusing or missing
+
+We'll be shipping updates daily based on your feedback.
+
+Questions? Just reply to this email.
+
+- [Your name]
+```
+
+### Collecting Feedback
+
+**Use a feedback widget:**
+```typescript
+// Example: Canny or UserJot integration
+<FeedbackWidget 
+  projectId="your-project-id"
+  user={{
+    id: user.id,
+    email: user.email,
+    name: user.name,
+  }}
+/>
+```
+
+**Quick feedback prompts:**
+- "What's the ONE thing we should improve?"
+- "What almost stopped you from signing up?"
+- "What feature is missing that you expected?"
+
+## Fixing Reported Bugs Quickly
+
+### Triage System
+
+**Priority Levels:**
+1. **P0 - Critical**: Blocks core functionality → Fix immediately
+2. **P1 - High**: Impacts many users → Fix within 24h
+3. **P2 - Medium**: Minor inconvenience → Fix within 1 week
+4. **P3 - Low**: Nice to have → Backlog
+
+**Example P0 bugs:**
+- Authentication broken
+- Payments failing
+- Data loss
+- App crashes on load
+
+**Example P3 bugs:**
+- Typo in footer
+- Slightly misaligned button
+- Feature request for distant future
+
+### Rapid Bug Fixing Workflow
+
+<Steps>
+<Step>
+
+### 1. Reproduce the Bug
+
+Use the bug report tool's data:
+- Screenshot
+- Console logs
+- Network logs
+- User agent
+
+</Step>
+
+<Step>
+
+### 2. Fix Locally
+
+```bash
+# Create a quick fix branch
+git checkout -b fix/critical-auth-bug
+
+# Fix the issue
+# ... make changes ...
+
+# Test thoroughly
+bun run dev
+
+# Commit
+git commit -m "fix: Resolve authentication redirect loop"
+```
+
+</Step>
+
+<Step>
+
+### 3. Deploy Immediately
+
+```bash
+# Push and deploy
+git push origin fix/critical-auth-bug
+# Merge to main
+# Railway auto-deploys
+```
+
+</Step>
+
+<Step>
+
+### 4. Notify Affected Users
+
+**Email template:**
+```
+Subject: [FIXED] Authentication issue resolved
+
+Hey beta testers,
+
+We just fixed the authentication bug some of you reported.
+The fix is live now - please try logging in again.
+
+Thanks for the fast feedback!
+```
+
+</Step>
+</Steps>
+
+### Bug Tracking
+
+Use GitHub Issues or Linear for tracking:
+
+**GitHub Issue Template:**
+```markdown
+## Bug Description
+[What went wrong?]
+
+## Steps to Reproduce
+1. Go to...
+2. Click on...
+3. See error
+
+## Expected Behavior
+[What should happen?]
+
+## Actual Behavior
+[What actually happened?]
+
+## Environment
+- Browser: [e.g. Chrome 120]
+- OS: [e.g. macOS 14]
+- Device: [e.g. Desktop]
+
+## Screenshots/Logs
+[Attach from bug report tool]
+```
+
+## Communication During Beta
+
+### Daily/Weekly Updates
+
+Keep beta testers engaged with updates.
+
+**Update Template:**
+```
+📦 Beta Update #5 - Jan 15
+
+What we shipped this week:
+✅ Fixed authentication redirect loop
+✅ Added dark mode toggle
+✅ Improved onboarding flow
+
+What's next:
+🔜 Team collaboration features
+🔜 Export to PDF
+🔜 Mobile app (coming soon)
+
+Thanks for all the feedback this week!
+Keep the bug reports coming.
+```
+
+**Where to share updates:**
+- Email (weekly)
+- In-app notification (for major fixes)
+- Discord/Slack channel (if you have one)
+- Twitter thread (build in public)
+
+## Metrics to Track
+
+**During beta:**
+- Daily Active Users (DAU)
+- Core action completion rate
+- Bug report frequency
+- Time to resolution (bugs)
+- Churn rate
+- NPS score
+
+**Tools:**
+- **PostHog** - Product analytics
+- **Plausible** - Privacy-friendly analytics
+- **Google Analytics** - Free, comprehensive
+
+## When to Go Public
+
+**Signs you're ready:**
+- ✅ Core feature works reliably (99%+ uptime)
+- ✅ No critical bugs in past week
+- ✅ Beta testers are actively using it
+- ✅ Positive feedback > Negative feedback
+- ✅ You're confident referring friends
+- ✅ Onboarding is smooth (< 5 min to first value)
+- ✅ You have a support system in place
+
+**Don't wait for:**
+- ❌ Perfect design
+- ❌ All features built
+- ❌ Zero bugs
+- ❌ Millions of users
+
+<Note>
+**Remember**: Ship early, ship often. You'll learn more in one week of real users than one month of planning.
+</Note>
+
+## Next Steps
+
+<Cards>
+  <Card title="Observability" href="/building-with-kaizen/observability" description="Monitor errors in production" />
+  <Card title="Customer Support" href="/building-with-kaizen/customer-support" description="Handle support efficiently" />
+  <Card title="Feature Prioritization" href="/building-with-kaizen/feature-prioritization" description="What to build next?" />
+</Cards>
+

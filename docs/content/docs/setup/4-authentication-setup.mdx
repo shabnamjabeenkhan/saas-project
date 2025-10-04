@@ -1,0 +1,161 @@
+---
+title: 'Authentication Setup'
+icon: Shield
+---
+<YouTube id="UqJJktxCY9U" />
+
+Enable user authentication and database functionality with Clerk and Convex.
+
+## Update Configuration
+
+Modify `config.ts` to enable authentication and database:
+
+```typescript
+export const config: AppConfig = {
+  features: {
+    auth: true,        // ✅ Enable authentication
+    payments: false,   // Keep payments disabled
+    convex: true,      // ✅ Enable database
+    email: false,      // Keep email disabled
+    monitoring: false, // Keep monitoring disabled
+  },
+  services: {
+    clerk: {
+      enabled: true,   // ✅ Enable Clerk
+      publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY,
+      secretKey: process.env.CLERK_SECRET_KEY,
+    },
+    convex: {
+      enabled: true,   // ✅ Enable Convex
+      deployment: process.env.CONVEX_DEPLOYMENT,
+      url: process.env.VITE_CONVEX_URL,
+    },
+    // ... other services remain disabled
+  },
+  ui: {
+    showPricing: false,
+    showDashboard: true,
+    showChat: false,
+    showAuth: true,    // ✅ Show auth pages
+  },
+};
+```
+
+## Set Up Convex Database
+
+<Steps>
+<Step>
+
+### Start Convex Development Server
+```bash
+npx convex dev
+```
+
+- Follow prompts to log in to Convex
+- Create new project when prompted
+- This auto-updates `.env.local` with `VITE_CONVEX_URL` and `CONVEX_DEPLOYMENT`
+
+</Step>
+
+<Step>
+
+### Keep Convex Running
+The `npx convex dev` command should keep running in a separate terminal. It provides the local database server.
+
+</Step>
+</Steps>
+
+## Configure Clerk Authentication
+
+<Steps>
+<Step>
+
+### Add Clerk Environment Variables
+Add to your `.env.local`:
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+```
+
+</Step>
+
+<Step>
+
+### Set Up JWT Template for Convex
+Go to your [Clerk Dashboard](https://clerk.com)
+
+- Navigate: **Configure** → **JWT Templates**
+- Click **New template** → Select **Convex**
+- Click **Save** (important!)
+
+</Step>
+
+<Step>
+
+### Configure Convex for Clerk JWT
+Go to your Convex Dashboard → **Settings** → **Environment Variables**
+
+Add: `VITE_CLERK_FRONTEND_API_URL` with the Issuer URL from Clerk JWT template
+
+This enables Convex to verify Clerk JWT tokens.
+
+</Step>
+
+<Step>
+
+### Add Convex URL Environment Variable
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+<Note>
+This should be the same as your `VITE_CONVEX_URL`
+</Note>
+
+</Step>
+</Steps>
+
+## Restart Development Servers
+
+1. **Stop and Restart Main App**
+   ```bash
+   # Stop with Ctrl+C, then restart
+   bun run dev
+   ```
+
+2. **Verify Authentication Flow**
+   - Visit `http://localhost:5173`
+   - Click login/signup buttons
+   - Should redirect to Clerk authentication
+   - After auth, should access dashboard
+
+## Test User Management
+
+1. **Sign Up New User**
+   - Use email/password or Google OAuth
+   - Should create user account in Clerk and Convex
+
+2. **Access Protected Routes**
+   - `/dashboard` should now require authentication
+   - `/dashboard/chat` should be accessible
+   - User profile management should work
+
+## Common Issues
+
+### Clerk Authentication Not Working
+- Verify JWT template created and saved in Clerk Dashboard
+- Check `VITE_CLERK_FRONTEND_API_URL` in Convex environment variables
+- Ensure Convex dev server is running
+
+### Database Connection Issues
+- Confirm `npx convex dev` is running
+- Check `VITE_CONVEX_URL` and `CONVEX_DEPLOYMENT` in `.env.local`
+- Verify Convex project dashboard shows active deployment
+
+### Auth Pages Not Showing
+- Double-check `showAuth: true` in config
+- Restart dev server after config changes
+
+## Next Steps
+
+With authentication and database working, proceed to [Step 5: Payments Setup](5-payments-setup) to add subscription billing.

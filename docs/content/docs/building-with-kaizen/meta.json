@@ -1,0 +1,30 @@
+{
+  "title": "Building with Kaizen",
+  "description": "Guides and best practices",
+  "icon": "Hammer",
+  "root": true,
+  "pages": [
+    "index",
+    "setup-guide",
+    "getting-started/overview",
+    "getting-started/tech-stack",
+    "../setup/2-project-setup",
+    "../setup/3-basic-configuration",
+    "../setup/4-authentication-setup",
+    "../setup/5-payments-setup",
+    "../setup/6-email-setup",
+    "../setup/7-ai-setup",
+    "../setup/8-production-deployment",
+    "../setup/9-development-workflow",
+    "database-migrations",
+    "rapid-ui-prototyping",
+    "building-features",
+    "debugging-guide",
+    "performance",
+    "observability",
+    "deploy-to-production",
+    "deploy-railway",
+    "self-hosting"
+  ]
+}
+

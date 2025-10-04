@@ -1,0 +1,26 @@
+{
+  "title": "Company Building",
+  "description": "Plan, build, launch and scale your company",
+  "icon": "Rocket",
+  "root": true,
+  "pages": [
+    "index",
+    "prerequisites",
+    "company-building/founder",
+    "company-building/philosophy",
+    "company-building/company-setup",
+    "company-building/tech-stack",
+    "company-building/idea-validation",
+    "company-building/mvp-development",
+    "company-building/marketing",
+    "company-building/scaling",
+    "company-building/exiting",
+    "user-feedback",
+    "communication/communication",
+    "communication/managing-conflict",
+    "communication/pr-reviews",
+    "building-with-kaizen/beta-testing",
+    "business/analytics-setup",
+    "business/marketing-launch"
+  ]
+}

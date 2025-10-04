@@ -1,0 +1,36 @@
+{
+  "session_id": "test-session-123",
+  "event": "stop",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+
+{
+  "session_id": "test-session-123",
+  "event": "notification",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+
+{
+  "session_id": "test-session-123",
+  "event": "unknown",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+
+{
+  "session_id": "test-session-123",
+  "event": "stop",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+
+{
+  "session_id": "test-session-123",
+  "event": "notification",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+
+{
+  "session_id": "test-session-123",
+  "event": "unknown",
+  "timestamp": "2025-07-18T10:00:00Z"
+}
+

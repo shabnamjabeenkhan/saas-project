@@ -1,0 +1,540 @@
+---
+title: Observability
+description: Monitor errors and set up alerting for your application
+icon: Eye
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Observability
+
+Monitor your application's health, track errors, and set up alerting to stay informed about issues in production.
+
+<Warning>
+Some observability features require paid plans from third-party services.
+</Warning>
+
+## Error Monitoring with Sentry
+
+Track and monitor errors from your Convex backend functions using Sentry's built-in integration.
+
+<Note>
+**Convex Pro Required**: Exception reporting to Sentry is only available for Convex Pro users. This is a built-in integration that requires no SDK setup in your code.
+</Note>
+
+### Prerequisites
+
+<Steps>
+
+<Step>
+
+#### Create a Sentry Account
+
+1. Sign up for a free account at [sentry.io](https://sentry.io)
+2. Create a new project for your application
+3. Select **Node.js** as the platform
+4. Copy your **DSN (Data Source Name)** - you'll need this for the integration
+
+</Step>
+
+<Step>
+
+#### Upgrade to Convex Pro
+
+Convex's Sentry integration is only available on the Pro plan:
+
+1. Go to your [Convex Dashboard](https://dashboard.convex.dev)
+2. Select your deployment
+3. Navigate to **Settings** → **Billing**
+4. Upgrade to the **Pro** plan
+
+</Step>
+
+</Steps>
+
+### Configure Sentry Integration
+
+<Steps>
+
+<Step>
+
+#### Navigate to Integration Settings
+
+1. Go to your [Convex Dashboard](https://dashboard.convex.dev)
+2. Select your deployment
+3. Click on **Settings** in the sidebar
+4. Select the **Integrations** tab
+
+{/* TODO: Add screenshot of Convex Integrations Page */}
+
+</Step>
+
+<Step>
+
+#### Set Up Sentry
+
+1. Click on the **Sentry** card
+2. Enter your **Sentry DSN** from your Sentry project settings
+3. (Optional) Add custom tags to categorize errors
+4. Click **Save** to enable the integration
+
+{/* TODO: Add screenshot of Sentry configuration */}
+
+</Step>
+
+<Step>
+
+#### Verify the Integration
+
+1. Trigger an error in one of your Convex functions (you can temporarily throw an error for testing)
+2. Check your Sentry dashboard within 1-2 minutes
+3. You should see the error event with Convex-specific tags
+
+</Step>
+
+</Steps>
+
+### Automatic Tags
+
+Convex automatically tags every exception with the following metadata:
+
+| Tag | Description | Example |
+|-----|-------------|---------|
+| `func` | Function name in string format | `"messages:send"` |
+| `func_type` | Type of Convex function | `"query"`, `"mutation"`, `"action"`, `"http_action"` |
+| `func_runtime` | Function runtime environment | `"default"` or `"node"` |
+| `request_id` | Unique request identifier for debugging | `"abc123def456"` |
+| `server_name` | Deployment name | `"happy-animal-123"` |
+| `environment` | Deployment environment | `"prod"`, `"dev"`, or `"preview"` |
+| `user` | Authenticated user's token identifier (if auth enabled) | `"https://clerk.com/user_123"` |
+
+### Custom Tags (Optional)
+
+You can add custom tags during setup to further categorize errors:
+
+```plaintext
+version: "1.0.0"
+team: "backend"
+region: "us-west"
+```
+
+These tags help you:
+- Filter errors by release version
+- Route alerts to specific teams
+- Track errors by geographic region
+
+### Finding Errors in Sentry
+
+Once configured, errors will appear in your Sentry dashboard with:
+
+1. **Stack traces** showing where the error occurred
+2. **Convex-specific context** (function name, type, runtime)
+3. **User information** (if authenticated)
+4. **Request ID** for correlation with Convex logs
+
+<Note>
+**Debugging Tip**: Use the `request_id` tag to find the corresponding logs in your Convex Dashboard under the Logs tab.
+</Note>
+
+### Sentry Limitations
+
+- **Propagation delay**: Exceptions may take 1-2 minutes to appear in Sentry
+- **SDK features**: Built-in integration doesn't support advanced Sentry SDK customization
+- **Backend only**: This integration only tracks Convex function errors, not frontend errors
+
+<Warning>
+For frontend errors, set up Sentry separately in your React Router application using the Sentry SDK.
+</Warning>
+
+### Frontend Error Monitoring
+
+To track frontend errors with Sentry:
+
+<Steps>
+
+<Step>
+
+#### Install Sentry SDK
+
+```bash
+bun install @sentry/react
+```
+
+</Step>
+
+<Step>
+
+#### Configure in Root Layout
+
+Add Sentry initialization to `app/root.tsx`:
+
+```tsx
+import * as Sentry from "@sentry/react";
+import { useEffect } from "react";
+
+// Initialize Sentry
+if (import.meta.env.PROD) {
+  Sentry.init({
+    dsn: "your-frontend-sentry-dsn",
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  });
+}
+
+export default function Root() {
+  // ... rest of your root component
+}
+```
+
+</Step>
+
+<Step>
+
+#### Add Error Boundary
+
+Wrap your app with Sentry's error boundary:
+
+```tsx
+import { ErrorBoundary } from "@sentry/react";
+
+export default function App() {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback />}>
+      {/* Your app components */}
+    </ErrorBoundary>
+  );
+}
+```
+
+</Step>
+
+</Steps>
+
+---
+
+## Alerting with Instatus
+
+Monitor your application's uptime and get notified when things go wrong using Instatus.
+
+### What is Instatus?
+
+[Instatus](https://instatus.com) is a status page and uptime monitoring service that helps you:
+- Track API endpoint availability
+- Monitor website uptime
+- Create public/private status pages
+- Send alerts via Slack, Discord, email, and more
+
+### Prerequisites
+
+<Steps>
+
+<Step>
+
+#### Create an Instatus Account
+
+1. Sign up at [instatus.com](https://instatus.com)
+2. Create a new status page for your application
+3. Choose your plan (free plan available)
+
+</Step>
+
+</Steps>
+
+### Setting Up Monitors
+
+<Steps>
+
+<Step>
+
+#### Create an HTTP Monitor
+
+1. Go to your Instatus dashboard
+2. Click **Monitors** in the sidebar
+3. Click **Add Monitor**
+4. Configure the monitor:
+   - **Name**: `Production API Health`
+   - **URL**: Your API health endpoint (e.g., `https://yourapp.com/api/health`)
+   - **Method**: `GET`
+   - **Interval**: `1 minute` (or your preferred frequency)
+   - **Timeout**: `10 seconds`
+
+</Step>
+
+<Step>
+
+#### Set Up Health Check Endpoint
+
+If you don't have a health check endpoint, add one to your React Router app:
+
+```tsx title="app/routes/api.health.ts"
+import { json } from "react-router";
+import type { Route } from "./+types/api.health";
+
+export async function loader({ request }: Route.LoaderArgs) {
+  // Add any health checks here (database, external services, etc.)
+  const isHealthy = true; // Replace with actual health checks
+  
+  if (!isHealthy) {
+    return json(
+      { status: "unhealthy", timestamp: new Date().toISOString() },
+      { status: 503 }
+    );
+  }
+
+  return json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    version: "1.0.0",
+  });
+}
+```
+
+</Step>
+
+<Step>
+
+#### Configure Alert Channels
+
+1. In Instatus, go to **Settings** → **Integrations**
+2. Connect your preferred notification channels:
+   - **Slack**: Get alerts in your team channel
+   - **Discord**: Notify your Discord server
+   - **Email**: Send alerts to your email
+   - **Webhook**: Trigger custom actions
+   - **PagerDuty**: For on-call rotations
+
+</Step>
+
+<Step>
+
+#### Set Alert Rules
+
+1. Edit your monitor
+2. Scroll to **Alert Rules**
+3. Configure when to send alerts:
+   - ✅ Down for 1 consecutive check
+   - ✅ Response time > 5 seconds
+   - ✅ Status code ≠ 200
+
+</Step>
+
+</Steps>
+
+### Monitor Multiple Endpoints
+
+Set up monitors for critical endpoints:
+
+<Steps>
+
+<Step>
+
+#### API Health Check
+- **URL**: `https://yourapp.com/api/health`
+- **Interval**: 1 minute
+- **Purpose**: Overall API availability
+
+</Step>
+
+<Step>
+
+#### Database Connectivity
+- **URL**: `https://yourapp.com/api/health/database`
+- **Interval**: 2 minutes
+- **Purpose**: Database connection status
+
+</Step>
+
+<Step>
+
+#### External Services
+- **URL**: `https://yourapp.com/api/health/services`
+- **Interval**: 5 minutes
+- **Purpose**: Third-party service health (Clerk, Convex, etc.)
+
+</Step>
+
+</Steps>
+
+### Create a Status Page
+
+Instatus lets you create a public status page for your users:
+
+<Steps>
+
+<Step>
+
+#### Configure Your Status Page
+
+1. Go to **Status Page** in Instatus dashboard
+2. Customize your page:
+   - **Domain**: `status.yourapp.com` (or use Instatus subdomain)
+   - **Branding**: Logo, colors, company name
+   - **Components**: List your services (API, Database, Auth, etc.)
+
+</Step>
+
+<Step>
+
+#### Add Status Page to Your App
+
+Link to your status page in your app's footer:
+
+```tsx
+<a
+  href="https://status.yourapp.com"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="text-muted-foreground hover:text-foreground"
+>
+  System Status
+</a>
+```
+
+</Step>
+
+</Steps>
+
+### Incident Management
+
+When an incident occurs:
+
+<Steps>
+
+<Step>
+
+#### Automatic Incident Creation
+
+- Instatus automatically creates an incident when a monitor fails
+- Status page is updated in real-time
+- Alerts are sent to configured channels
+
+</Step>
+
+<Step>
+
+#### Update Incident Status
+
+1. Go to **Incidents** in Instatus dashboard
+2. Select the active incident
+3. Post updates:
+   - **Investigating**: "We're looking into the issue"
+   - **Identified**: "We've identified the root cause"
+   - **Monitoring**: "Fix deployed, monitoring for stability"
+   - **Resolved**: "Issue has been resolved"
+
+</Step>
+
+<Step>
+
+#### Post-Incident Review
+
+After resolution:
+1. Document what happened
+2. Add a post-mortem to the incident
+3. Share learnings with your team
+
+</Step>
+
+</Steps>
+
+### Best Practices
+
+<Note>
+**Monitoring Strategy**
+- Monitor critical user-facing endpoints
+- Set up alerts for both uptime and performance
+- Use escalation policies for after-hours incidents
+- Regularly test your alerting setup
+</Note>
+
+#### Alert Fatigue Prevention
+
+- **Set appropriate thresholds**: Don't alert on every blip
+- **Use escalation**: Start with low-priority channels, escalate if needed
+- **Aggregate alerts**: Group related failures
+- **Maintenance windows**: Silence alerts during deployments
+
+#### Status Page Best Practices
+
+- **Be transparent**: Show real component status
+- **Communicate clearly**: Use plain language in updates
+- **Update frequently**: Keep users informed during incidents
+- **Subscribe users**: Let them opt-in to notifications
+
+---
+
+## Monitoring Checklist
+
+Use this checklist to ensure comprehensive observability:
+
+### Error Monitoring
+- [ ] Convex Pro subscription activated
+- [ ] Sentry account created
+- [ ] Sentry DSN configured in Convex dashboard
+- [ ] Test error logged and visible in Sentry
+- [ ] Frontend Sentry SDK installed and configured
+- [ ] Error alerts configured in Sentry
+
+### Uptime Monitoring
+- [ ] Instatus account created
+- [ ] Health check endpoints implemented
+- [ ] Monitors configured for critical endpoints
+- [ ] Alert channels connected (Slack/Discord/Email)
+- [ ] Alert rules configured
+- [ ] Status page created and linked
+
+### Ongoing Maintenance
+- [ ] Review error trends weekly
+- [ ] Update monitor thresholds based on performance
+- [ ] Test alert delivery quarterly
+- [ ] Review and update status page components
+- [ ] Document incident response procedures
+
+---
+
+## Troubleshooting
+
+### Sentry Issues
+
+**Errors not appearing in Sentry:**
+- Verify Convex Pro subscription is active
+- Check DSN is correct in Convex dashboard
+- Wait 2-3 minutes for propagation
+- Ensure error is actually thrown (check Convex logs)
+
+**Missing context on errors:**
+- Check if custom tags are properly configured
+- Verify user authentication is working (for user tags)
+- Review Convex function logs for request_id
+
+### Instatus Issues
+
+**False positive alerts:**
+- Increase consecutive failure threshold
+- Adjust timeout settings
+- Check if health endpoint has intermittent issues
+
+**Missing alerts:**
+- Verify integration is connected
+- Check alert rules are enabled
+- Test notification channel
+- Review alert history in dashboard
+
+---
+
+## Additional Resources
+
+- [Convex Exception Reporting Docs](https://docs.convex.dev/production/integrations/exception-reporting)
+- [Sentry Documentation](https://docs.sentry.io/)
+- [Instatus Documentation](https://instatus.com/help)
+- [React Router Error Handling](https://reactrouter.com/en/main/route/error-element)
+
+<Note>
+Need help? Join our [Discord community](#) or reach out to [support@yourapp.com](mailto:support@yourapp.com).
+</Note>
+

@@ -1,0 +1,16 @@
+{
+  "title": "Learn AI",
+  "description": "Master AI engineering from foundations to production",
+  "icon": "GraduationCap",
+  "root": true,
+  "pages": [
+    "index",
+    "discovery-phase",
+    "rag-model-selection-evaluation",
+    "input-output-guardrails",
+    "deployment-and-optimization",
+    "continuous-learning-agentic-systems",
+    "monitoring-models"
+  ]
+}
+

@@ -1,0 +1,293 @@
+---
+title: Deploy in 5 Minutes
+description: Quick deployment guide for Kaizen with minimal configuration
+icon: Rocket
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+# Deploy Kaizen in 5 Minutes
+
+Get Kaizen up and running locally and deployed to production in just 5 minutes with a minimal configuration.
+
+<Note>
+This guide uses a **static configuration** (no authentication, payments, or Convex) for the fastest deployment. You can enable features later!
+</Note>
+
+## Quick Deploy
+
+<Steps>
+<Step>
+
+### Configure for Static Deployment
+
+Before deploying, disable backend features in `config.ts`:
+
+```ts title="config.ts"
+export const config: AppConfig = {
+  features: {
+    auth: false,       // ❌ Disabled
+    payments: false,   // ❌ Disabled
+    convex: false,     // ❌ Disabled
+    email: false,      // ❌ Disabled
+    monitoring: false, // ❌ Disabled
+  },
+  services: {
+    betterAuth: {
+      enabled: false,
+      mode: "b2c",
+    },
+    clerk: {
+      enabled: false,
+    },
+    polar: {
+      enabled: false,
+    },
+    convex: {
+      enabled: false,
+    },
+    // ... other services disabled
+  },
+  ui: {
+    showPricing: false,   // Hide pricing page
+    showDashboard: false, // Hide dashboard routes
+    showChat: false,      // Hide AI chat
+    showAuth: false,      // Hide login/signup
+  },
+};
+```
+
+<Warning>
+**Important**: Both `features.payments` **and** `services.polar` must be set to `false` for one-click deployment to work on Railway.
+</Warning>
+
+</Step>
+
+<Step>
+
+### Install Node.js
+```bash
+# Install Node.js 24.x.x
+nvm install 24
+nvm use 24
+```
+
+Verify installation:
+```bash
+node -v  # Should show v24.x.x
+```
+
+</Step>
+
+<Step>
+
+### Install Dependencies
+```bash
+bun install
+```
+
+</Step>
+
+<Step>
+
+### Set Up Environment
+```bash
+cp .env.example .env.local
+```
+
+<Note>
+For a static deployment, you don't need to configure any environment variables. The app will work out of the box!
+</Note>
+
+</Step>
+
+<Step>
+
+### Build and Test Locally
+```bash
+bun run build
+bun run dev
+```
+
+Visit `http://localhost:5173` in incognito mode to see your app running.
+
+</Step>
+
+<Step>
+
+### Deploy to Railway (One-Click)
+
+[![Deploy with Railway](https://railway.app/button.svg)](dev.new)
+
+**Or manually:**
+
+1. Push your code to GitHub
+2. Go to [railway.app](https://railway.app)
+3. Click **"Add New Project"**
+4. Import your GitHub repository
+5. Click **"Deploy"** (no environment variables needed!)
+
+The included `react-router.config.ts` and `vite.config.ts` are pre-configured for Railway.
+
+</Step>
+
+</Steps>
+
+## Next Steps
+
+With your app deployed, you can now progressively enable features:
+
+### Enable Features Gradually
+
+<Steps>
+<Step>
+
+#### 1. Enable Authentication
+
+Follow the [Authentication Setup](4-authentication-setup) guide to add user login/signup:
+
+```ts title="config.ts"
+features: {
+  auth: true,  // ✅ Enable
+}
+services: {
+  clerk: {
+    enabled: true,
+    // Add your Clerk keys
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+#### 2. Enable Convex Backend
+
+Follow the [Convex Setup](2-convex-setup) guide:
+
+```ts title="config.ts"
+features: {
+  convex: true,  // ✅ Enable
+}
+services: {
+  convex: {
+    enabled: true,
+    // Add your Convex deployment URL
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+#### 3. Enable Payments
+
+Follow the [Payments Setup](5-payments-setup) guide:
+
+```ts title="config.ts"
+features: {
+  payments: true,  // ✅ Enable
+}
+services: {
+  polar: {
+    enabled: true,
+    // Add your Polar credentials
+  }
+}
+ui: {
+  showPricing: true,
+}
+```
+
+<Warning>
+After enabling payments, you'll need to redeploy with the required environment variables configured in your hosting platform.
+</Warning>
+
+</Step>
+
+<Step>
+
+#### 4. Enable Email & AI
+
+Follow the setup guides for additional features:
+- **[Email Setup](6-email-setup)** - Add transactional emails
+- **[AI Setup](7-ai-setup)** - Enable AI chat features
+
+</Step>
+</Steps>
+
+### Why Disable Features for Quick Deploy?
+
+- **No External Dependencies**: Static deployment doesn't require Convex, Polar, or Clerk accounts
+- **Faster Setup**: Skip environment variable configuration
+- **Zero Cost**: No subscription fees while you're getting started
+- **Progressive Enhancement**: Enable features only when you need them
+
+<Note>
+Each feature can be enabled independently without breaking your app. Start simple and add complexity as your project grows!
+</Note>
+
+---
+
+## Troubleshooting
+
+### Build Fails on Railway
+
+**Error: Missing environment variables**
+
+**Solution**: Ensure all features are disabled in `config.ts`:
+```ts
+features: {
+  auth: false,
+  payments: false,
+  convex: false,
+  email: false,
+  monitoring: false,
+}
+```
+
+### App Shows Blank Page
+
+**Solution**: Check browser console for errors. Make sure `bun run build` succeeds locally before deploying.
+
+### 404 on Routes
+
+**Solution**: Railway is pre-configured for React Router. If you see 404s, ensure your `react-router.config.ts` has the correct configuration:
+
+```ts
+import type { Config } from "@react-router/dev/config";
+
+export default {
+  appDirectory: "app",
+  ssr: true,
+  prerender: ["/"],
+} satisfies Config;
+```
+
+---
+
+## What's Deployed?
+
+With the static configuration, your deployed app includes:
+
+✅ Landing page with hero, features, and footer  
+✅ Responsive navbar  
+✅ SEO-optimized meta tags  
+✅ Tailwind CSS styling  
+✅ Optimized production build  
+✅ Type-safe React Router v7  
+
+❌ No authentication  
+❌ No dashboard  
+❌ No payments  
+❌ No backend database  
+❌ No AI chat  
+
+Perfect for:
+- Marketing websites
+- Documentation sites
+- Portfolios
+- Landing pages
+- MVPs and prototypes

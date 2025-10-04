@@ -1,0 +1,189 @@
+---
+title: 'Development Workflow'
+icon: GitBranch
+---
+<YouTube id="UqJJktxCY9U" />
+
+# Development Workflow
+
+Best practices for maintaining and extending your Kaizen application.
+
+<Warning>
+**DO NOT upgrade any dependencies in your package.json** for the core stack dependencies (Clerk, Convex, Polar.sh, etc.), unless you have a specific reason to and are following the official migration guides from each service. Upgrading packages without proper migration can break your authentication, database connections, and other critical functionality. The current versions in the boilerplate are tested and stable together.
+</Warning>
+
+## Daily Development Setup
+
+After initial setup, start your development environment:
+
+### Terminal 1: Main Application
+```bash
+bun run dev
+```
+
+### Terminal 2: Convex Database
+```bash
+npx convex dev
+```
+
+### Terminal 3: Webhook Testing (when needed)
+```bash
+ngrok http 5173
+```
+
+<Note>
+Only run ngrok when testing webhooks (payments, emails). After testing, switch back to `http://localhost:5173`.
+</Note>
+
+## Environment Management
+
+### ngrok URL Changes
+Each time ngrok restarts, update these locations:
+
+1. **Local Environment** (`.env.local`):
+   ```bash
+   FRONTEND_URL=https://new-ngrok-url.ngrok.io
+   ```
+
+2. **Convex Environment Variables**:
+   - Update `FRONTEND_URL` in Convex Dashboard
+
+3. **Vite Configuration** (`vite.config.ts`):
+   ```typescript
+   server: {
+     allowedHosts: ["new-ngrok-subdomain.ngrok.app"],
+   },
+   ```
+
+4. **Restart Servers**:
+   ```bash
+   # Stop and restart both dev servers
+   bun run dev
+   npx convex dev
+   ```
+
+## Code Organization
+
+### Frontend (React Router)
+- **Routes**: `app/routes/` - File-based routing
+- **Components**: `app/components/` - Reusable UI components
+- **Utils**: `app/utils/` - Helper functions
+- **Hooks**: `app/hooks/` - Custom React hooks
+
+### Backend (Convex)
+- **Functions**: `convex/` - Serverless functions
+- **Schema**: `convex/schema.ts` - Database schema
+- **Queries**: `convex/queries/` - Data fetching
+- **Mutations**: `convex/mutations/` - Data modifications
+
+### Configuration
+- **Features**: `config.ts` - Enable/disable services
+- **Environment**: `.env.local` - Local secrets
+- **Build**: `vite.config.ts` - Frontend build configuration
+
+## Development Best Practices
+
+### 1. Progressive Feature Enablement
+```typescript
+// Start simple, add features as needed
+features: {
+  auth: true,      // Enable first
+  convex: true,    // Enable with auth
+  payments: false, // Enable when billing needed
+  email: false,    // Enable when notifications needed
+}
+```
+
+### 2. Environment Variable Management
+- Never commit secrets to Git
+- Use `.env.example` as template
+- Document required variables in setup guide
+
+### 3. Database Schema Changes
+```typescript
+// convex/schema.ts
+export default defineSchema({
+  users: defineTable({ /* schema */ }),
+  // Add new tables as needed
+});
+```
+
+### 4. Testing Strategy
+```bash
+# Run all tests
+bun run test:all
+
+# Unit tests
+bun run test:watch
+
+# E2E tests
+bun run test:e2e:ui
+```
+
+### 5. Build Verification
+```bash
+# Always test build before committing
+bun run build
+bun run typecheck
+```
+
+## Debugging Common Issues
+
+### Authentication Problems
+- Check Clerk JWT template configuration
+- Verify `VITE_CLERK_FRONTEND_API_URL` in Convex
+- Ensure Convex dev server is running
+
+### Payment Webhook Failures
+- Confirm ngrok URL is current
+- Check Polar webhook configuration
+- Verify all environment variables in Convex dashboard
+
+### Email Delivery Issues
+- Use sandbox domain for testing
+- Check Resend API key in Convex environment
+- Verify webhook secret configuration
+
+### AI Chat Not Working
+- Confirm OpenAI API key in both environments
+- Check API rate limits and credits
+- Verify Convex functions are deployed
+
+## Deployment Checklist
+
+Before deploying to production:
+
+- [ ] All tests passing (`bun run test:all`)
+- [ ] Build successful (`bun run build`)
+- [ ] TypeScript errors resolved (`bun run typecheck`)
+- [ ] Environment variables configured
+- [ ] Domain purchased and configured
+- [ ] Production service accounts created
+- [ ] Webhook URLs updated for production
+- [ ] SSL certificate valid
+
+## Extension Guides
+
+### Adding New Features
+- Follow progressive configuration approach
+- Test locally before enabling in production
+- Document environment variables needed
+
+### UI Development
+See [Rapid UI Prototyping](/building-with-kaizen/rapid-ui-prototyping) for modern development workflows.
+
+### Database Changes
+- Update schema in `convex/schema.ts`
+- Run `npx convex deploy` to apply changes
+- Test migrations in development first
+
+## Support and Resources
+
+- **Documentation**: Access via `bun run docs:dev`
+- **Convex Dashboard**: Monitor database and functions
+- **Service Dashboards**: Clerk, Polar, Resend for service-specific issues
+- **Community**: GitHub issues for Kaizen-specific questions
+
+## You're Ready! 🎉
+
+Your Kaizen application is now fully configured and deployed. Focus on building your product features while the infrastructure handles scaling, security, and reliability.

@@ -1,0 +1,115 @@
+---
+title: 'AI Setup'
+icon: Bot
+---
+<YouTube id="UqJJktxCY9U" />
+
+Enable AI-powered chat functionality with OpenAI integration.
+
+## Update Configuration
+
+Enable AI chat in `config.ts`:
+
+```typescript
+export const config: AppConfig = {
+  features: {
+    auth: true,
+    payments: true,
+    convex: true,
+    email: true,
+    monitoring: false,
+  },
+  services: {
+    clerk: { enabled: true },
+    polar: { enabled: true },
+    convex: { enabled: true },
+    resend: { enabled: true },
+    openai: {
+      enabled: true,    // ✅ Enable OpenAI
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+  },
+  ui: {
+    showPricing: true,
+    showDashboard: true,
+    showChat: true,     // ✅ Show AI chat
+    showAuth: true,
+  },
+};
+```
+
+## Set Up OpenAI Account
+
+1. **Create OpenAI Account**
+   - Go to [openai.com](https://openai.com)
+   - Sign up and complete verification
+
+2. **Generate API Key**
+   - Go to **API Keys** section
+   - Create new secret key
+   - Copy the key (starts with `sk-`)
+
+## Configure Environment Variables
+
+1. **Add to Local Environment**
+   ```bash
+   OPENAI_API_KEY=sk-...
+   ```
+
+2. **Add to Convex Environment Variables**
+   - Go to Convex Dashboard → Settings → Environment Variables
+   - Add: `OPENAI_API_KEY=sk-...`
+
+## Test AI Chat Functionality
+
+1. **Restart Development Server**
+   ```bash
+   bun run dev
+   ```
+
+2. **Access AI Chat**
+   - Navigate to `/dashboard` (must be authenticated)
+   - Go to `/dashboard/chat`
+   - Type a message and test conversation
+
+3. **Verify AI Responses**
+   - Should receive coherent responses from GPT
+   - Chat history should persist in database
+   - Real-time updates should work
+
+## AI Features Available
+
+With OpenAI configured, your app includes:
+
+- **Conversational AI** with GPT models
+- **Chat history persistence** in Convex database
+- **Real-time message streaming**
+- **Context-aware responses**
+- **Multi-user chat support**
+
+## Common Issues
+
+### AI Not Responding
+- **API Key**: Verify OPENAI_API_KEY in both local and Convex environment
+- **Credits**: Ensure OpenAI account has sufficient credits
+- **Rate Limits**: Check for API rate limit errors
+
+### Chat Not Persisting
+- **Database**: Ensure Convex dev server is running
+- **Authentication**: User must be logged in for chat persistence
+- **Permissions**: Check Convex function permissions
+
+### Slow Responses
+- **Network**: AI requests may take time due to OpenAI API latency
+- **Streaming**: Should show progressive responses, not wait for complete answer
+
+## Usage Considerations
+
+- **Cost**: OpenAI API calls incur charges based on token usage
+- **Rate Limits**: Respect OpenAI's rate limits (RPM and TPM)
+- **Content Moderation**: Implement appropriate content filtering if needed
+- **Caching**: Consider caching common responses for performance
+
+## Next Steps
+
+With all core features configured, proceed to [Step 8: Production Deployment](8-production-deployment) to deploy your application.

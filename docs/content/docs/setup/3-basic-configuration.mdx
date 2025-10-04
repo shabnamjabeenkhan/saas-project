@@ -1,0 +1,108 @@
+---
+title: 'Basic Configuration'
+icon: Settings
+---
+
+<YouTube id="UqJJktxCY9U" />
+
+Start with a static configuration to ensure everything works without external services.
+
+## Disable All Features
+
+<Steps>
+<Step>
+
+### Edit Configuration File
+Modify `config.ts` to disable all services:
+
+```typescript
+export const config: AppConfig = {
+  features: {
+    auth: false,        // No authentication yet
+    payments: false,    // No payments yet
+    convex: false,      // No database yet
+    email: false,       // No email yet
+    monitoring: false,  // No monitoring yet
+  },
+  services: {
+    docs: {
+      enabled: true,
+      url: process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : undefined,
+    },
+    betterAuth: { enabled: true, mode: "b2c" },
+    clerk: { enabled: false },
+    polar: { enabled: false },
+    convex: { enabled: false },
+    resend: { enabled: false },
+    openai: { enabled: false },
+  },
+  ui: {
+    showPricing: false,   // Hide pricing page
+    showDashboard: true,  // Show demo dashboard
+    showChat: false,      // No AI chat yet
+    showAuth: false,      // No auth pages yet
+  },
+};
+```
+
+</Step>
+
+<Step>
+
+### Start Development Server
+```bash
+bun run dev
+```
+
+</Step>
+
+<Step>
+
+### Verify Homepage
+Visit `http://localhost:5173`
+
+- You should see the landing page load successfully
+- Navigation and basic UI should work
+
+</Step>
+
+<Step>
+
+### Test Dashboard (Demo Mode)
+Navigate to `/dashboard`
+
+- Should load without authentication requirements
+- Basic layout and navigation should work
+
+</Step>
+</Steps>
+
+## Verify Build Process
+
+```bash
+bun run build
+```
+
+The build should complete successfully without errors.
+
+## Common Issues
+
+### Build Fails
+- Ensure all dependencies installed: `bun install`
+- Check Node.js version: `node -v` (should be 24.x.x)
+- Verify `.env.local` exists: `ls -la .env.local`
+
+### Homepage Doesn't Load
+- Check console for errors
+- Ensure port 5173 isn't already in use
+- Try different browser or incognito mode
+
+### Dashboard Not Accessible
+- With `showAuth: false`, dashboard should be accessible
+- If blocked, double-check `config.ts` settings
+
+## Next Steps
+
+Once the basic setup works, proceed to [Step 4: Authentication Setup](4-authentication-setup) to add user management and database functionality.
