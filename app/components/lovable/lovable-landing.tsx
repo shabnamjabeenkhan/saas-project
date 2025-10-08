@@ -4,23 +4,31 @@ import { LovableProblemSection } from "./problem-section";
 import { LovableHowItWorksSection } from "./how-it-works-section";
 import { LovablePricingSection } from "./pricing-section";
 import { LovableBenefitsSection } from "./benefits-section";
+import { LovableFAQSection } from "./faq-section";
 import { LovableCTASection } from "./cta-section";
 
-export const LovableLanding = () => {
+interface LovableLandingProps {
+  isSignedIn?: boolean;
+}
+
+export const LovableLanding = ({ isSignedIn = false }: LovableLandingProps) => {
   return (
     <div className="min-h-screen">
-      <LovableHeader />
+      <LovableHeader isSignedIn={isSignedIn} />
       <main>
         <LovableHero />
         <LovableProblemSection />
         <div id="how-it-works">
           <LovableHowItWorksSection />
         </div>
+        <div id="benefits">
+          <LovableBenefitsSection />
+        </div>
         <div id="pricing">
           <LovablePricingSection />
         </div>
-        <div id="benefits">
-          <LovableBenefitsSection />
+        <div id="faq">
+          <LovableFAQSection />
         </div>
         <LovableCTASection />
       </main>

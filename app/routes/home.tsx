@@ -99,7 +99,7 @@ export async function loader(args: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <>
-      <LovableLanding />
+      <LovableLanding isSignedIn={loaderData.isSignedIn} />
       <Suspense fallback={<div className="h-32 bg-muted" />}>
         <Footer />
       </Suspense>

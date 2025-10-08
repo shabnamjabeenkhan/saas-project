@@ -1,7 +1,12 @@
 import { Button } from "~/components/ui/button";
 import { Wrench } from "lucide-react";
+import { Link } from "react-router";
 
-export const LovableHeader = () => {
+interface LovableHeaderProps {
+  isSignedIn?: boolean;
+}
+
+export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border shadow-card">
       <div className="container mx-auto px-4">
@@ -16,24 +21,35 @@ export const LovableHeader = () => {
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
+            <Link to="/" className="text-black hover:text-primary transition-colors">
+              Home
+            </Link>
             <a href="#how-it-works" className="text-black hover:text-primary transition-colors">
               How It Works
-            </a>
-            <a href="#pricing" className="text-black hover:text-primary transition-colors">
-              Pricing
             </a>
             <a href="#benefits" className="text-black hover:text-primary transition-colors">
               Benefits
             </a>
+            <a href="#pricing" className="text-black hover:text-primary transition-colors">
+              Pricing
+            </a>
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" className="hidden sm:inline-flex">
-              Sign In
-            </Button>
-            <Button variant="default">
-              Start Free Trial
-            </Button>
+            {!isSignedIn ? (
+              <>
+                <Button asChild variant="ghost" className="hidden sm:inline-flex">
+                  <Link to="/sign-in">Login</Link>
+                </Button>
+                <Button asChild variant="default">
+                  <Link to="/sign-up">Sign Up</Link>
+                </Button>
+              </>
+            ) : (
+              <Button asChild variant="default">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
