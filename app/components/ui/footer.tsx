@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from 'react-router'
 
 const links = [
     {
@@ -32,11 +32,15 @@ const legalLinks = [
         title: 'Refund Policy',
         href: '/refund',
     },
+    {
+        title: 'Data Sharing',
+        href: '/data-sharing',
+    },
 ]
 
 export default function FooterSection() {
     return (
-        <footer className="bg-background py-16">
+        <footer className="bg-muted py-16">
             <div className="mx-auto max-w-5xl px-6">
                 <Link
                     to="/"
@@ -140,5 +144,5 @@ export default function FooterSection() {
                 <span className="text-muted-foreground block text-center text-sm"> © {new Date().getFullYear()} Kaizen, All rights reserved</span>
             </div>
         </footer>
-    );
+    )
 }

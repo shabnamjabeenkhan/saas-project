@@ -27,7 +27,7 @@ export const FaqSection = React.forwardRef<HTMLElement, FaqSectionProps>(
       <section
         ref={ref}
         className={cn(
-          "py-32 md:py-48 w-full bg-gradient-to-b from-transparent via-muted/50 to-transparent",
+          "py-32 md:py-48 w-full bg-background",
           className
         )}
         {...props}

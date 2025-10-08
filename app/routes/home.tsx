@@ -1,24 +1,17 @@
 import { isFeatureEnabled, isServiceEnabled } from "../../config";
-import Integrations from "~/components/homepage/integrations";
 import { api } from "../../convex/_generated/api";
 import type { Route } from "./+types/home";
 import { Suspense, lazy } from 'react';
-import { ContentSkeleton, FeatureSkeleton, PricingSkeleton } from '~/components/ui/skeleton';
+import { LovableLanding } from "~/components/lovable/lovable-landing";
 
-// Lazy load components below the fold
-const ContentSection = lazy(() => import("~/components/homepage/content"));
-const CoreFeaturesSection = lazy(() => import("~/components/homepage/core-features"));
-const ConvexComparison = lazy(() => import("~/components/homepage/convex-comparison").then(m => ({ default: m.ConvexComparison })));
-const Pricing = lazy(() => import("~/components/homepage/pricing"));
-const InhouseTools = lazy(() => import("~/components/homepage/inhouse-tools"));
-const FAQ = lazy(() => import("~/components/homepage/faq"));
+// Keep the Kaizen footer
 const Footer = lazy(() => import("~/components/homepage/footer"));
 
 export function meta({}: Route.MetaArgs) {
-  const title = "Kaizen - Launch Your SAAS Quickly";
+  const title = "TradeBoost AI - AI-Powered Google Ads for UK Plumbers & Electricians";
   const description =
-    "This powerful starter kit is designed to help you launch your SAAS application quickly and efficiently.";
-  const keywords = "Kaizen, SAAS, Launch, Quickly, Efficiently";
+    "Stop paying £4,000/month to marketing agencies. Answer 5 simple questions and let AI generate high-converting Google Ads campaigns in minutes.";
+  const keywords = "Google Ads, Plumbers, Electricians, AI Marketing, UK Trades, Lead Generation";
   const siteUrl = "https://www.kaizen.codeandcreed.tech/";
   const imageUrl = "/kaizen.svg";
 
@@ -37,7 +30,7 @@ export function meta({}: Route.MetaArgs) {
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     { property: "og:url", content: siteUrl },
-    { property: "og:site_name", content: "Kaizen" },
+    { property: "og:site_name", content: "TradeBoost AI" },
 
     // Twitter Card
     { name: "twitter:card", content: "summary_large_image" },
@@ -51,7 +44,7 @@ export function meta({}: Route.MetaArgs) {
       name: "keywords",
       content: keywords,
     },
-    { name: "author", content: "Kaizen" },
+    { name: "author", content: "TradeBoost AI" },
     { name: "favicon", content: imageUrl },
   ];
 }
@@ -106,33 +99,7 @@ export async function loader(args: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <>
-      <Integrations loaderData={loaderData} />
-      <Suspense fallback={<ContentSkeleton />}>
-        <ContentSection />
-      </Suspense>
-      <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6"><FeatureSkeleton /><FeatureSkeleton /><FeatureSkeleton /></div>}>
-        <CoreFeaturesSection />
-      </Suspense>
-      <Suspense fallback={<ContentSkeleton />}>
-        <ConvexComparison />
-      </Suspense>
-      <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6"><PricingSkeleton /><PricingSkeleton /></div>}>
-        <Pricing loaderData={loaderData} />
-      </Suspense>
-      <div className="my-6 flex justify-center">
-        <div
-          aria-hidden
-          className="size-12 rounded-full border bg-background text-muted-foreground shadow-sm grid place-items-center text-2xl font-semibold"
-        >
-          +
-        </div>
-      </div>
-      <Suspense fallback={<ContentSkeleton />}>
-        <InhouseTools />
-      </Suspense>
-      <Suspense fallback={<ContentSkeleton />}>
-        <FAQ />
-      </Suspense>
+      <LovableLanding />
       <Suspense fallback={<div className="h-32 bg-muted" />}>
         <Footer />
       </Suspense>
