@@ -1,5 +1,5 @@
 import { AlertCircle, TrendingDown, HelpCircle } from "lucide-react";
-import { Card, CardContent } from "~/components/ui/card";
+import SpotlightCard from "~/components/ui/spotlight-card";
 
 export const LovableProblemSection = () => {
   const problems = [
@@ -37,16 +37,16 @@ export const LovableProblemSection = () => {
 
         <div className="grid md:grid-cols-3 gap-8">
           {problems.map((problem, index) => (
-            <Card key={index} className="shadow-sm hover:shadow-md transition-shadow border-border">
-              <CardContent className="pt-6 space-y-4">
+            <SpotlightCard key={index} className="shadow-sm hover:shadow-md transition-shadow" spotlightColor="rgba(59, 130, 246, 0.15)">
+              <div className="space-y-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
                   <problem.icon className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <h3 className="text-xl font-semibold">{problem.title}</h3>
                 <p className="text-muted-foreground">{problem.description}</p>
                 <p className="text-sm font-medium text-primary">{problem.stat}</p>
-              </CardContent>
-            </Card>
+              </div>
+            </SpotlightCard>
           ))}
         </div>
       </div>
