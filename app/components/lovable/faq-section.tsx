@@ -75,7 +75,7 @@ export const LovableFAQSection = () => {
             ))}
           </Accordion>
 
-          <p className="text-muted-foreground mt-6 px-8">
+          <p className="text-muted-foreground mt-6 px-8 text-center">
             Can't find what you're looking for? Contact our{' '}
             <Link
               to="#"

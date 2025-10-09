@@ -1,5 +1,6 @@
 import { Button } from "~/components/ui/button";
 import { ArrowRight, CheckCircle } from "lucide-react";
+import { Link } from "react-router";
 
 export const LovableHero = () => {
   return (
@@ -13,15 +14,15 @@ export const LovableHero = () => {
               </span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-              AI-Powered Google Ads for UK{" "}
+            <h1 className="text-4xl tracking-tighter font-geist md:text-6xl leading-tight">
+              Stop Wasting £4,000/Month — Let{" "}
               <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                Plumbers & Electricians
+                AI Get You More Customers
               </span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Stop paying £4,000/month to marketing agencies. Answer 5 simple questions and let AI generate high-converting Google Ads campaigns in minutes.
+            <p className="text-lg md:text-xl font-normal text-gray-300 max-w-2xl mx-auto">
+              AI builds and manages your Google Ads automatically — more leads, less spend, zero marketing experience needed.
             </p>
 
             <div className="space-y-3 max-w-xl mx-auto">
@@ -39,13 +40,12 @@ export const LovableHero = () => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
-              <Button size="lg" className="group">
-                Start Free Trial
-                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button size="lg" variant="outline">
-                See How It Works
+            <div className="flex justify-center pt-4">
+              <Button asChild size="lg" className="group">
+                <Link to="/sign-up">
+                  Sign Up
+                  <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </Link>
               </Button>
             </div>
 
@@ -53,12 +53,6 @@ export const LovableHero = () => {
               From £69/month · No contracts · Cancel anytime
             </p>
 
-            <div className="relative mt-8 flex justify-center">
-              <div className="bg-card p-6 rounded-xl shadow-lg border border-border">
-                <p className="text-3xl font-bold text-primary">£828/year</p>
-                <p className="text-sm text-muted-foreground">vs £48,000 for agencies</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

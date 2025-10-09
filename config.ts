@@ -102,7 +102,7 @@ const getEnvVar = (key: string): string | undefined => {
 
 export const config: AppConfig = {
   features: {
-    auth: false,        // Enable/disable Authentication
+    auth: true,        // Enable/disable Authentication
     payments: true,    // Enable/disable Billing
     convex: true,      // Enable/disable Convex
     email: false,      // Enable/disable Email
@@ -160,7 +160,7 @@ export const config: AppConfig = {
     showPricing: true,    // Show pricing page and components
     showDashboard: true,  // Show dashboard routes
     showChat: true,       // Show AI chat functionality
-    showAuth: false,       // Show sign-in/sign-up routes
+    showAuth: true,       // Show sign-in/sign-up routes
   },
 };
 

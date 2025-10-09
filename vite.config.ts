@@ -10,7 +10,7 @@ export default defineConfig({
     tsconfigPaths(),
   ],
   server: {
-    allowedHosts: ["146cecc0009a.ngrok.app"],
+    allowedHosts: ["aea248ad0b3a.ngrok-free.app"],
   },
   build: {
     rollupOptions: {

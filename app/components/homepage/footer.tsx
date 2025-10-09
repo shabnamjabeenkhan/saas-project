@@ -42,7 +42,7 @@ export default function FooterSection() {
                     to="/"
                     aria-label="go home"
                     className="mx-auto block size-fit">
-                    <span className="text-2xl font-bold">Kaizen</span>
+                    <span className="text-2xl font-bold">TradeBoost AI</span>
                 </Link>
 
                 <div className="my-8 flex flex-wrap justify-center gap-6">
@@ -137,7 +137,7 @@ export default function FooterSection() {
                         </svg>
                     </Link>
                 </div>
-                <span className="text-muted-foreground block text-center text-sm"> © {new Date().getFullYear()} Kaizen, All rights reserved</span>
+                <span className="text-muted-foreground block text-center text-sm"> © {new Date().getFullYear()} TradeBoost AI, All rights reserved</span>
             </div>
         </footer>
     );
