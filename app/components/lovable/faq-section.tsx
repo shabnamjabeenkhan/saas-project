@@ -57,7 +57,8 @@ export const LovableFAQSection = () => {
           <Accordion
             type="single"
             collapsible
-            className="bg-background w-full rounded-2xl border border-border px-8 py-3 shadow-sm"
+            className="w-full rounded-2xl border-[0.25px] border-border px-8 py-3 shadow-sm"
+            style={{ backgroundColor: '#18181b' }}
           >
             {faqItems.map((item) => (
               <AccordionItem

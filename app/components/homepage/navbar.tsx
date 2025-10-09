@@ -191,9 +191,9 @@ export const Navbar = ({
                 </div>
                 {authEnabled && loaderData?.isSignedIn ? (
                   <div className="flex items-center gap-3 self-center">
-                    <Button 
-                      asChild 
-                      size="sm" 
+                    <Button
+                      asChild
+                      size="sm"
                       disabled={isDashboardLoading}
                       onClick={handleDashboardClick}
                       className="min-w-[90px]"
@@ -209,25 +209,20 @@ export const Navbar = ({
                     <UserButton />
                   </div>
                 ) : authEnabled ? (
-                  <>
                     <Button
                       asChild
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                    >
-                      <Link to="/sign-in" prefetch="viewport">
-                        <span>Login</span>
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="sm"
+                      className="bg-blue-500 text-white transition-colors"
+                      style={{
+                        border: '1px solid rgba(255, 255, 255, 0.7)',
+                        backgroundColor: '#3b82f6'
+                      }}
                     >
                       <Link to="/sign-up" prefetch="viewport">
                         <span>Sign Up</span>
                       </Link>
                     </Button>
-                  </>
                 ) : (
                   // When auth is disabled, show a simple get started button
                   <Button

@@ -38,7 +38,7 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
           <div className="flex items-center gap-3">
             {!isSignedIn ? (
               <>
-                <Button asChild variant="ghost" className="hidden sm:inline-flex">
+                <Button asChild variant="default" className="hidden sm:inline-flex bg-blue-500 text-white hover:bg-blue-500">
                   <Link to="/sign-in">Login</Link>
                 </Button>
                 <Button asChild variant="default">
