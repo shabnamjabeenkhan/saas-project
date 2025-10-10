@@ -1,4 +1,4 @@
-import { IconDashboard, IconSettings, IconMessageCircle } from "@tabler/icons-react";
+import { IconDashboard, IconSettings, IconChartBar, IconTarget, IconBrandGoogle, IconMail, IconCreditCard } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -15,21 +15,36 @@ import {
 const data = {
   navMain: [
     {
-      title: "Dashboard",
+      title: "🏠 Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Chat",
-      url: "/dashboard/chat",
-      icon: IconMessageCircle,
+      title: "📊 Campaigns",
+      url: "/dashboard/campaigns",
+      icon: IconChartBar,
+    },
+    {
+      title: "🎯 Campaign Generator",
+      url: "/dashboard/campaign-generator",
+      icon: IconTarget,
+    },
+    {
+      title: "⚙️ Google Ads Settings",
+      url: "/dashboard/google-ads-settings",
+      icon: IconBrandGoogle,
     },
   ],
   navSecondary: [
     {
-      title: "Settings",
+      title: "📧 Settings",
       url: "/dashboard/settings",
-      icon: IconSettings,
+      icon: IconMail,
+    },
+    {
+      title: "💳 Billing",
+      url: "/dashboard/billing",
+      icon: IconCreditCard,
     },
   ],
 };
