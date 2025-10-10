@@ -26,6 +26,7 @@ export interface AppConfig {
     email: boolean;       // Enable Email
     monitoring: boolean;  // Enable Monitoring
   };
+  
   services: {
     betterAuth: { enabled: false, mode: "b2c" },
     clerk?: {
@@ -105,7 +106,7 @@ export const config: AppConfig = {
     auth: true,        // Enable/disable Authentication
     payments: true,    // Enable/disable Billing
     convex: true,      // Enable/disable Convex
-    email: false,      // Enable/disable Email
+    email: true,      // Enable/disable Email
     monitoring: false,  // Enable/disable Monitoring
   },
   services: {
@@ -119,7 +120,7 @@ export const config: AppConfig = {
       secretKey: getEnvVar('CLERK_SECRET_KEY'),
     },
     polar: {
-      enabled: false,
+      enabled: true,
       accessToken: getEnvVar('POLAR_ACCESS_TOKEN'),
       organizationId: getEnvVar('POLAR_ORGANIZATION_ID'),
       webhookSecret: getEnvVar('POLAR_WEBHOOK_SECRET'),
@@ -135,7 +136,7 @@ export const config: AppConfig = {
       webhookSecret: getEnvVar('STRIPE_WEBHOOK_SECRET'),
     },
     resend: {
-      enabled: false,
+      enabled: true,
       apiKey: getEnvVar('RESEND_API_KEY'),
       webhookSecret: getEnvVar('RESEND_WEBHOOK_SECRET'),
     },

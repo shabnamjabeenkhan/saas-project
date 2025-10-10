@@ -1,0 +1,335 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Setup User Authentication with Clerk",
+        "description": "Implement user account creation and authentication using Clerk to enable secure sign-up and sign-in flows.",
+        "details": "Integrate Clerk SDK into the React app shell with React Router v7. Configure authentication routes and session management. Ensure users land on the onboarding wizard after successful sign-up or login.",
+        "testStrategy": "Verify sign-up, login, logout flows work correctly. Test session persistence and redirection to onboarding. Validate error handling for invalid credentials.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install and Configure Clerk SDK in React App",
+            "description": "Install the Clerk React SDK and configure it with API keys to enable authentication features in the React application.",
+            "dependencies": [],
+            "details": "Run npm or yarn to install @clerk/react and @clerk/react-router packages. Add Clerk Publishable and Secret keys to the .env file from the Clerk Dashboard. Initialize ClerkProvider at the root of the React app to provide authentication context.",
+            "status": "pending",
+            "testStrategy": "Verify ClerkProvider wraps the app and API keys are loaded correctly.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Integrate Clerk with React Router v7",
+            "description": "Set up Clerk authentication flows using React Router v7 framework mode to manage routing and protected routes.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use Clerk's rootAuthLoader() to access authentication state in routes. Define authentication routes such as sign-up, sign-in, and sign-out using Clerk's prebuilt components and hooks. Configure React Router routes to include these authentication pages.",
+            "status": "pending",
+            "testStrategy": "Test navigation to sign-up and sign-in pages and ensure Clerk components render properly.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement Protected Routes for Authenticated Users",
+            "description": "Create protected routes that restrict access to authenticated users only, redirecting unauthenticated users to sign-in.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement a ProtectedRoute component that checks Clerk's authentication state. Wrap sensitive routes (e.g., dashboard) with this component. Use React Router's Navigate component to redirect unauthenticated users to the login page.",
+            "status": "pending",
+            "testStrategy": "Attempt to access protected routes when logged out and verify redirection to login. Confirm access when logged in.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Manage Session and Authentication State",
+            "description": "Handle user session persistence and state management to maintain authentication across page reloads and app usage.",
+            "dependencies": [
+              3
+            ],
+            "details": "Leverage Clerk's session management features to persist user sessions. Use Clerk hooks to monitor authentication state changes and update UI accordingly. Ensure session tokens are securely stored and refreshed as needed.",
+            "status": "pending",
+            "testStrategy": "Test session persistence after page reloads and logout functionality. Validate UI updates on auth state changes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Redirect Users to Onboarding Wizard Post-Authentication",
+            "description": "Ensure users are automatically redirected to the onboarding wizard immediately after successful sign-up or login.",
+            "dependencies": [
+              4
+            ],
+            "details": "Configure React Router to redirect authenticated users to the onboarding wizard route after sign-up or login completion. Use Clerk's authentication event hooks or React Router navigation methods to trigger this redirect.",
+            "status": "pending",
+            "testStrategy": "Complete sign-up and login flows and verify automatic redirection to onboarding wizard. Test edge cases such as direct access to onboarding route without authentication.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-10-10T17:22:01.417Z"
+      },
+      {
+        "id": "2",
+        "title": "Develop Five-Step Onboarding Wizard UI",
+        "description": "Create the onboarding wizard to collect trade type, contact info, service area, offerings, availability, and acquisition goals.",
+        "details": "Use React with React Hook Form and Zod for form state management and validation. Design UI with Tailwind CSS and Lucide icons. Store collected data in Convex database after each step. Show summary for user confirmation at the end.",
+        "testStrategy": "Test form validation rules, step navigation, and data persistence. Confirm data is correctly saved in Convex. Validate UI responsiveness and accessibility.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement Five-Step Wizard UI Structure",
+            "description": "Create the React component structure for a five-step onboarding wizard, with clear navigation between steps and a progress indicator.",
+            "dependencies": [],
+            "details": "Use React to build a multi-step form wizard component. Each step should correspond to a distinct data collection phase: trade type, contact info, service area, offerings, and availability/acquisition goals. Implement step navigation logic (next/previous) and a visual progress bar or stepper using Tailwind CSS and Lucide icons. Ensure the UI is responsive and accessible.",
+            "status": "pending",
+            "testStrategy": "Test step navigation, UI responsiveness, and accessibility. Verify that the progress indicator updates correctly as users move through steps.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Integrate React Hook Form and Zod for Form State and Validation",
+            "description": "Set up form state management and validation for each wizard step using React Hook Form and Zod.",
+            "dependencies": [
+              1
+            ],
+            "details": "For each step, define a form schema using Zod to validate user inputs (e.g., required fields, email format, etc.). Integrate React Hook Form to manage form state, handle submissions, and display validation errors. Ensure seamless transition between steps only when current step data is valid.",
+            "status": "pending",
+            "testStrategy": "Test form validation rules for each step. Confirm that navigation is blocked until required fields are valid. Check that error messages are clear and helpful.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement Data Persistence to Convex Database After Each Step",
+            "description": "Save user-provided data to the Convex database after each step is completed.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "After a user completes a step (and the data is valid), send the collected data to the Convex backend. Use optimistic updates if possible to ensure a smooth user experience. Handle potential errors (e.g., network issues) gracefully and provide feedback to the user.",
+            "status": "pending",
+            "testStrategy": "Verify that data is correctly saved to Convex after each step. Test error handling and user feedback mechanisms. Confirm data integrity across steps.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Build Summary and Confirmation Step",
+            "description": "Display a summary of all collected data at the end of the wizard for user review and confirmation.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "After the final step, show a summary page that displays all entered information in a clear, readable format. Include an edit option for each section. Provide a confirmation button to finalize the onboarding process. Use Tailwind CSS for styling and ensure the summary is accessible.",
+            "status": "pending",
+            "testStrategy": "Test that the summary accurately reflects all user inputs. Verify that edit links navigate back to the correct step. Confirm that the confirmation action triggers the expected backend process.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Test and Refine Onboarding Wizard End-to-End",
+            "description": "Conduct comprehensive testing of the entire onboarding flow, including validation, navigation, data persistence, and summary confirmation.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Perform end-to-end testing of the wizard: fill out each step, validate inputs, navigate forward and backward, persist data, and confirm the summary. Check for UI bugs, accessibility issues, and data consistency. Gather feedback and iterate on the design and implementation as needed.",
+            "status": "pending",
+            "testStrategy": "Test the full user journey, including edge cases (e.g., incomplete steps, network errors). Validate that all data is correctly saved and displayed. Ensure the UI remains responsive and accessible throughout.",
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "title": "Implement Data Storage and Orchestration in Convex",
+        "description": "Set up Convex backend to store onboarding data and orchestrate AI requests for campaign generation.",
+        "details": "Define Convex schemas for user profiles, onboarding responses, and campaign drafts. Implement server-side functions to handle data writes and reads securely. Prepare endpoints for AI campaign generation triggers.",
+        "testStrategy": "Unit test data schema validations and API endpoints. Verify data integrity and security. Simulate AI request orchestration flows.",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2025-10-10T17:22:47.464Z"
+      },
+      {
+        "id": "4",
+        "title": "Integrate Google Ads OAuth Consent Flow",
+        "description": "Enable users to connect their Google Ads account via OAuth with limited scopes for campaign management.",
+        "details": "Implement OAuth flow using Google Ads API client libraries. Handle token exchange and securely store access tokens. Redirect users back to dashboard upon successful connection.",
+        "testStrategy": "Test OAuth consent screen display, token retrieval, and error scenarios. Confirm tokens allow campaign draft creation and reporting access.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "5",
+        "title": "Build AI Campaign Generator Using OpenAI",
+        "description": "Develop AI logic to generate localized ad groups, keywords, ad copy, and budget suggestions based on onboarding data.",
+        "details": "Use Convex to orchestrate calls to OpenAI API with user inputs. Design prompt templates tailored for UK trades and compliance. Parse AI responses into structured campaign data.",
+        "testStrategy": "Validate AI output correctness, relevance, and compliance safety. Test prompt variations and error handling. Confirm integration with Convex orchestration.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Prompt Templates for UK Trades and Compliance",
+            "description": "Create detailed prompt templates tailored specifically for UK trades and compliance requirements to guide the OpenAI API in generating relevant campaign content.",
+            "dependencies": [],
+            "details": "Research UK trade-specific terminology and compliance rules. Draft prompt templates that instruct the AI to generate localized ad groups, keywords, ad copy, and budget suggestions while ensuring compliance. Include examples and edge cases to improve AI response quality.",
+            "status": "pending",
+            "testStrategy": "Validate prompt effectiveness by testing AI outputs for relevance, localization, and compliance adherence.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement Convex Orchestration for OpenAI API Calls",
+            "description": "Develop the backend logic using Convex to manage and orchestrate calls to the OpenAI API based on user onboarding data inputs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set up Convex functions to receive user inputs from onboarding data, format requests using the designed prompt templates, and send them to the OpenAI API. Handle asynchronous responses and errors gracefully. Ensure secure API key management and rate limiting.",
+            "status": "pending",
+            "testStrategy": "Test API call success, error handling, and correct request formatting. Confirm secure handling of API keys and data flow through Convex.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Parse and Structure AI Responses into Campaign Data",
+            "description": "Develop parsing logic to convert raw AI-generated text responses into structured campaign data including ad groups, keywords, ad copy, and budget suggestions.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement parsers that extract relevant fields from AI responses, validate data formats, and transform them into structured objects compatible with downstream systems. Handle inconsistencies or missing data robustly.",
+            "status": "pending",
+            "testStrategy": "Test parsing accuracy with varied AI outputs. Validate structured data integrity and completeness for all campaign components.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Integrate AI Campaign Generator with Onboarding Data Pipeline",
+            "description": "Connect the AI campaign generation logic with the existing onboarding data pipeline to trigger generation automatically upon user data submission.",
+            "dependencies": [
+              3
+            ],
+            "details": "Ensure onboarding data collected (trade type, service area, offerings, etc.) is passed correctly to the Convex orchestration layer. Implement triggers or API endpoints to initiate AI generation after onboarding completion.",
+            "status": "pending",
+            "testStrategy": "Test end-to-end data flow from onboarding completion to AI campaign generation trigger. Verify correct data mapping and timely execution.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Validate AI-Generated Campaigns for Correctness and Compliance",
+            "description": "Implement validation and testing procedures to ensure AI-generated campaigns are accurate, relevant, and comply with UK trade regulations and platform policies.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Develop automated and manual testing strategies to review AI outputs for localization accuracy, compliance safety, and business relevance. Include prompt variation testing and error scenario handling. Integrate feedback loops for continuous improvement.",
+            "status": "pending",
+            "testStrategy": "Perform comprehensive validation of AI outputs against compliance checklists and business rules. Conduct user acceptance testing and error handling verification.",
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": "6",
+        "title": "Create Google Ads Draft Campaign via API",
+        "description": "Push AI-generated campaign drafts to the user's Google Ads account for review and approval.",
+        "details": "Use Google Ads API to create draft campaigns, ad groups, keywords, and ads. Implement update and refresh capabilities. Ensure campaigns comply with Google Ads policies.",
+        "testStrategy": "Test campaign creation, update, and deletion flows. Verify draft status and user visibility in Google Ads account. Handle API errors gracefully.",
+        "priority": "high",
+        "dependencies": [
+          "4",
+          "5"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "7",
+        "title": "Develop Campaign Preview and Approval UI",
+        "description": "Display AI-generated campaign drafts with ad copy, budget suggestions, and compliance notes for user approval.",
+        "details": "Build React components to show campaign details fetched from Convex and Google Ads API. Include UI controls for user to approve, push, or refresh drafts. Highlight compliance notes clearly.",
+        "testStrategy": "Test UI rendering with various campaign data. Validate user actions trigger correct API calls. Check compliance notes accuracy and visibility.",
+        "priority": "medium",
+        "dependencies": [
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "8",
+        "title": "Implement Dashboard with Google Ads Metrics Sync",
+        "description": "Create dashboard to show daily impressions, clicks, calls/forms, cost, and estimated ROI using native Google Ads conversion tracking.",
+        "details": "Schedule daily sync jobs to fetch conversion and performance data from Google Ads API. Store metrics in Convex. Visualize data in dashboard using charts and tables with Tailwind CSS.",
+        "testStrategy": "Verify data sync accuracy and timeliness. Test dashboard UI for correct metric display and responsiveness. Validate conversion tracking integration.",
+        "priority": "medium",
+        "dependencies": [
+          "4",
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": "9",
+        "title": "Integrate Subscription Billing with Polar and Stripe",
+        "description": "Set up subscription plans at £69 and £189 tiers using Polar.sh and Stripe for billing and payment management.",
+        "details": "Configure Polar.sh with Stripe API keys and subscription plans. Implement frontend subscription management UI. Handle billing events and update user access accordingly.",
+        "testStrategy": "Test subscription sign-up, upgrade/downgrade, cancellation flows. Verify Stripe webhook handling and billing accuracy. Confirm access control based on subscription status.",
+        "priority": "medium",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2025-10-10T17:22:21.705Z"
+      },
+      {
+        "id": "10",
+        "title": "Implement Email Notifications with Resend",
+        "description": "Send transactional emails such as onboarding confirmation, campaign approval, and billing receipts using Resend service.",
+        "details": "Integrate Resend API for sending templated emails. Trigger emails on key events like onboarding completion, campaign push, and subscription changes. Manage email templates and personalization.",
+        "testStrategy": "Test email delivery, formatting, and content correctness. Validate triggers fire on appropriate events. Monitor bounce and error rates.",
+        "priority": "low",
+        "dependencies": [
+          "2",
+          "6",
+          "9"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2025-10-10T17:22:33.385Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2025-10-10T17:22:47.464Z",
+      "taskCount": 10,
+      "completedCount": 4,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

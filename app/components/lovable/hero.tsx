@@ -1,4 +1,4 @@
-import { Button } from "~/components/ui/button";
+import { GetStartedButton } from "~/components/ui/get-started-button";
 import { Link } from "react-router";
 
 export const LovableHero = () => {
@@ -19,14 +19,9 @@ export const LovableHero = () => {
             </p>
 
             <div className="mt-12">
-              <Button
-                asChild
-                size="lg"
-                className="mx-auto">
-                <Link to="/sign-up">
-                  Get Started
-                </Link>
-              </Button>
+              <Link to="/sign-up">
+                <GetStartedButton />
+              </Link>
 
               <p className="mt-4 text-sm text-muted-foreground">
                 From £69/month · No contracts · Cancel anytime
