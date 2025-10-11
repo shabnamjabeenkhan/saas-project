@@ -46,6 +46,11 @@ const data = {
       url: "/dashboard/billing",
       icon: IconCreditCard,
     },
+    {
+      title: "📞 Contact",
+      url: "/dashboard/contact",
+      icon: IconMail,
+    },
   ],
 };
 
@@ -62,7 +67,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <Link to="/" prefetch="viewport">
-              <span className="text-base font-semibold">Kaizen Inc.</span>
+              <span className="text-base font-semibold">TradeBoost AI</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

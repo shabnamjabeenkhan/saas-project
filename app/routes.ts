@@ -31,6 +31,7 @@ const routes: RouteConfig = [
     route("dashboard", "routes/dashboard/index.tsx"),
     route("dashboard/settings", "routes/dashboard/settings.tsx"),
     route("dashboard/chat", "routes/dashboard/chat.tsx"),
+    route("dashboard/contact", "routes/dashboard/contact.tsx"),
   ]),
 ];
 

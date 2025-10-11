@@ -141,7 +141,7 @@ export const Navbar = ({
                 className="flex items-center space-x-2 font-semibold text-xl text-muted-foreground"
                 prefetch="viewport"
               >
-                <img src="/kaizen-no-bg.svg" alt="Kaizen Logo" className="w-18 h-18" />
+                <img src="/kaizen-no-bg.svg" alt="TradeBoost AI Logo" className="w-18 h-18" />
               </Link>
 
               <button

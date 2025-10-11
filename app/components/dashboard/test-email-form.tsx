@@ -100,7 +100,7 @@ export function TestEmailForm() {
             <Input
               id="subject"
               type="text"
-              placeholder="Test Email from Kaizen"
+              placeholder="Test Email from TradeBoost AI"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               disabled={isLoading}
