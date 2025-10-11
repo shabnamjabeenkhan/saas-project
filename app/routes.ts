@@ -29,9 +29,17 @@ const routes: RouteConfig = [
   // Dashboard routes (always included)
   layout("routes/dashboard/layout.tsx", [
     route("dashboard", "routes/dashboard/index.tsx"),
+    route("dashboard/campaigns", "routes/dashboard/campaigns.tsx"),
+    route("dashboard/campaign-generator", "routes/dashboard/campaign-generator.tsx"),
+    route("dashboard/google-ads-settings", "routes/dashboard/google-ads-settings.tsx"),
     route("dashboard/settings", "routes/dashboard/settings.tsx"),
     route("dashboard/chat", "routes/dashboard/chat.tsx"),
     route("dashboard/contact", "routes/dashboard/contact.tsx"),
+
+    // Admin routes (protected)
+    route("dashboard/admin", "routes/dashboard/admin/index.tsx"),
+    route("dashboard/admin/customers", "routes/dashboard/admin/customers.tsx"),
+    route("dashboard/admin/analytics", "routes/dashboard/admin/analytics.tsx"),
   ]),
 ];
 
