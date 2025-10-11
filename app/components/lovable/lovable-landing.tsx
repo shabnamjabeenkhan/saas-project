@@ -16,7 +16,7 @@ export const LovableLanding = ({ isSignedIn = false }: LovableLandingProps) => {
     <div className="min-h-screen">
       <LovableHeader isSignedIn={isSignedIn} />
       <main>
-        <LovableHero />
+        <LovableHero isSignedIn={isSignedIn} />
         <LovableProblemSection />
         <div id="how-it-works">
           <LovableHowItWorksSection />
@@ -25,12 +25,12 @@ export const LovableLanding = ({ isSignedIn = false }: LovableLandingProps) => {
           <LovableBenefitsSection />
         </div>
         <div id="pricing">
-          <LovablePricingSection />
+          <LovablePricingSection isSignedIn={isSignedIn} />
         </div>
         <div id="faq">
           <LovableFAQSection />
         </div>
-        <LovableCTASection />
+        <LovableCTASection isSignedIn={isSignedIn} />
       </main>
     </div>
   );

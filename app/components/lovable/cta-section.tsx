@@ -1,7 +1,11 @@
 import { GetStartedButton } from "~/components/ui/get-started-button";
 import { Link } from "react-router";
 
-export const LovableCTASection = () => {
+interface LovableCTASectionProps {
+  isSignedIn?: boolean;
+}
+
+export const LovableCTASection = ({ isSignedIn = false }: LovableCTASectionProps) => {
   return (
     <div className="w-full py-20 lg:py-40">
       <div className="container mx-auto">
@@ -17,7 +21,7 @@ export const LovableCTASection = () => {
             </p>
           </div>
           <div className="flex justify-center">
-            <Link to="/sign-up">
+            <Link to={isSignedIn ? "/dashboard" : "/sign-up"}>
               <GetStartedButton />
             </Link>
           </div>

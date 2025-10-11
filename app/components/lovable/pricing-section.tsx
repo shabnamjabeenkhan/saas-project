@@ -2,7 +2,11 @@ import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Check } from "lucide-react";
 
-export const LovablePricingSection = () => {
+interface LovablePricingSectionProps {
+  isSignedIn?: boolean;
+}
+
+export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSectionProps) => {
   const plans = [
     {
       name: 'Standard',
@@ -97,7 +101,7 @@ export const LovablePricingSection = () => {
                   }`}
                   style={{ backgroundColor: '#ffffff0d' }}
                 >
-                  <Link to="">
+                  <Link to={isSignedIn ? "/dashboard" : "/sign-up"}>
                     Get Started
                   </Link>
                 </Button>

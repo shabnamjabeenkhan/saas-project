@@ -29,6 +29,9 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
             <a href="#pricing" className="text-white hover:text-primary transition-colors">
               Pricing
             </a>
+            <a href="#faq" className="text-white hover:text-primary transition-colors">
+              FAQ
+            </a>
           </nav>
 
           <div className="flex items-center gap-3">

@@ -1,7 +1,11 @@
 import { GetStartedButton } from "~/components/ui/get-started-button";
 import { Link } from "react-router";
 
-export const LovableHero = () => {
+interface LovableHeroProps {
+  isSignedIn?: boolean;
+}
+
+export const LovableHero = ({ isSignedIn = false }: LovableHeroProps) => {
   return (
     <main className="overflow-hidden">
       <section>
@@ -19,7 +23,7 @@ export const LovableHero = () => {
             </p>
 
             <div className="mt-12">
-              <Link to="/sign-up">
+              <Link to={isSignedIn ? "/dashboard" : "/sign-up"}>
                 <GetStartedButton />
               </Link>
 
