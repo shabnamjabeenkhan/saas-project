@@ -59,7 +59,7 @@ export const LovablePricingSection = () => {
             <div
               key={index}
               className="border border-border rounded-3xl flex flex-col justify-between space-y-6 shadow-sm p-6 relative"
-              style={{ backgroundColor: '#18181b' }}
+              style={{ backgroundColor: 'rgb(33, 33, 38)', width: '360px' }}
             >
               {plan.badge && (
                 <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-gradient-to-br from-purple-400 to-primary px-3 py-1 text-xs font-medium text-white shadow-md">
@@ -92,7 +92,7 @@ export const LovablePricingSection = () => {
                   asChild
                   variant={plan.buttonVariant}
                   size="sm"
-                  className={`w-full bg-transparent hover:bg-accent hover:text-accent-foreground border ${
+                  className={`w-full bg-transparent hover:bg-white/20 transition-all duration-300 hover:scale-105 border ${
                     plan.name === 'Premium' ? 'border-white' : 'border-border'
                   }`}
                   style={{ backgroundColor: '#ffffff0d' }}

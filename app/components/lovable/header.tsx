@@ -1,5 +1,4 @@
 import { Button } from "~/components/ui/button";
-import { Wrench } from "lucide-react";
 import { Link } from "react-router";
 
 interface LovableHeaderProps {
@@ -8,29 +7,26 @@ interface LovableHeaderProps {
 
 export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
   return (
-    <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border shadow-card">
+    <header className="sticky top-0 z-50 backdrop-blur-sm shadow-card" style={{ backgroundColor: 'rgba(36, 37, 38, 0.7)' }}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-              <Wrench className="h-6 w-6 text-primary-foreground" />
-            </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
               TradeBoost AI
             </span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-black hover:text-primary transition-colors">
+            <Link to="/" className="text-white hover:text-primary transition-colors">
               Home
             </Link>
-            <a href="#how-it-works" className="text-black hover:text-primary transition-colors">
+            <a href="#how-it-works" className="text-white hover:text-primary transition-colors">
               How It Works
             </a>
-            <a href="#benefits" className="text-black hover:text-primary transition-colors">
+            <a href="#benefits" className="text-white hover:text-primary transition-colors">
               Benefits
             </a>
-            <a href="#pricing" className="text-black hover:text-primary transition-colors">
+            <a href="#pricing" className="text-white hover:text-primary transition-colors">
               Pricing
             </a>
           </nav>
