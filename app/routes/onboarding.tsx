@@ -287,7 +287,7 @@ export default function OnboardingWizard() {
             <div className="flex items-center gap-3">
               {React.createElement(steps[currentStep].icon, { className: "w-6 h-6 text-primary" })}
               <div>
-                <CardTitle>{steps[currentStep].title}</CardTitle>
+                <CardTitle className="text-white">{steps[currentStep].title}</CardTitle>
                 <CardDescription>{steps[currentStep].description}</CardDescription>
               </div>
             </div>
@@ -336,7 +336,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
             <Label htmlFor="plumbing" className="flex items-center gap-2 cursor-pointer flex-1">
               <Wrench className="w-5 h-5 text-blue-500" />
               <div>
-                <div className="font-medium">Plumbing</div>
+                <div className="font-medium text-white">Plumbing</div>
                 <div className="text-sm text-muted-foreground">Boilers, heating, drainage, bathroom installations</div>
               </div>
             </Label>
@@ -346,7 +346,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
             <Label htmlFor="electrical" className="flex items-center gap-2 cursor-pointer flex-1">
               <Zap className="w-5 h-5 text-yellow-500" />
               <div>
-                <div className="font-medium">Electrical</div>
+                <div className="font-medium text-white">Electrical</div>
                 <div className="text-sm text-muted-foreground">Wiring, consumer units, certificates, smart homes</div>
               </div>
             </Label>
@@ -359,7 +359,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
                 <Zap className="w-5 h-5 text-yellow-500" />
               </div>
               <div>
-                <div className="font-medium">Both Plumbing & Electrical</div>
+                <div className="font-medium text-white">Both Plumbing & Electrical</div>
                 <div className="text-sm text-muted-foreground">Multi-trade services</div>
               </div>
             </Label>
@@ -391,7 +391,7 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
     <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="businessName">Business Name *</Label>
+          <Label htmlFor="businessName" className="text-white">Business Name *</Label>
           <Input
             id="businessName"
             {...form.register("businessName")}
@@ -403,7 +403,7 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="contactName">Contact Name *</Label>
+          <Label htmlFor="contactName" className="text-white">Contact Name *</Label>
           <Input
             id="contactName"
             {...form.register("contactName")}
@@ -415,7 +415,7 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email Address *</Label>
+          <Label htmlFor="email" className="text-white">Email Address *</Label>
           <Input
             id="email"
             type="email"
@@ -428,7 +428,7 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number *</Label>
+          <Label htmlFor="phone" className="text-white">Phone Number *</Label>
           <Input
             id="phone"
             {...form.register("phone")}
@@ -442,7 +442,7 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
@@ -508,7 +508,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
@@ -573,7 +573,7 @@ function Step4Form({ onNext, onPrevious, defaultValues, availableServices }: {
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
@@ -682,7 +682,7 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
@@ -713,7 +713,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         {formData.step1 && (
           <div className="border border-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium flex items-center gap-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
                 <Building2 className="w-4 h-4" />
                 Trade Type
               </h3>
@@ -855,7 +855,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
       </div>
 
       <div className="flex justify-between pt-6">
-        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
