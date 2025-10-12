@@ -1,5 +1,4 @@
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 
 export function CampaignManagement() {
@@ -54,87 +53,88 @@ export function CampaignManagement() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              🎯 Campaign Management
-            </CardTitle>
-            <CardDescription>
-              Manage your Google Ads campaigns and monitor performance
-            </CardDescription>
-          </div>
-          <Button>
-            + New Campaign
-          </Button>
+    <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            🎯 Campaign Management
+          </h3>
+          <p className="text-sm text-gray-400 mt-1">
+            Manage your Google Ads campaigns and monitor performance
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="pb-3 font-medium text-sm">Campaign</th>
-                <th className="pb-3 font-medium text-sm">Status</th>
-                <th className="pb-3 font-medium text-sm">Budget</th>
-                <th className="pb-3 font-medium text-sm">Spent</th>
-                <th className="pb-3 font-medium text-sm">Impressions</th>
-                <th className="pb-3 font-medium text-sm">Clicks</th>
-                <th className="pb-3 font-medium text-sm">Leads</th>
-                <th className="pb-3 font-medium text-sm">CTR</th>
-                <th className="pb-3 font-medium text-sm">CPL</th>
-                <th className="pb-3 font-medium text-sm">Actions</th>
+        <Button className="text-white" style={{backgroundColor: 'oklch(0.386 0.063 188.416)'}}>
+          + New Campaign
+        </Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-800 text-left">
+              <th className="pb-3 font-medium text-sm text-gray-400">Campaign</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Status</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Budget</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Spent</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Impressions</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Clicks</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Leads</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">CTR</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">CPL</th>
+              <th className="pb-3 font-medium text-sm text-gray-400">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map((campaign) => (
+              <tr key={campaign.id} className="border-b border-gray-800 hover:bg-gray-800/30">
+                <td className="py-3">
+                  <div className="font-medium text-white">{campaign.name}</div>
+                </td>
+                <td className="py-3">
+                  <Badge
+                    variant={getStatusBadgeVariant(campaign.status)}
+                    className={campaign.status === "Live" ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-gray-500/20 text-gray-400 border-gray-500/30"}
+                  >
+                    {campaign.status}
+                  </Badge>
+                </td>
+                <td className="py-3 text-sm text-gray-400">{campaign.budget}</td>
+                <td className="py-3 text-sm text-white">{campaign.spent}</td>
+                <td className="py-3 text-sm text-white">{campaign.impressions}</td>
+                <td className="py-3 text-sm text-white">{campaign.clicks}</td>
+                <td className="py-3 text-sm font-medium text-white">{campaign.leads}</td>
+                <td className="py-3 text-sm text-white">{campaign.ctr}</td>
+                <td className="py-3 text-sm text-white">{campaign.cpl}</td>
+                <td className="py-3">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`border-gray-600 hover:bg-gray-700 ${
+                        campaign.status === "Live" ? "text-orange-400" : "text-green-400"
+                      }`}
+                    >
+                      {campaign.status === "Live" ? "Pause" : "Resume"}
+                    </Button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((campaign) => (
-                <tr key={campaign.id} className="border-b">
-                  <td className="py-3">
-                    <div className="font-medium">{campaign.name}</div>
-                  </td>
-                  <td className="py-3">
-                    <Badge variant={getStatusBadgeVariant(campaign.status)}>
-                      {campaign.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3 text-sm text-muted-foreground">{campaign.budget}</td>
-                  <td className="py-3 text-sm">{campaign.spent}</td>
-                  <td className="py-3 text-sm">{campaign.impressions}</td>
-                  <td className="py-3 text-sm">{campaign.clicks}</td>
-                  <td className="py-3 text-sm font-medium">{campaign.leads}</td>
-                  <td className="py-3 text-sm">{campaign.ctr}</td>
-                  <td className="py-3 text-sm">{campaign.cpl}</td>
-                  <td className="py-3">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={campaign.status === "Live" ? "text-orange-600" : "text-green-600"}
-                      >
-                        {campaign.status === "Live" ? "Pause" : "Resume"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="mt-6 flex justify-between items-center pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            Total campaigns: {campaigns.length} • Active: {campaigns.filter(c => c.status === "Live").length}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline">Import Campaigns</Button>
-            <Button variant="outline">Export Data</Button>
-          </div>
+      <div className="mt-6 flex justify-between items-center pt-4 border-t border-gray-800">
+        <div className="text-sm text-gray-400">
+          Total campaigns: {campaigns.length} • Active: {campaigns.filter(c => c.status === "Live").length}
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex gap-2">
+          <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">Import Campaigns</Button>
+          <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">Export Data</Button>
+        </div>
+      </div>
+    </div>
   );
 }

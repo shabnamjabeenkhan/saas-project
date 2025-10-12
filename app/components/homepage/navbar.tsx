@@ -117,22 +117,23 @@ export const Navbar = ({
   const dashboardText = "Dashboard";
 
   return (
-    <header>
+    <header style={{ backgroundColor: 'rgba(24, 25, 26, 0.7)' }}>
       <nav
         data-state={menuState && "active"}
         className="fixed z-50 w-full px-2"
       >
         <div
           className={cn(
-            "mx-auto mt-2 max-w-6xl px-6 lg:px-12",
+            "mx-auto mt-2 max-w-6xl px-6 lg:px-12 max-w-4xl rounded-2xl border backdrop-blur-sm lg:px-5 shadow-lg",
             isScrolled &&
-              "bg-background/95 max-w-4xl rounded-2xl border backdrop-blur-sm lg:px-5 shadow-lg transition-[max-width,background-color,backdrop-filter] duration-150"
+              "transition-[max-width,background-color,backdrop-filter] duration-150"
           )}
+          style={{ backgroundColor: '#18191aB3' }}
         >
           {/* Temporary debug indicator */}
-          {/* <div className="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 text-xs z-10">
+          <div className="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 text-xs z-10">
             Debug: {isScrolled ? 'SCROLLED' : 'NOT SCROLLED'}
-          </div> */}
+          </div>
           <div className="relative flex flex-wrap items-center justify-between gap-6 py-3 lg:flex-nowrap lg:gap-0 lg:py-4">
             <div className="flex w-full justify-between lg:w-auto">
               <Link
@@ -213,10 +214,10 @@ export const Navbar = ({
                       asChild
                       variant="ghost"
                       size="sm"
-                      className="bg-blue-500 text-white transition-colors"
+                      className="text-white transition-colors"
                       style={{
                         border: '1px solid rgba(255, 255, 255, 0.7)',
-                        backgroundColor: '#3b82f6'
+                        backgroundColor: 'oklch(0.386 0.063 188.416)'
                       }}
                     >
                       <Link to="/sign-up" prefetch="viewport">

@@ -85,7 +85,11 @@ export function AppSidebar({
   const navigationData = getNavigationData(isAdmin);
 
   return (
-    <Sidebar collapsible="offcanvas" variant={variant}>
+    <Sidebar
+      collapsible="offcanvas"
+      variant={variant}
+      className="[&_[data-slot=sidebar-inner]]:bg-[#1a1a1a] [&_[data-slot=sidebar-inner]]:text-white"
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

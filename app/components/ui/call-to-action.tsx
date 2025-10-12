@@ -30,7 +30,7 @@ function CTA() {
                 Sign up here <MoveRight className="w-4 h-4" />
               </Link>
             </Button>
-            <Button asChild className="gap-4 !bg-blue-600 !text-white !hover:bg-blue-700 !border-blue-600 border">
+            <Button asChild className="gap-4 !text-white border" style={{backgroundColor: 'oklch(0.386 0.063 188.416)', borderColor: 'oklch(0.386 0.063 188.416)'}}>
               <Link to="/sign-in">
                 Login <MoveRight className="w-4 h-4" />
               </Link>
