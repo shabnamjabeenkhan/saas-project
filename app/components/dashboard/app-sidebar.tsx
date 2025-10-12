@@ -16,29 +16,29 @@ import { isAdminEmail } from "~/utils/admin";
 const getNavigationData = (isAdmin: boolean) => ({
   navMain: [
     {
-      title: "🏠 Dashboard",
+      title: "Dashboard",
       url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "📊 Campaigns",
+      title: "Campaigns",
       url: "/dashboard/campaigns",
       icon: IconChartBar,
     },
     {
-      title: "🎯 Campaign Generator",
+      title: "Campaign Generator",
       url: "/dashboard/campaign-generator",
       icon: IconTarget,
     },
     {
-      title: "⚙️ Google Ads Settings",
+      title: "Google Ads Settings",
       url: "/dashboard/google-ads-settings",
       icon: IconBrandGoogle,
     },
   ],
   navSecondary: [
     {
-      title: "📧 Settings",
+      title: "Settings",
       url: "/dashboard/settings",
       icon: IconMail,
     },
@@ -48,24 +48,24 @@ const getNavigationData = (isAdmin: boolean) => ({
     //   icon: IconCreditCard,
     // },
     {
-      title: "📞 Contact",
+      title: "Contact",
       url: "/dashboard/contact",
       icon: IconMail,
     },
   ],
   navAdmin: isAdmin ? [
     {
-      title: "🔐 Admin Panel",
+      title: "Admin Panel",
       url: "/dashboard/admin",
       icon: IconShield,
     },
     {
-      title: "👥 Customers",
+      title: "Customers",
       url: "/dashboard/admin/customers",
       icon: IconUsers,
     },
     {
-      title: "📈 Analytics",
+      title: "Analytics",
       url: "/dashboard/admin/analytics",
       icon: IconAnalyze,
     },

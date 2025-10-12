@@ -41,7 +41,6 @@ export const NavMain = memo(({
                 asChild
               >
                 <Link to={item.url} prefetch="intent">
-                  {item.icon && <item.icon />}
                   <span>{item.title}</span>
                 </Link>
               </SidebarMenuButton>

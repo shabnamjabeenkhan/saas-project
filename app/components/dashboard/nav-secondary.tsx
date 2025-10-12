@@ -38,13 +38,11 @@ export function NavSecondary({
                 {isImplemented ? (
                   <SidebarMenuButton isActive={isActive} asChild>
                     <Link to={item.url} prefetch="intent">
-                      <item.icon />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 ) : (
                   <SidebarMenuButton disabled>
-                    <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 )}
