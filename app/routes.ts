@@ -16,6 +16,9 @@ const routes: RouteConfig = [
   // Authentication routes (always included, conditionally rendered)
   route("sign-in/*", "routes/sign-in.tsx"),
   route("sign-up/*", "routes/sign-up.tsx"),
+
+  // Onboarding route
+  route("onboarding", "routes/onboarding.tsx"),
   
   // Pricing routes (always included, conditionally rendered)
   route("pricing", "routes/pricing.tsx"),

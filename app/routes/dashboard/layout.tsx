@@ -6,6 +6,7 @@ import type { Route } from "./+types/layout";
 import { Outlet } from "react-router";
 import { isFeatureEnabled, isServiceEnabled } from "../../../config";
 import { UserSync } from "~/components/dashboard/user-sync";
+import { OnboardingCheck } from "~/components/dashboard/onboarding-check";
 
 export async function loader(args: Route.LoaderArgs) {
   const authEnabled = isFeatureEnabled("auth") && isServiceEnabled("clerk");
@@ -55,6 +56,7 @@ export default function DashboardLayout() {
       <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         {authEnabled && <UserSync />}
+        <OnboardingCheck />
         <SiteHeader />
         <Outlet />
       </SidebarInset>

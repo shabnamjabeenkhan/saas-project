@@ -48,4 +48,31 @@ export default defineSchema({
     .index("type", ["type"])
     .index("polarEventId", ["polarEventId"])
     .index("by_webhook_id", ["webhookId"]),
+  onboardingData: defineTable({
+    userId: v.string(),
+    tradeType: v.optional(v.string()), // "plumbing" | "electrical" | "both"
+    businessName: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    serviceArea: v.optional(v.object({
+      city: v.string(),
+      postcode: v.optional(v.string()),
+      radius: v.number(), // in miles
+    })),
+    serviceOfferings: v.optional(v.array(v.string())),
+    availability: v.optional(v.object({
+      workingHours: v.string(),
+      emergencyCallouts: v.boolean(),
+      weekendWork: v.boolean(),
+    })),
+    acquisitionGoals: v.optional(v.object({
+      monthlyLeads: v.number(),
+      averageJobValue: v.number(),
+      monthlyBudget: v.number(),
+    })),
+    completedAt: v.optional(v.number()),
+    isComplete: v.optional(v.boolean()),
+  })
+    .index("userId", ["userId"]),
 });
