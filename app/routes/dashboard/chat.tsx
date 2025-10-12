@@ -11,7 +11,7 @@ export default function Chat() {
   // Early return if chat is not enabled
   if (!config.ui.showChat || !isFeatureEnabled('convex')) {
     return (
-      <div className="flex flex-col w-full py-24 justify-center items-center">
+      <div className="flex flex-col w-full py-24 justify-center items-center bg-[#0A0A0A] text-white">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-semibold">Chat Not Available</h2>
           <p className="text-muted-foreground">
@@ -30,7 +30,7 @@ export default function Chat() {
 
   if (!CONVEX_SITE_URL) {
     return (
-      <div className="flex flex-col w-full py-24 justify-center items-center">
+      <div className="flex flex-col w-full py-24 justify-center items-center bg-[#0A0A0A] text-white">
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-semibold">Chat Configuration Error</h2>
           <p className="text-muted-foreground">
@@ -47,7 +47,7 @@ export default function Chat() {
     });
 
   return (
-    <div className="flex flex-col w-full py-24 justify-center items-center">
+    <div className="flex flex-col w-full py-24 justify-center items-center bg-[#0A0A0A] text-white">
       <div className="w-full max-w-xl space-y-4 mb-20">
         {messages.map((message, i) => (
           <div

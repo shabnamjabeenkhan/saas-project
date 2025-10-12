@@ -15,7 +15,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-4 p-4 pt-0 bg-[#0A0A0A] text-white">
       <div className="max-w-2xl mx-auto w-full">
         <Card>
           <CardHeader>
