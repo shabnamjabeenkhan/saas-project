@@ -94,7 +94,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <Link to="/" prefetch="viewport">
-              <span className="text-base font-semibold">TradeBoost AI</span>
+              <span className="text-base font-semibold p-2">TradeBoost AI</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>
