@@ -62,10 +62,10 @@ export function TestEmailForm() {
   return (
     <section className="w-full max-w-screen-md px-2">
       <h2 className="mt-4 mb-5 bg-gradient-to-br from-gray-300 via-blue-300 to-gray-700 bg-clip-text text-center text-4xl font-bold text-transparent md:text-6xl">
-        Test Email Functionality
+        Contact Us
       </h2>
       <p className="text-muted-foreground mb-6 text-center">
-        Send a test email to verify your email configuration is working correctly.
+      Have a question or feedback? We'd love to hear from you..
       </p>
       <div
         className="bg-opacity-10 mx-auto mb-6 grid w-full items-start gap-12 rounded-lg border bg-white px-4 pt-10 pb-6 shadow shadow-slate-800 md:grid-cols-2 lg:px-12"

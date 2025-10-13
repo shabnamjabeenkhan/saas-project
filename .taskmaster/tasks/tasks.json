@@ -82,7 +82,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -148,7 +148,8 @@
             "testStrategy": "Test the full user journey, including edge cases (e.g., incomplete steps, network errors). Validate that all data is correctly saved and displayed. Ensure the UI remains responsive and accessible throughout.",
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2025-10-13T17:45:00.000Z"
       },
       {
         "id": "3",
@@ -324,9 +325,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-10-10T17:22:47.464Z",
+      "lastModified": "2025-10-13T17:45:00.000Z",
       "taskCount": 10,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "master"
       ]
