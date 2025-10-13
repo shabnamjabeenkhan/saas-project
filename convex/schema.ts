@@ -75,4 +75,30 @@ export default defineSchema({
     isComplete: v.optional(v.boolean()),
   })
     .index("userId", ["userId"]),
+  campaigns: defineTable({
+    userId: v.string(),
+    campaignName: v.string(),
+    dailyBudget: v.number(),
+    targetLocation: v.string(),
+    businessInfo: v.object({
+      businessName: v.string(),
+      phone: v.string(),
+      serviceArea: v.string(),
+    }),
+    adGroups: v.array(v.object({
+      name: v.string(),
+      keywords: v.array(v.string()),
+      adCopy: v.object({
+        headlines: v.array(v.string()),
+        descriptions: v.array(v.string()),
+        finalUrl: v.string(),
+      }),
+    })),
+    callExtensions: v.array(v.string()),
+    complianceNotes: v.array(v.string()),
+    status: v.string(), // "draft" | "active" | "paused"
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("userId", ["userId"]),
 });

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as campaigns from "../campaigns.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
@@ -30,6 +31,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  campaigns: typeof campaigns;
   http: typeof http;
   migrations: typeof migrations;
   onboarding: typeof onboarding;

@@ -141,7 +141,7 @@ export const config: AppConfig = {
       webhookSecret: getEnvVar('RESEND_WEBHOOK_SECRET'),
     },
     openai: {
-      enabled: false,
+      enabled: true,
       apiKey: getEnvVar('OPENAI_API_KEY'),
     },
     sentry: {

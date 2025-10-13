@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
@@ -100,7 +100,9 @@ export default function OnboardingWizard() {
 
   const saveOnboardingData = useMutation(api.onboarding.saveOnboardingData);
   const completeOnboarding = useMutation(api.onboarding.completeOnboarding);
+  const generateCampaign = useAction(api.campaigns.generateCampaign);
   const existingData = useQuery(api.onboarding.getOnboardingData);
+
 
   // Load existing data when available
   useEffect(() => {
@@ -244,8 +246,16 @@ export default function OnboardingWizard() {
 
       console.log("Onboarding completed successfully!");
 
-      // Redirect to dashboard after completion
-      navigate("/dashboard");
+      // Generate AI campaign in the background
+      try {
+        await generateCampaign({});
+        console.log("Campaign generated successfully!");
+      } catch (campaignError) {
+        console.warn("Campaign generation failed, but onboarding completed:", campaignError);
+      }
+
+      // Redirect to campaigns page to show the generated campaign
+      navigate("/dashboard/campaigns");
 
     } catch (error) {
       console.error("Failed to complete onboarding:", error);
@@ -474,7 +484,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
               id="city"
               {...form.register("city")}
               placeholder="Birmingham"
-              className="bg-[#0A0A0A] border-gray-700"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
             />
             {form.formState.errors.city && (
               <p className="text-sm text-red-500">{form.formState.errors.city.message}</p>
@@ -486,7 +496,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
               id="postcode"
               {...form.register("postcode")}
               placeholder="B1 1AA"
-              className="bg-[#0A0A0A] border-gray-700"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
             />
           </div>
         </div>
@@ -498,7 +508,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
             min="1"
             max="50"
             {...form.register("radius", { valueAsNumber: true })}
-            className="bg-[#0A0A0A] border-gray-700"
+            className="bg-[#0A0A0A] border-gray-700 text-white"
           />
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>1 mile</span>
@@ -561,7 +571,7 @@ function Step4Form({ onNext, onPrevious, defaultValues, availableServices }: {
                 checked={selectedServices.includes(service)}
                 onCheckedChange={(checked) => handleServiceToggle(service, !!checked)}
               />
-              <Label htmlFor={service} className="text-sm font-normal cursor-pointer">
+              <Label htmlFor={service} className="text-sm font-normal cursor-pointer text-white">
                 {service}
               </Label>
             </div>
@@ -597,14 +607,14 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
     <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
       <div className="space-y-6">
         <div className="space-y-4">
-          <h3 className="font-medium">Availability</h3>
+          <h3 className="font-medium text-white">Availability</h3>
           <div className="space-y-2">
-            <Label htmlFor="workingHours">Working Hours *</Label>
+            <Label htmlFor="workingHours" className="text-white">Working Hours *</Label>
             <Input
               id="workingHours"
               {...form.register("workingHours")}
               placeholder="Mon-Fri 8AM-6PM"
-              className="bg-[#0A0A0A] border-gray-700"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
             />
             {form.formState.errors.workingHours && (
               <p className="text-sm text-red-500">{form.formState.errors.workingHours.message}</p>
@@ -616,7 +626,7 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
               checked={form.watch("emergencyCallouts")}
               onCheckedChange={(checked) => form.setValue("emergencyCallouts", !!checked)}
             />
-            <Label htmlFor="emergencyCallouts" className="text-sm font-normal">
+            <Label htmlFor="emergencyCallouts" className="text-sm font-normal text-white">
               I offer emergency callouts
             </Label>
           </div>
@@ -626,36 +636,36 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
               checked={form.watch("weekendWork")}
               onCheckedChange={(checked) => form.setValue("weekendWork", !!checked)}
             />
-            <Label htmlFor="weekendWork" className="text-sm font-normal">
+            <Label htmlFor="weekendWork" className="text-sm font-normal text-white">
               I work weekends
             </Label>
           </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="font-medium">Business Goals</h3>
+          <h3 className="font-medium text-white">Business Goals</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="monthlyLeads">Monthly Leads Target *</Label>
+              <Label htmlFor="monthlyLeads" className="text-white">Monthly Leads Target *</Label>
               <Input
                 id="monthlyLeads"
                 type="number"
                 {...form.register("monthlyLeads", { valueAsNumber: true })}
                 placeholder="10"
-                className="bg-[#0A0A0A] border-gray-700"
+                className="bg-[#0A0A0A] border-gray-700 text-white"
               />
               {form.formState.errors.monthlyLeads && (
                 <p className="text-sm text-red-500">{form.formState.errors.monthlyLeads.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="averageJobValue">Average Job Value (£) *</Label>
+              <Label htmlFor="averageJobValue" className="text-white">Average Job Value (£) *</Label>
               <Input
                 id="averageJobValue"
                 type="number"
                 {...form.register("averageJobValue", { valueAsNumber: true })}
                 placeholder="250"
-                className="bg-[#0A0A0A] border-gray-700"
+                className="bg-[#0A0A0A] border-gray-700 text-white"
               />
               {form.formState.errors.averageJobValue && (
                 <p className="text-sm text-red-500">{form.formState.errors.averageJobValue.message}</p>
@@ -663,13 +673,13 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="monthlyBudget">Monthly Advertising Budget (£) *</Label>
+            <Label htmlFor="monthlyBudget" className="text-white">Monthly Advertising Budget (£) *</Label>
             <Input
               id="monthlyBudget"
               type="number"
               {...form.register("monthlyBudget", { valueAsNumber: true })}
               placeholder="300"
-              className="bg-[#0A0A0A] border-gray-700"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
             />
             <p className="text-xs text-muted-foreground">
               Minimum £50/month. We recommend 5-10% of your monthly revenue.
@@ -730,7 +740,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                   <Zap className="w-4 h-4 text-yellow-500" />
                 </>
               )}
-              <span className="capitalize">{formData.step1.tradeType}</span>
+              <span className="capitalize text-white">{formData.step1.tradeType}</span>
             </div>
           </div>
         )}
@@ -739,7 +749,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         {formData.step2 && (
           <div className="border border-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium flex items-center gap-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
                 <MapPin className="w-4 h-4" />
                 Contact Information
               </h3>
@@ -750,19 +760,19 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Business:</span>
-                <p>{formData.step2.businessName}</p>
+                <p className="text-white">{formData.step2.businessName}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Contact:</span>
-                <p>{formData.step2.contactName}</p>
+                <p className="text-white">{formData.step2.contactName}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Email:</span>
-                <p>{formData.step2.email}</p>
+                <p className="text-white">{formData.step2.email}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Phone:</span>
-                <p>{formData.step2.phone}</p>
+                <p className="text-white">{formData.step2.phone}</p>
               </div>
             </div>
           </div>
@@ -772,7 +782,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         {formData.step3 && (
           <div className="border border-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium flex items-center gap-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
                 <MapPin className="w-4 h-4" />
                 Service Area
               </h3>
@@ -781,7 +791,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
               </Button>
             </div>
             <div className="text-sm">
-              <p>{formData.step3.city}{formData.step3.postcode && `, ${formData.step3.postcode}`}</p>
+              <p className="text-white">{formData.step3.city}{formData.step3.postcode && `, ${formData.step3.postcode}`}</p>
               <p className="text-muted-foreground">Within {formData.step3.radius} miles</p>
             </div>
           </div>
@@ -791,7 +801,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         {formData.step4 && (
           <div className="border border-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium flex items-center gap-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
                 <Wrench className="w-4 h-4" />
                 Services Offered
               </h3>
@@ -801,7 +811,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {formData.step4.serviceOfferings.map((service) => (
-                <div key={service} className="flex items-center gap-2">
+                <div key={service} className="flex items-center gap-2 text-white">
                   <div className="w-2 h-2 bg-primary rounded-full" />
                   {service}
                 </div>
@@ -814,7 +824,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         {formData.step5 && (
           <div className="border border-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium flex items-center gap-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
                 <Target className="w-4 h-4" />
                 Business Goals & Availability
               </h3>
@@ -825,19 +835,19 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Working Hours:</span>
-                <p>{formData.step5.workingHours}</p>
+                <p className="text-white">{formData.step5.workingHours}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Monthly Lead Target:</span>
-                <p>{formData.step5.monthlyLeads} leads</p>
+                <p className="text-white">{formData.step5.monthlyLeads} leads</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Average Job Value:</span>
-                <p>£{formData.step5.averageJobValue}</p>
+                <p className="text-white">£{formData.step5.averageJobValue}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Monthly Budget:</span>
-                <p>£{formData.step5.monthlyBudget}</p>
+                <p className="text-white">£{formData.step5.monthlyBudget}</p>
               </div>
               <div className="col-span-2">
                 <div className="flex gap-4">
