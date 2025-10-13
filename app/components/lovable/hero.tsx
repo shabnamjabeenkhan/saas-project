@@ -9,17 +9,17 @@ export const LovableHero = ({ isSignedIn = false }: LovableHeroProps) => {
   return (
     <main className="overflow-hidden">
       <section>
-        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-32 lg:pt-48">
+        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-20 lg:pt-32">
           <div className="relative z-10 mx-auto max-w-4xl text-center">
             <h1 className="text-balance text-5xl font-medium md:text-6xl">
-              Stop Wasting £4,000/Month — Let{" "}
+              You've got the skills,{" "}
               <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                AI Get You More Customers
+                we'll bring the leads
               </span>
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
-              AI builds and manages your Google Ads automatically — more leads, less spend, zero marketing experience needed.
+              Stop wasting £4,000/month. Get high-converting Google Ads for plumbers and electricians — no marketing experience needed, leads delivered year-round.
             </p>
 
             <div className="mt-12">

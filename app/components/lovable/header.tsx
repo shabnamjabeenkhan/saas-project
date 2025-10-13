@@ -7,7 +7,7 @@ interface LovableHeaderProps {
 
 export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-sm shadow-card" >
+    <header className="sticky top-0 z-50 backdrop-blur-sm shadow-card">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">

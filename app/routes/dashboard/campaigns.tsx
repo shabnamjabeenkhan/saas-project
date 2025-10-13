@@ -70,7 +70,7 @@ export default function Campaigns() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              📊 Your Campaign Preview
+              Your Campaign Preview
             </h1>
             <p className="text-muted-foreground mt-2">
               AI-generated Google Ads campaign based on your business information
@@ -202,11 +202,11 @@ export default function Campaigns() {
 
                     {/* Ad Preview */}
                     <div>
-                      <h4 className="font-medium text-white mb-2 flex items-center gap-2">
+                      <h4 className="font-medium text-white mb-2 flex items-center justify-center gap-2">
                         <Eye className="w-4 h-4" />
                         Ad Preview
                       </h4>
-                      <div className="bg-[#0A0A0A] border border-gray-700 rounded-lg p-4 max-w-md">
+                      <div className="bg-[#0A0A0A] border border-gray-700 rounded-lg p-4 max-w-md mx-auto">
                         <div className="space-y-2">
                           {/* Headlines */}
                           {adGroup.adCopy.headlines.map((headline, idx) => (
@@ -286,7 +286,7 @@ export default function Campaigns() {
             {/* Next Steps */}
             <Card className="bg-[#1a1a1a] border-gray-800">
               <CardHeader>
-                <CardTitle className="text-white">🚀 Next Steps</CardTitle>
+                <CardTitle className="text-white">Next Steps</CardTitle>
                 <CardDescription>
                   Ready to launch your campaign?
                 </CardDescription>
