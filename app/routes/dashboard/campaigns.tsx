@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAdsAuth } from "~/lib/useGoogleAdsAuth";
+import { CampaignQualityChecker } from "~/components/campaign/CampaignQualityChecker";
+import { validateCampaignCompliance, type CampaignData } from "~/lib/ukComplianceRules";
 import type { Route } from "./+types/campaigns";
 
 export function meta({}: Route.MetaArgs) {
@@ -163,6 +165,37 @@ export default function Campaigns() {
 
         {campaign ? (
           <div className="space-y-6">
+            {/* Campaign Quality Check */}
+            <CampaignQualityChecker
+              complianceChecks={validateCampaignCompliance({
+                tradeType: 'electrical', // TODO: Get from onboarding data
+                serviceArea: {
+                  city: 'London',
+                  postcode: 'SW1A 0AA',
+                  radius: 24,
+                },
+                serviceOfferings: ['Emergency Electrical Services', 'Electrical Installation'],
+                adCopy: {
+                  headlines: campaign.adGroups[0]?.adCopy.headlines || [],
+                  descriptions: campaign.adGroups[0]?.adCopy.descriptions || [],
+                },
+                keywords: campaign.adGroups[0]?.keywords || [],
+              })}
+              optimizationSuggestions={[
+                'Add location-specific keywords for better local targeting',
+                'Include "Gas Safe Registered" in headlines for gas services',
+                'Consider adding negative keywords to reduce irrelevant clicks',
+                'Increase mobile bid adjustments for emergency services',
+              ]}
+              seasonalRecommendations={[
+                'Winter season: Emphasize emergency heating and boiler repair services',
+                'Add "frozen pipes" and "no heating" keywords for winter peak demand',
+                'Consider increasing budget during cold weather forecasts',
+              ]}
+              onApprove={() => toast.success('Campaign approved and ready for launch!')}
+              onRegenerate={handleGenerateCampaign}
+            />
+
             {/* Campaign Overview */}
             <Card className="bg-[#1a1a1a] border-gray-800">
               <CardHeader>

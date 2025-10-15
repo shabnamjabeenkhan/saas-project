@@ -177,7 +177,50 @@ export const getCampaign = query({
   },
 });
 
-// Helper function to build the campaign generation prompt
+// Helper functions for enhanced prompts
+function getSeason(month: number): 'winter' | 'spring' | 'summer' | 'autumn' {
+  if (month >= 2 && month <= 4) return 'spring';
+  if (month >= 5 && month <= 7) return 'summer';
+  if (month >= 8 && month <= 10) return 'autumn';
+  return 'winter';
+}
+
+function getSeasonalFocus(season: 'winter' | 'spring' | 'summer' | 'autumn'): string {
+  const seasonalInsights = {
+    winter: 'Winter peak season - emphasize emergency heating, boiler repairs, frozen pipes, urgent electrical faults',
+    spring: 'Spring renovation season - bathroom upgrades, electrical installations, garden lighting, spring maintenance',
+    summer: 'Summer improvement season - outdoor electrical work, garden features, AC installation, holiday preparations',
+    autumn: 'Autumn preparation season - heating system checks, electrical safety inspections, winter readiness',
+  };
+  return seasonalInsights[season];
+}
+
+function buildComplianceRequirements(tradeType: string): string {
+  let compliance = `
+- All advertising must comply with UK Trading Standards
+- Must not make false or misleading claims
+- Price transparency required (mention upfront quotes, no hidden charges)
+- Public liability insurance should be mentioned`;
+
+  if (tradeType === 'plumbing' || tradeType === 'both') {
+    compliance += `
+- Gas work requires Gas Safe registration (MUST be mentioned)
+- Include Gas Safe registration number in ads for gas/heating services
+- Boiler work must reference Gas Safe credentials`;
+  }
+
+  if (tradeType === 'electrical' || tradeType === 'both') {
+    compliance += `
+- Electrical work must comply with Part P Building Regulations
+- Mention relevant qualifications (City & Guilds, NVQ Level 3, etc.)
+- Notifiable work requires Building Regulations compliance
+- Electrical testing and certification capabilities should be highlighted`;
+  }
+
+  return compliance;
+}
+
+// Helper function to build the enhanced campaign generation prompt
 function buildCampaignPrompt(onboardingData: any): string {
   const tradeType = onboardingData.tradeType;
   const businessName = onboardingData.businessName;
@@ -187,48 +230,83 @@ function buildCampaignPrompt(onboardingData: any): string {
   const availability = onboardingData.availability;
   const acquisitionGoals = onboardingData.acquisitionGoals;
 
+  const city = serviceArea?.city || 'UK';
+  const emergencyText = availability?.emergencyCallouts ? 'Offers 24/7 emergency callouts' : 'Standard hours only';
+  const weekendText = availability?.weekendWork ? 'Works weekends' : 'Weekdays only';
+  const currentMonth = new Date().getMonth();
+  const season = getSeason(currentMonth);
+
   return `
-Create a comprehensive Google Ads campaign for a UK ${tradeType} business with the following details:
+You are an expert Google Ads campaign manager specializing in UK trades marketing. Generate a comprehensive, compliance-focused Google Ads campaign for the following business:
 
-**Business Information:**
-- Business Name: ${businessName}
-- Trade Type: ${tradeType}
-- Phone: ${phone}
-- Service Area: ${serviceArea?.city}, ${serviceArea?.postcode || ''} (${serviceArea?.radius} mile radius)
+**BUSINESS CONTEXT:**
+- Business: ${businessName}
+- Trade Type: ${tradeType === 'both' ? 'Plumbing & Electrical' : tradeType}
+- Services: ${serviceOfferings.join(', ')}
+- Contact: ${phone}
+- Location: ${city}, ${serviceArea?.postcode || ''} (${serviceArea?.radius || 10} mile radius)
 - Working Hours: ${availability?.workingHours || 'Standard hours'}
-- Emergency Services: ${availability?.emergencyCallouts ? 'Yes' : 'No'}
-- Weekend Work: ${availability?.weekendWork ? 'Yes' : 'No'}
+- Emergency Service: ${emergencyText}
+- Weekend Work: ${weekendText}
+- Target Leads: ${acquisitionGoals?.monthlyLeads || 10}/month
+- Average Job Value: £${acquisitionGoals?.averageJobValue || 250}
+- Monthly Budget: £${acquisitionGoals?.monthlyBudget || 300}
 
-**Services Offered:**
-${serviceOfferings.join(', ')}
+**UK COMPLIANCE REQUIREMENTS:**
+${buildComplianceRequirements(tradeType)}
 
-**Business Goals:**
-- Monthly Lead Target: ${acquisitionGoals?.monthlyLeads || 'Not specified'}
-- Average Job Value: £${acquisitionGoals?.averageJobValue || 'Not specified'}
-- Monthly Budget: £${acquisitionGoals?.monthlyBudget || 'Not specified'}
+**SEASONAL CONTEXT:**
+- Current Season: ${season}
+- Seasonal Focus: ${getSeasonalFocus(season)}
 
-**Requirements:**
-1. Create a campaign with 3-4 ad groups targeting different service types
-2. Include 5-8 relevant keywords per ad group (mix of exact, phrase, and broad match)
-3. Generate 3 headlines and 2 descriptions per ad group
-4. Include call extensions with the business phone number
-5. Suggest appropriate daily budget based on monthly budget
-6. Ensure all content is UK-compliant and uses British terminology
-7. Focus on local SEO with location-based keywords
-8. Include urgency for emergency services if applicable
-9. Add compliance notes for any regulatory considerations
+**CAMPAIGN REQUIREMENTS:**
+1. Create 3-4 targeted ad groups with distinct themes (emergency, installation, maintenance, etc.)
+2. Generate 8-10 high-intent keywords per ad group including local variations for ${city}
+3. Write 3 compelling headlines (max 30 chars) and 2 descriptions (max 90 chars) per ad group
+4. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
+5. Include location-specific keywords: "${city} {service}", "{service} near me", "local {service}"
+6. Add emergency/urgency keywords if applicable: "24/7", "emergency", "urgent"
+7. Include call extensions with phone number
+8. Add compliance notes for UK regulatory requirements
+9. Suggest optimization tips and seasonal recommendations
+10. Calculate daily budget: £${Math.round((acquisitionGoals?.monthlyBudget || 300) / 30)}
 
-**Output Format:**
-Return as a JSON structure with:
-- campaignName
-- dailyBudget (number)
-- targetLocation
-- businessInfo (name, phone, serviceArea)
-- adGroups (array with name, keywords, adCopy with headlines/descriptions/finalUrl)
-- callExtensions (array of phone numbers)
-- complianceNotes (array of important compliance points)
+**CRITICAL COMPLIANCE POINTS:**
+- Gas work MUST mention "Gas Safe Registered" if offering gas/heating services
+- Electrical work MUST reference "Part P compliant" for notifiable work
+- No misleading claims ("cheapest", "guaranteed", etc.)
+- Price transparency required ("free quotes", "no hidden charges")
+- Professional credentials must be highlighted
 
-Make it professional, compelling, and designed to generate quality leads for a local ${tradeType} business in the UK.
+**OUTPUT FORMAT:**
+Return ONLY a valid JSON object with this exact structure:
+{
+  "campaignName": "string",
+  "dailyBudget": number,
+  "targetLocation": "string",
+  "businessInfo": {
+    "businessName": "string",
+    "phone": "string",
+    "serviceArea": "string"
+  },
+  "adGroups": [
+    {
+      "name": "string",
+      "keywords": ["array of strings"],
+      "adCopy": {
+        "headlines": ["3 headlines"],
+        "descriptions": ["2 descriptions"],
+        "finalUrl": "string"
+      }
+    }
+  ],
+  "callExtensions": ["array"],
+  "complianceNotes": ["array"],
+  "optimizationSuggestions": ["array"],
+  "seasonalRecommendations": ["array"]
+}
+
+Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers.
 `;
 }
 
