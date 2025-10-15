@@ -15,15 +15,26 @@ import {
   Download,
   Copy,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Link
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGoogleAdsAuth } from "~/lib/useGoogleAdsAuth";
+import type { Route } from "./+types/campaigns";
+
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: "Campaigns - TradeBoost AI" },
+    { name: "description", content: "Manage your AI-generated Google Ads campaigns" },
+  ];
+}
 
 export default function Campaigns() {
   const [isGenerating, setIsGenerating] = useState(false);
   const campaign = useQuery(api.campaigns.getCampaign, {});
   const generateCampaign = useAction(api.campaigns.generateCampaign);
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
+  const { connectGoogleAds, disconnectGoogleAds, isLoading: isConnecting, isConnected: isGoogleAdsConnected } = useGoogleAdsAuth();
 
   const handleGenerateCampaign = async () => {
     if (!onboardingData?.isComplete) {
@@ -80,15 +91,42 @@ export default function Campaigns() {
           <div className="flex gap-2">
             {campaign && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCampaign}
-                  className="text-white border-gray-700 hover:bg-gray-800"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
+                {isGoogleAdsConnected ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportCampaign}
+                      className="text-white border-gray-700 hover:bg-gray-800"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export to Google Ads
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={disconnectGoogleAds}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                    >
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={connectGoogleAds}
+                    disabled={isConnecting}
+                    className="text-white border-gray-700 hover:bg-gray-800"
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Link className="w-4 h-4 mr-2" />
+                    )}
+                    {isConnecting ? "Connecting..." : "Connect Google Ads"}
+                  </Button>
+                )}
               </>
             )}
 
