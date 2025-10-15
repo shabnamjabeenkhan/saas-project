@@ -1,4 +1,4 @@
-import { IconDashboard, IconSettings, IconChartBar, IconTarget, IconBrandGoogle, IconMail, IconCreditCard, IconUsers, IconAnalyze, IconShield } from "@tabler/icons-react";
+import { IconDashboard, IconSettings, IconChartBar, IconTarget, IconBrandGoogle, IconMail, IconCreditCard, IconUsers, IconAnalyze, IconShield, IconChartLine } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -24,6 +24,11 @@ const getNavigationData = (isAdmin: boolean) => ({
       title: "Campaigns",
       url: "/dashboard/campaigns",
       icon: IconChartBar,
+    },
+    {
+      title: "Performance",
+      url: "/dashboard/performance",
+      icon: IconChartLine,
     },
     {
       title: "Campaign Generator",
