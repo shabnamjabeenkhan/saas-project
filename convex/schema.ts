@@ -101,4 +101,15 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
   })
     .index("userId", ["userId"]),
+  googleAdsTokens: defineTable({
+    userId: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.number(),
+    scope: v.string(),
+    createdAt: v.number(),
+    isActive: v.boolean(),
+    disconnectedAt: v.optional(v.number()),
+  })
+    .index("userId", ["userId"]),
 });

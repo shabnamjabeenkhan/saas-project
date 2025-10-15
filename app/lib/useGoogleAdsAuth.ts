@@ -1,25 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const DEVELOPMENT_MODE = import.meta.env.VITE_DEVELOPMENT_MODE === "true";
 
 export function useGoogleAdsAuth() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [mockIsConnected, setMockIsConnected] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mock_google_ads_connected") === "true";
+  });
 
-  // Check connection status on mount
-  useEffect(() => {
-    if (DEVELOPMENT_MODE) {
-      // In development, check localStorage for mock connection
-      const mockConnection = localStorage.getItem("mock_google_ads_connected");
-      setIsConnected(mockConnection === "true");
-    } else {
-      // In production, check for real OAuth tokens
-      const realTokens = localStorage.getItem("google_ads_tokens");
-      setIsConnected(!!realTokens);
-    }
-  }, []);
+  // Get connection status from Convex
+  const isConnectedQuery = useQuery(api.googleAds.isConnected);
+  const disconnectMutation = useMutation(api.googleAds.disconnect);
+
+  // Use Convex data for connection status, with fallback to localStorage in dev mode
+  const isConnected = DEVELOPMENT_MODE
+    ? mockIsConnected
+    : (isConnectedQuery ?? false);
 
   const connectGoogleAds = () => {
     // Check if we're on the client side
@@ -34,7 +35,7 @@ export function useGoogleAdsAuth() {
       // Simulate API delay
       setTimeout(() => {
         localStorage.setItem("mock_google_ads_connected", "true");
-        setIsConnected(true);
+        setMockIsConnected(true);
         setIsLoading(false);
         toast.success("✅ Google Ads connected (Development Mode)");
       }, 1500);
@@ -72,15 +73,21 @@ export function useGoogleAdsAuth() {
     window.location.href = authUrl.toString();
   };
 
-  const disconnectGoogleAds = () => {
+  const disconnectGoogleAds = async () => {
     if (DEVELOPMENT_MODE) {
       localStorage.removeItem("mock_google_ads_connected");
+      setMockIsConnected(false);
       console.log("🔧 Development mode: Disconnected Google Ads");
+      toast.success("Google Ads disconnected (Development Mode)");
     } else {
-      localStorage.removeItem("google_ads_tokens");
+      try {
+        await disconnectMutation();
+        toast.success("Google Ads disconnected");
+      } catch (error) {
+        toast.error("Failed to disconnect Google Ads");
+        console.error("Disconnect error:", error);
+      }
     }
-    setIsConnected(false);
-    toast.success("Google Ads disconnected");
   };
 
   return {
