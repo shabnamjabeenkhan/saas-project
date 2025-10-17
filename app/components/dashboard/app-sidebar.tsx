@@ -35,6 +35,12 @@ const getNavigationData = (isAdmin: boolean) => ({
       url: "/dashboard/campaign-generator",
       icon: IconTarget,
     },
+    // Temporarily hidden until route discovery issue is resolved
+    // {
+    //   title: "Campaign Preview Demo",
+    //   url: "/dashboard/campaigns",
+    //   icon: IconAnalyze,
+    // },
     {
       title: "Google Ads Settings",
       url: "/dashboard/google-ads-settings",

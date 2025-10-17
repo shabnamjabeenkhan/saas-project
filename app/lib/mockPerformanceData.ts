@@ -101,7 +101,54 @@ export function generateMockCampaignData(): CampaignPerformance[] {
   ];
 }
 
-// Calculate summary metrics
+// Enhanced ROI tracking interfaces
+export interface JobValueMetrics {
+  averageJobValue: number;
+  customerLifetimeValue: number;
+  repeatCustomerRate: number;
+  revenueByServiceType: Record<string, number>;
+  seasonalMultiplier: number;
+}
+
+export interface AdvancedROIMetrics {
+  totalRevenue: number;
+  grossProfit: number;
+  netProfit: number;
+  roas: number; // Return on Ad Spend
+  roi: number; // Return on Investment
+  paybackPeriod: number; // Days to break even
+  customerAcquisitionCost: number;
+  lifetimeValueToCAC: number;
+  profitMargin: number;
+  revenuePerClick: number;
+  attribution: {
+    direct: number;
+    assisted: number;
+    lastClick: number;
+  };
+}
+
+// Job value data for UK trades
+export function getJobValueMetrics(): JobValueMetrics {
+  const currentMonth = new Date().getMonth();
+  const isWinterSeason = currentMonth >= 10 || currentMonth <= 2; // Nov-Feb
+
+  return {
+    averageJobValue: 245, // £245 average for electrical/plumbing
+    customerLifetimeValue: 890, // Repeat business + referrals
+    repeatCustomerRate: 0.28, // 28% return rate
+    revenueByServiceType: {
+      'Emergency Electrical': 180,
+      'Boiler Installation': 1200,
+      'Electrical Rewiring': 2500,
+      'Plumbing Repair': 120,
+      'Bathroom Installation': 3500
+    },
+    seasonalMultiplier: isWinterSeason ? 1.35 : 1.0 // Winter demand boost
+  };
+}
+
+// Calculate summary metrics with enhanced ROI
 export function calculateSummaryMetrics(dailyData: PerformanceMetrics[]) {
   const totals = dailyData.reduce(
     (acc, day) => ({
@@ -125,6 +172,56 @@ export function calculateSummaryMetrics(dailyData: PerformanceMetrics[]) {
     averageCpc: parseFloat(averageCpc.toFixed(2)),
     conversionRate: parseFloat(conversionRate.toFixed(2)),
     costPerConversion: parseFloat(costPerConversion.toFixed(2)),
+  };
+}
+
+// Advanced ROI calculations
+export function calculateAdvancedROI(
+  performanceData: PerformanceMetrics[],
+  jobMetrics: JobValueMetrics
+): AdvancedROIMetrics {
+  const summary = calculateSummaryMetrics(performanceData);
+  const { averageJobValue, customerLifetimeValue, repeatCustomerRate, seasonalMultiplier } = jobMetrics;
+
+  // Apply seasonal adjustment to job values
+  const adjustedJobValue = averageJobValue * seasonalMultiplier;
+  const adjustedCLV = customerLifetimeValue * seasonalMultiplier;
+
+  // Revenue calculations with attribution modeling
+  const directRevenue = summary.conversions * adjustedJobValue;
+  const assistedRevenue = summary.conversions * 0.3 * adjustedJobValue; // 30% assisted conversions
+  const repeatRevenue = summary.conversions * repeatCustomerRate * adjustedCLV;
+  const totalRevenue = directRevenue + assistedRevenue + repeatRevenue;
+
+  // Profit calculations (typical trade business margins)
+  const grossProfit = totalRevenue * 0.65; // 65% gross margin
+  const netProfit = grossProfit - summary.cost - (totalRevenue * 0.15); // Operating costs
+
+  // Key metrics
+  const roas = summary.cost > 0 ? totalRevenue / summary.cost : 0;
+  const roi = summary.cost > 0 ? ((netProfit - summary.cost) / summary.cost) * 100 : 0;
+  const customerAcquisitionCost = summary.conversions > 0 ? summary.cost / summary.conversions : 0;
+  const lifetimeValueToCAC = customerAcquisitionCost > 0 ? adjustedCLV / customerAcquisitionCost : 0;
+  const paybackPeriod = customerAcquisitionCost > 0 ? (customerAcquisitionCost / (adjustedJobValue * 0.65)) * 30 : 0; // Days
+  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+  const revenuePerClick = summary.clicks > 0 ? totalRevenue / summary.clicks : 0;
+
+  return {
+    totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+    grossProfit: parseFloat(grossProfit.toFixed(2)),
+    netProfit: parseFloat(netProfit.toFixed(2)),
+    roas: parseFloat(roas.toFixed(2)),
+    roi: parseFloat(roi.toFixed(1)),
+    paybackPeriod: parseFloat(paybackPeriod.toFixed(1)),
+    customerAcquisitionCost: parseFloat(customerAcquisitionCost.toFixed(2)),
+    lifetimeValueToCAC: parseFloat(lifetimeValueToCAC.toFixed(1)),
+    profitMargin: parseFloat(profitMargin.toFixed(1)),
+    revenuePerClick: parseFloat(revenuePerClick.toFixed(2)),
+    attribution: {
+      direct: parseFloat((directRevenue / totalRevenue * 100).toFixed(1)),
+      assisted: parseFloat((assistedRevenue / totalRevenue * 100).toFixed(1)),
+      lastClick: parseFloat((repeatRevenue / totalRevenue * 100).toFixed(1))
+    }
   };
 }
 
