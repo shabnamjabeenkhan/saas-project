@@ -1,5 +1,7 @@
 // Mock campaign data for testing various scenarios without Google Ads API
 export interface MockCampaignData {
+  id: string;
+  name: string;
   campaignName: string;
   dailyBudget: number;
   targetLocation: string;
@@ -34,6 +36,8 @@ export interface MockCampaignData {
 export const mockCampaignScenarios: Record<string, MockCampaignData> = {
   // Perfect compliance scenario
   perfectCampaign: {
+    id: "campaign_001",
+    name: "London Emergency Plumbing - 24/7 Service",
     campaignName: "London Emergency Plumbing - 24/7 Service",
     dailyBudget: 35,
     targetLocation: "London, UK",
@@ -122,6 +126,8 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
 
   // Compliance issues scenario
   problematicCampaign: {
+    id: "campaign_002",
+    name: "Problematic Campaign",
     campaignName: "Cheapest Plumber - Guaranteed Best Prices!",
     dailyBudget: 50,
     targetLocation: "Birmingham, UK",
@@ -172,6 +178,8 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
 
   // Electrical contractor scenario
   electricalCampaign: {
+    id: "campaign_003",
+    name: "Electrical Services Campaign",
     campaignName: "Manchester Electrical Services - Part P Compliant",
     dailyBudget: 28,
     targetLocation: "Manchester, UK",
@@ -255,6 +263,8 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
 
   // Multi-trade scenario
   combinedTradesCampaign: {
+    id: "campaign_004",
+    name: "Combined Trades Campaign",
     campaignName: "Leeds Plumbing & Electrical - All Trades",
     dailyBudget: 45,
     targetLocation: "Leeds, UK",

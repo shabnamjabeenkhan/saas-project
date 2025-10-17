@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -21,7 +21,10 @@ import {
 import { toast } from "sonner";
 import { useGoogleAdsAuth } from "~/lib/useGoogleAdsAuth";
 import { CampaignQualityChecker } from "~/components/campaign/CampaignQualityChecker";
+import { CampaignPreviewCard } from "~/components/campaign/CampaignPreviewCard";
 import { validateCampaignCompliance, type CampaignData } from "~/lib/ukComplianceRules";
+import { mockCampaignScenarios } from "~/lib/mockCampaignData";
+import { campaignApprovalWorkflow, type CampaignWithApproval } from "~/lib/campaignApprovalWorkflow";
 import type { Route } from "./+types/campaigns";
 
 export function meta({}: Route.MetaArgs) {
@@ -33,10 +36,96 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Campaigns() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [campaigns, setCampaigns] = useState<CampaignWithApproval[]>([]);
+  const [isProcessingApproval, setIsProcessingApproval] = useState(false);
+
   const campaign = useQuery(api.campaigns.getCampaign, {});
   const generateCampaign = useAction(api.campaigns.generateCampaign);
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
   const { connectGoogleAds, disconnectGoogleAds, isLoading: isConnecting, isConnected: isGoogleAdsConnected } = useGoogleAdsAuth();
+
+  // Initialize campaigns with mock data for demo
+  useEffect(() => {
+    if (campaigns.length === 0) {
+      const mockCampaigns = Object.values(mockCampaignScenarios).map(campaign =>
+        campaignApprovalWorkflow.initializeCampaign(campaign)
+      );
+      setCampaigns(mockCampaigns);
+    }
+  }, []);
+
+  // Campaign approval handlers
+  const handleApproveCampaign = async (campaignId: string) => {
+    setIsProcessingApproval(true);
+    try {
+      const campaignIndex = campaigns.findIndex(c => c.id === campaignId);
+      if (campaignIndex === -1) return;
+
+      const updatedCampaign = campaignApprovalWorkflow.approveCampaign(
+        campaigns[campaignIndex],
+        'current-user', // In real app, get from auth
+        { pushToGoogleAds: true, notes: 'Quick approval' }
+      );
+
+      const newCampaigns = [...campaigns];
+      newCampaigns[campaignIndex] = updatedCampaign;
+      setCampaigns(newCampaigns);
+
+      toast.success("Campaign approved and pushed to Google Ads!");
+    } catch (error) {
+      toast.error("Failed to approve campaign");
+    } finally {
+      setIsProcessingApproval(false);
+    }
+  };
+
+  const handleRejectCampaign = async (campaignId: string, reason: string) => {
+    setIsProcessingApproval(true);
+    try {
+      const campaignIndex = campaigns.findIndex(c => c.id === campaignId);
+      if (campaignIndex === -1) return;
+
+      const updatedCampaign = campaignApprovalWorkflow.rejectCampaign(
+        campaigns[campaignIndex],
+        'current-user',
+        reason
+      );
+
+      const newCampaigns = [...campaigns];
+      newCampaigns[campaignIndex] = updatedCampaign;
+      setCampaigns(newCampaigns);
+
+      toast.success("Campaign rejected");
+    } catch (error) {
+      toast.error("Failed to reject campaign");
+    } finally {
+      setIsProcessingApproval(false);
+    }
+  };
+
+  const handleRequestChanges = async (campaignId: string, changes: string) => {
+    setIsProcessingApproval(true);
+    try {
+      const campaignIndex = campaigns.findIndex(c => c.id === campaignId);
+      if (campaignIndex === -1) return;
+
+      const updatedCampaign = campaignApprovalWorkflow.requestChanges(
+        campaigns[campaignIndex],
+        'current-user',
+        changes
+      );
+
+      const newCampaigns = [...campaigns];
+      newCampaigns[campaignIndex] = updatedCampaign;
+      setCampaigns(newCampaigns);
+
+      toast.success("Change request sent");
+    } catch (error) {
+      toast.error("Failed to request changes");
+    } finally {
+      setIsProcessingApproval(false);
+    }
+  };
 
   const handleGenerateCampaign = async () => {
     if (!onboardingData?.isComplete) {
