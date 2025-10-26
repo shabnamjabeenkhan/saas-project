@@ -36,13 +36,22 @@ export function NavSecondary({
             return (
               <SidebarMenuItem key={item.title}>
                 {isImplemented ? (
-                  <SidebarMenuButton isActive={isActive} asChild>
+                  <SidebarMenuButton
+                    isActive={isActive}
+                    asChild
+                    className={`hover:bg-white/5 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white transition-all duration-200 ${
+                      isActive ? 'bg-white/10 text-white font-medium' : 'text-gray-300'
+                    }`}
+                  >
                     <Link to={item.url} prefetch="intent">
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 ) : (
-                  <SidebarMenuButton disabled>
+                  <SidebarMenuButton
+                    disabled
+                    className="text-gray-500 opacity-50"
+                  >
                     <span>{item.title}</span>
                   </SidebarMenuButton>
                 )}
