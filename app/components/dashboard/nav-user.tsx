@@ -154,7 +154,7 @@ export function NavUser({ user }: any) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/" })}>
+            <DropdownMenuItem onClick={() => signOut({ redirectUrl: window.location.origin })}>
               <IconLogout />
               Sign Out
             </DropdownMenuItem>
