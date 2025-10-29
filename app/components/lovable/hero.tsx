@@ -12,7 +12,7 @@ export const LovableHero = ({ isSignedIn = false }: LovableHeroProps) => {
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-20 sm:px-6 sm:pb-24 sm:pt-24 lg:pb-28 lg:pt-28 xl:pb-36 xl:pt-44">
           {/* Hero Image - Tradesman Background */}
           <div className="absolute inset-0 -z-10 overflow-hidden">
-            <div className="absolute right-0 top-0 h-full w-3/4 opacity-25 sm:w-2/3 sm:opacity-30 lg:w-1/2 lg:opacity-35">
+            <div className="absolute right-0 top-0 h-full w-3/4 opacity-35 sm:w-2/3 sm:opacity-40 lg:w-1/2 lg:opacity-45">
               <img
                 src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80"
                 alt="Professional tradesman with tools"
