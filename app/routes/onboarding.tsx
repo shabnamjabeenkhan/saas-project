@@ -107,10 +107,15 @@ export default function OnboardingWizard() {
   // Load existing data when available
   useEffect(() => {
     if (existingData) {
+      console.log("Existing onboarding data:", existingData);
+
       // If onboarding is already complete, redirect to dashboard
       if (existingData.isComplete) {
+        console.log("Onboarding is complete, redirecting to dashboard...");
         navigate("/dashboard", { replace: true });
         return;
+      } else {
+        console.log("Onboarding not complete, staying on onboarding page");
       }
 
       const mappedData: OnboardingData = {};
@@ -238,13 +243,15 @@ export default function OnboardingWizard() {
 
   const handleFinalSubmission = async (allData: OnboardingData) => {
     try {
+      console.log("Starting final submission...");
+
       // Save final data
       await saveStepData(allData);
+      console.log("Step data saved successfully");
 
       // Mark as complete
       await completeOnboarding();
-
-      console.log("Onboarding completed successfully!");
+      console.log("Onboarding marked as complete successfully!");
 
       // Generate AI campaign in the background
       try {
@@ -254,11 +261,15 @@ export default function OnboardingWizard() {
         console.warn("Campaign generation failed, but onboarding completed:", campaignError);
       }
 
+      // Add a small delay to ensure data is persisted before redirect
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Redirect to campaigns page to show the generated campaign
-      navigate("/dashboard/campaigns");
+      navigate("/dashboard/campaigns", { replace: true });
 
     } catch (error) {
       console.error("Failed to complete onboarding:", error);
+      alert("Failed to complete onboarding: " + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -343,7 +354,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
         >
           <div className="flex items-center space-x-3 p-4 border border-gray-700 rounded-lg hover:border-primary">
             <RadioGroupItem value="plumbing" id="plumbing" />
-            <Label htmlFor="plumbing" className="flex items-center gap-2 cursor-pointer flex-1">
+            <Label htmlFor="plumbing" className="flex items-center gap-2 cursor-pointer flex-1 text-white">
               <Wrench className="w-5 h-5 text-blue-500" />
               <div>
                 <div className="font-medium text-white">Plumbing</div>
@@ -353,7 +364,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
           </div>
           <div className="flex items-center space-x-3 p-4 border border-gray-700 rounded-lg hover:border-primary">
             <RadioGroupItem value="electrical" id="electrical" />
-            <Label htmlFor="electrical" className="flex items-center gap-2 cursor-pointer flex-1">
+            <Label htmlFor="electrical" className="flex items-center gap-2 cursor-pointer flex-1 text-white">
               <Zap className="w-5 h-5 text-yellow-500" />
               <div>
                 <div className="font-medium text-white">Electrical</div>
@@ -363,7 +374,7 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
           </div>
           <div className="flex items-center space-x-3 p-4 border border-gray-700 rounded-lg hover:border-primary">
             <RadioGroupItem value="both" id="both" />
-            <Label htmlFor="both" className="flex items-center gap-2 cursor-pointer flex-1">
+            <Label htmlFor="both" className="flex items-center gap-2 cursor-pointer flex-1 text-white">
               <div className="flex gap-1">
                 <Wrench className="w-5 h-5 text-blue-500" />
                 <Zap className="w-5 h-5 text-yellow-500" />
@@ -479,7 +490,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="city">City/Town *</Label>
+            <Label htmlFor="city" className="text-white">City/Town *</Label>
             <Input
               id="city"
               {...form.register("city")}
@@ -491,7 +502,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="postcode">Postcode (Optional)</Label>
+            <Label htmlFor="postcode" className="text-white">Postcode (Optional)</Label>
             <Input
               id="postcode"
               {...form.register("postcode")}
@@ -501,7 +512,7 @@ function Step3Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step3
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="radius">Service Radius: {radiusValue || 10} miles</Label>
+          <Label htmlFor="radius" className="text-white">Service Radius: {radiusValue || 10} miles</Label>
           <Input
             id="radius"
             type="range"

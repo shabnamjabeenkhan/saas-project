@@ -46,7 +46,7 @@ export const LovableFAQSection = () => {
   ];
 
   return (
-    <section id="faq" className="py-16 md:py-24">
+    <section id="faq" className="py-16 md:py-24 bg-neutral-900">
       <div className="mx-auto max-w-5xl px-4 md:px-6">
         <div className="mx-auto max-w-xl text-center">
           <h2 className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl">Frequently Asked Questions</h2>
@@ -58,7 +58,6 @@ export const LovableFAQSection = () => {
             type="single"
             collapsible
             className="w-full rounded-2xl border-[0.25px] border-border px-8 py-3 shadow-sm"
-            style={{ backgroundColor: 'rgb(33, 33, 38)' }}
           >
             {faqItems.map((item) => (
               <AccordionItem

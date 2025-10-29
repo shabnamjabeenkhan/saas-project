@@ -59,13 +59,29 @@ export function CampaignPreviewCard({
     }
   };
 
+  const getComplianceLevel = (campaign: MockCampaignData): 'high' | 'medium' | 'low' => {
+    // Determine compliance level based on campaign status and quality score
+    if (campaign.status === 'rejected' || (campaign.qualityScore && campaign.qualityScore < 50)) {
+      return 'low';
+    }
+    if (campaign.status === 'approved' && (campaign.qualityScore && campaign.qualityScore > 80)) {
+      return 'high';
+    }
+    return 'medium';
+  };
+
+  const getComplianceIssues = (campaign: MockCampaignData): string[] => {
+    // Extract issues from compliance notes that start with warning emoji
+    return campaign.complianceNotes.filter(note => note.startsWith('⚠️'));
+  };
+
   const handleCopyAdText = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Ad text copied to clipboard");
   };
 
   const currentAdGroup = campaign.adGroups[selectedAdGroup];
-  const budgetPerDay = Math.round(campaign.budget.total / 30);
+  const budgetPerDay = campaign.dailyBudget || 0;
 
   return (
     <>
@@ -82,11 +98,11 @@ export function CampaignPreviewCard({
               <CardDescription className="flex items-center gap-4">
                 <span className="flex items-center gap-1">
                   <Target className="w-4 h-4" />
-                  {campaign.target}
+                  {campaign.businessInfo.businessName}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
-                  {campaign.location}
+                  {campaign.targetLocation}
                 </span>
               </CardDescription>
             </div>
@@ -133,7 +149,7 @@ export function CampaignPreviewCard({
             </div>
             <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
               <div className="text-lg font-semibold text-white">
-                {campaign.predictions.estimatedClicks}
+                {campaign.estimatedPerformance?.expectedClicks || 0}
               </div>
               <p className="text-sm text-gray-400">Est. Daily Clicks</p>
             </div>
@@ -142,14 +158,14 @@ export function CampaignPreviewCard({
           {/* Compliance Status */}
           <div className="flex items-center justify-between p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
             <div className="flex items-center gap-2">
-              {getComplianceIcon(campaign.compliance.level)}
+              {getComplianceIcon(getComplianceLevel(campaign))}
               <span className="text-white font-medium">Compliance Status</span>
             </div>
             <div className="text-right">
-              <div className="text-white">{campaign.compliance.level.toUpperCase()}</div>
-              {campaign.compliance.issues.length > 0 && (
+              <div className="text-white">{getComplianceLevel(campaign).toUpperCase()}</div>
+              {getComplianceIssues(campaign).length > 0 && (
                 <p className="text-xs text-yellow-400">
-                  {campaign.compliance.issues.length} issue(s) detected
+                  {getComplianceIssues(campaign).length} issue(s) detected
                 </p>
               )}
             </div>
@@ -186,19 +202,19 @@ export function CampaignPreviewCard({
                     <h6 className="text-sm font-medium text-gray-300 mb-2">Ad Preview</h6>
                     <div className="p-3 bg-gray-800 rounded border-l-4 border-blue-500">
                       <div className="text-blue-400 text-sm font-medium">
-                        {currentAdGroup.ads[0].headlines[0]}
+                        {currentAdGroup.adCopy.headlines[0]}
                       </div>
                       <div className="text-green-400 text-xs">
-                        www.tradeboost-demo.co.uk
+                        {currentAdGroup.adCopy.finalUrl}
                       </div>
                       <div className="text-gray-300 text-sm mt-1">
-                        {currentAdGroup.ads[0].descriptions[0]}
+                        {currentAdGroup.adCopy.descriptions[0]}
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleCopyAdText(
-                          `${currentAdGroup.ads[0].headlines[0]}\n${currentAdGroup.ads[0].descriptions[0]}`
+                          `${currentAdGroup.adCopy.headlines[0]}\n${currentAdGroup.adCopy.descriptions[0]}`
                         )}
                         className="mt-2 text-xs text-gray-400 hover:text-white"
                       >
@@ -214,16 +230,12 @@ export function CampaignPreviewCard({
                     <div className="space-y-1">
                       {currentAdGroup.keywords.slice(0, 5).map((keyword, index) => (
                         <div key={index} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-300">{keyword.text}</span>
+                          <span className="text-gray-300">{keyword}</span>
                           <Badge
                             variant="outline"
-                            className={`text-xs ${
-                              keyword.matchType === 'exact' ? 'border-green-500 text-green-400' :
-                              keyword.matchType === 'phrase' ? 'border-blue-500 text-blue-400' :
-                              'border-yellow-500 text-yellow-400'
-                            }`}
+                            className="text-xs border-blue-500 text-blue-400"
                           >
-                            {keyword.matchType}
+                            broad
                           </Badge>
                         </div>
                       ))}
@@ -240,7 +252,7 @@ export function CampaignPreviewCard({
               <div className="flex items-center justify-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-green-400" />
                 <span className="text-lg font-semibold text-white">
-                  £{campaign.predictions.estimatedROI}
+                  £{campaign.estimatedPerformance?.expectedCost || 0}
                 </span>
               </div>
               <p className="text-sm text-gray-400">Estimated Monthly ROI</p>
@@ -249,7 +261,7 @@ export function CampaignPreviewCard({
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Phone className="w-4 h-4 text-blue-400" />
                 <span className="text-lg font-semibold text-white">
-                  {campaign.predictions.estimatedCalls}
+                  {Math.round((campaign.estimatedPerformance?.expectedConversions || 0) * 2)}
                 </span>
               </div>
               <p className="text-sm text-gray-400">Expected Monthly Calls</p>
@@ -258,7 +270,7 @@ export function CampaignPreviewCard({
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Users className="w-4 h-4 text-purple-400" />
                 <span className="text-lg font-semibold text-white">
-                  {campaign.predictions.estimatedConversions}
+                  {campaign.estimatedPerformance?.expectedConversions || 0}
                 </span>
               </div>
               <p className="text-sm text-gray-400">Expected Conversions</p>
@@ -303,9 +315,9 @@ export function CampaignPreviewCard({
         isOpen={showApprovalModal}
         onClose={() => setShowApprovalModal(false)}
         campaign={campaign}
-        onApprove={onApprove}
-        onReject={onReject}
-        onRequestChanges={onRequestChanges}
+        onApprove={(notes?: string) => onApprove(campaign.id)}
+        onReject={(reason: string) => onReject(campaign.id, reason)}
+        onRequestChanges={(changes: string) => onRequestChanges(campaign.id, changes)}
       />
     </>
   );

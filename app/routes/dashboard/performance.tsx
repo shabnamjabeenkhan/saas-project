@@ -7,50 +7,115 @@ import {
   TrendingDown,
   Eye,
   MousePointer,
+  Phone,
   DollarSign,
   Target,
   Calendar,
+  Download,
+  RefreshCw,
   BarChart3,
-  Activity,
+  Activity
 } from "lucide-react";
-import {
-  generateMockDailyMetrics,
-  generateMockCampaignData,
-  calculateSummaryMetrics,
-  filterDataByDateRange,
-  calculateAdvancedROI,
-  getJobValueMetrics,
-  type PerformanceMetrics,
-  type AdvancedROIMetrics,
-  type JobValueMetrics,
-} from "~/lib/mockPerformanceData";
-import { googleAdsSyncSimulator } from "~/lib/googleAdsSync";
-import { ExportModal } from "~/components/dashboard/export-modal";
-export function meta() {
+import { toast } from "sonner";
+import type { Route } from "./+types/performance";
+
+// Mock performance data
+const mockPerformanceData = {
+  overview: {
+    totalSpend: 245.67,
+    totalImpressions: 12450,
+    totalClicks: 523,
+    totalConversions: 18,
+    averageCPC: 0.47,
+    ctr: 4.2,
+    conversionRate: 3.4,
+    costPerConversion: 13.65,
+  },
+  campaigns: [
+    {
+      id: 'camp_1',
+      name: 'Emergency Plumbing Services',
+      status: 'active',
+      impressions: 5420,
+      clicks: 245,
+      spend: 115.32,
+      conversions: 8,
+      ctr: 4.5,
+      conversionRate: 3.3,
+      costPerConversion: 14.42,
+    },
+    {
+      id: 'camp_2',
+      name: 'Boiler Installation & Repair',
+      status: 'active',
+      impressions: 3850,
+      clicks: 168,
+      spend: 78.94,
+      conversions: 6,
+      ctr: 4.4,
+      conversionRate: 3.6,
+      costPerConversion: 13.16,
+    },
+    {
+      id: 'camp_3',
+      name: 'Bathroom Plumbing Services',
+      status: 'paused',
+      impressions: 3180,
+      clicks: 110,
+      spend: 51.41,
+      conversions: 4,
+      ctr: 3.5,
+      conversionRate: 3.6,
+      costPerConversion: 12.85,
+    },
+  ],
+};
+
+export function meta({}: Route.MetaArgs) {
   return [
     { title: "Performance - TradeBoost AI" },
-    { name: "description", content: "View your Google Ads campaign performance and analytics" },
+    { name: "description", content: "Monitor your Google Ads campaign performance and ROI" },
   ];
 }
 
 export default function Performance() {
-  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
-  // Generate mock data
-  const allDailyData = generateMockDailyMetrics();
-  const campaignData = generateMockCampaignData();
-  const filteredData = filterDataByDateRange(allDailyData, dateRange);
-  const summary = calculateSummaryMetrics(filteredData);
-
-  // Advanced ROI calculations
-  const jobMetrics = getJobValueMetrics();
-  const advancedROI = calculateAdvancedROI(filteredData, jobMetrics);
-
-  // Conversion data for export
-  const conversionData = googleAdsSyncSimulator.generateConversionData();
+  const handleSyncMetrics = async () => {
+    setIsLoading(true);
+    try {
+      // Simulate syncing with Google Ads API
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setLastSyncTime(new Date());
+      toast.success("Metrics synced successfully! (Development Mode)");
+    } catch (error) {
+      toast.error("Failed to sync metrics");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => `£${amount.toFixed(2)}`;
-  const formatPercentage = (value: number) => `${value.toFixed(2)}%`;
+  const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-600 text-white';
+      case 'paused': return 'bg-yellow-600 text-white';
+      case 'ended': return 'bg-red-600 text-white';
+      default: return 'bg-gray-600 text-white';
+    }
+  };
+
+  const getTrendIcon = (current: number, previous: number) => {
+    if (current > previous) {
+      return <TrendingUp className="w-4 h-4 text-green-400" />;
+    } else if (current < previous) {
+      return <TrendingDown className="w-4 h-4 text-red-400" />;
+    }
+    return <Activity className="w-4 h-4 text-gray-400" />;
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0 bg-[#0A0A0A] text-white">
@@ -63,185 +128,220 @@ export default function Performance() {
               Performance Dashboard
             </h1>
             <p className="text-muted-foreground mt-2">
-              Track your Google Ads campaign performance and ROI
+              Monitor your Google Ads campaign performance and ROI
             </p>
           </div>
 
-          {/* Date Range Selector and Export */}
           <div className="flex gap-2">
-            {(['7d', '30d', '90d'] as const).map((range) => (
-              <Button
-                key={range}
-                variant={dateRange === range ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDateRange(range)}
-                className={dateRange === range ? "" : "text-white border-gray-700 hover:bg-gray-800"}
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Last {range === '7d' ? '7 days' : range === '30d' ? '30 days' : '90 days'}
-              </Button>
-            ))}
-            <ExportModal
-              performanceData={filteredData}
-              roiMetrics={advancedROI}
-              jobMetrics={jobMetrics}
-              conversionData={conversionData}
-              dateRange={`Last ${dateRange === '7d' ? '7 days' : dateRange === '30d' ? '30 days' : '90 days'}`}
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncMetrics}
+              disabled={isLoading}
+              className="text-white border-gray-700 hover:bg-gray-800"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? "Syncing..." : "Sync Metrics"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-gray-700 hover:bg-gray-800"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Report
+            </Button>
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Last Sync Info */}
+        <div className="flex items-center gap-2 mb-6 text-sm text-gray-400">
+          <Calendar className="w-4 h-4" />
+          Last synced: {lastSyncTime.toLocaleString()}
+          <Badge variant="outline" className="text-green-400 border-green-400 ml-2">
+            Development Mode
+          </Badge>
+        </div>
+
+        {/* Key Metrics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Impressions</CardTitle>
-              <Eye className="h-4 w-4 text-blue-400" />
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Total Spend
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{summary.impressions.toLocaleString()}</div>
-              <div className="flex items-center text-xs text-green-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +12.5% from last period
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-white">
+                  {formatCurrency(mockPerformanceData.overview.totalSpend)}
+                </div>
+                {getTrendIcon(245.67, 220.15)}
               </div>
+              <p className="text-xs text-green-400 mt-1">+11.6% from last week</p>
             </CardContent>
           </Card>
 
           <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Clicks</CardTitle>
-              <MousePointer className="h-4 w-4 text-green-400" />
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Impressions
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{summary.clicks.toLocaleString()}</div>
-              <div className="flex items-center text-xs text-green-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +8.2% from last period
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-white">
+                  {mockPerformanceData.overview.totalImpressions.toLocaleString()}
+                </div>
+                {getTrendIcon(12450, 11230)}
               </div>
+              <p className="text-xs text-green-400 mt-1">+10.9% from last week</p>
             </CardContent>
           </Card>
 
           <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Total Spend</CardTitle>
-              <DollarSign className="h-4 w-4 text-red-400" />
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <MousePointer className="w-4 h-4" />
+                Clicks
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(summary.cost)}</div>
-              <div className="flex items-center text-xs text-red-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +5.1% from last period
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-white">
+                  {mockPerformanceData.overview.totalClicks}
+                </div>
+                {getTrendIcon(523, 489)}
               </div>
+              <p className="text-xs text-green-400 mt-1">+7.0% from last week</p>
             </CardContent>
           </Card>
 
           <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Conversions</CardTitle>
-              <Target className="h-4 w-4 text-purple-400" />
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                Conversions
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{summary.conversions}</div>
-              <div className="flex items-center text-xs text-green-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +15.8% from last period
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-white">
+                  {mockPerformanceData.overview.totalConversions}
+                </div>
+                {getTrendIcon(18, 15)}
               </div>
+              <p className="text-xs text-green-400 mt-1">+20.0% from last week</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Performance Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-[#1a1a1a] border-gray-800">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
+                <Target className="w-5 h-5 text-blue-400" />
                 Click-Through Rate
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">{formatPercentage(summary.averageCtr)}</div>
-              <p className="text-sm text-muted-foreground">Industry average: 2.5%</p>
+              <div className="text-3xl font-bold text-white mb-2">
+                {formatPercentage(mockPerformanceData.overview.ctr)}
+              </div>
+              <p className="text-sm text-gray-400">Industry average: 3.7%</p>
+              <div className="mt-2 text-xs text-green-400">Above average</div>
             </CardContent>
           </Card>
 
           <Card className="bg-[#1a1a1a] border-gray-800">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                Cost Per Click
+                <DollarSign className="w-5 h-5 text-green-400" />
+                Average CPC
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">{formatCurrency(summary.averageCpc)}</div>
-              <p className="text-sm text-muted-foreground">Industry average: £1.50</p>
+              <div className="text-3xl font-bold text-white mb-2">
+                {formatCurrency(mockPerformanceData.overview.averageCPC)}
+              </div>
+              <p className="text-sm text-gray-400">Industry average: £0.52</p>
+              <div className="mt-2 text-xs text-green-400">Below average (good)</div>
             </CardContent>
           </Card>
 
           <Card className="bg-[#1a1a1a] border-gray-800">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
+                <Phone className="w-5 h-5 text-purple-400" />
                 Conversion Rate
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-white">{formatPercentage(summary.conversionRate)}</div>
-              <p className="text-sm text-muted-foreground">Industry average: 5.5%</p>
+              <div className="text-3xl font-bold text-white mb-2">
+                {formatPercentage(mockPerformanceData.overview.conversionRate)}
+              </div>
+              <p className="text-sm text-gray-400">Industry average: 2.8%</p>
+              <div className="mt-2 text-xs text-green-400">Above average</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Campaign Performance Table */}
-        <Card className="bg-[#1a1a1a] border-gray-800 mb-6">
+        <Card className="bg-[#1a1a1a] border-gray-800 mb-8">
           <CardHeader>
             <CardTitle className="text-white">Campaign Performance</CardTitle>
-            <CardDescription>
-              Performance breakdown by individual campaigns
-            </CardDescription>
+            <CardDescription>Individual campaign metrics and performance</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-2 text-white font-medium">Campaign</th>
-                    <th className="text-left py-3 px-2 text-white font-medium">Status</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">Impressions</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">Clicks</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">Cost</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">Conversions</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">CTR</th>
-                    <th className="text-right py-3 px-2 text-white font-medium">Est. ROI</th>
+                    <th className="text-left text-gray-400 font-medium py-3">Campaign</th>
+                    <th className="text-left text-gray-400 font-medium py-3">Status</th>
+                    <th className="text-right text-gray-400 font-medium py-3">Impressions</th>
+                    <th className="text-right text-gray-400 font-medium py-3">Clicks</th>
+                    <th className="text-right text-gray-400 font-medium py-3">CTR</th>
+                    <th className="text-right text-gray-400 font-medium py-3">Spend</th>
+                    <th className="text-right text-gray-400 font-medium py-3">Conversions</th>
+                    <th className="text-right text-gray-400 font-medium py-3">Cost/Conv</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {campaignData.map((campaign, index) => (
-                    <tr key={index} className="border-b border-gray-800">
-                      <td className="py-3 px-2">
-                        <div className="font-medium text-white">{campaign.campaignName}</div>
+                  {mockPerformanceData.campaigns.map((campaign) => (
+                    <tr key={campaign.id} className="border-b border-gray-800">
+                      <td className="py-4">
+                        <div className="text-white font-medium">{campaign.name}</div>
                       </td>
-                      <td className="py-3 px-2">
-                        <Badge
-                          variant="outline"
-                          className={
-                            campaign.status === 'active'
-                              ? "text-green-400 border-green-400"
-                              : campaign.status === 'paused'
-                              ? "text-yellow-400 border-yellow-400"
-                              : "text-gray-400 border-gray-400"
-                          }
-                        >
-                          {campaign.status}
+                      <td className="py-4">
+                        <Badge className={getStatusColor(campaign.status)}>
+                          {campaign.status.toUpperCase()}
                         </Badge>
                       </td>
-                      <td className="py-3 px-2 text-right text-white">{campaign.totalImpressions.toLocaleString()}</td>
-                      <td className="py-3 px-2 text-right text-white">{campaign.totalClicks}</td>
-                      <td className="py-3 px-2 text-right text-white">{formatCurrency(campaign.totalCost)}</td>
-                      <td className="py-3 px-2 text-right text-white">{campaign.totalConversions}</td>
-                      <td className="py-3 px-2 text-right text-white">{formatPercentage(campaign.averageCtr)}</td>
-                      <td className="py-3 px-2 text-right">
-                        <span className="text-green-400 font-medium">{formatCurrency(campaign.estimatedROI)}</span>
+                      <td className="text-right py-4 text-white">
+                        {campaign.impressions.toLocaleString()}
+                      </td>
+                      <td className="text-right py-4 text-white">
+                        {campaign.clicks}
+                      </td>
+                      <td className="text-right py-4 text-white">
+                        {formatPercentage(campaign.ctr)}
+                      </td>
+                      <td className="text-right py-4 text-white">
+                        {formatCurrency(campaign.spend)}
+                      </td>
+                      <td className="text-right py-4 text-white">
+                        {campaign.conversions}
+                      </td>
+                      <td className="text-right py-4 text-white">
+                        {formatCurrency(campaign.costPerConversion)}
                       </td>
                     </tr>
                   ))}
@@ -251,164 +351,40 @@ export default function Performance() {
           </CardContent>
         </Card>
 
-        {/* Advanced ROI Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Revenue & Profitability
-              </CardTitle>
-              <CardDescription>
-                Advanced revenue tracking with seasonal adjustments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-2xl font-bold text-green-400">{formatCurrency(advancedROI.totalRevenue)}</div>
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-xs text-gray-500">Inc. repeat business</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-blue-400">{formatCurrency(advancedROI.grossProfit)}</div>
-                  <p className="text-sm text-muted-foreground">Gross Profit</p>
-                  <p className="text-xs text-gray-500">65% margin</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-400">{formatCurrency(advancedROI.netProfit)}</div>
-                  <p className="text-sm text-muted-foreground">Net Profit</p>
-                  <p className="text-xs text-gray-500">After operating costs</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-yellow-400">{advancedROI.profitMargin.toFixed(1)}%</div>
-                  <p className="text-sm text-muted-foreground">Profit Margin</p>
-                  <p className="text-xs text-gray-500">Industry benchmark: 20%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
-                Customer Acquisition Metrics
-              </CardTitle>
-              <CardDescription>
-                Customer lifetime value and acquisition cost analysis
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-2xl font-bold text-red-400">{formatCurrency(advancedROI.customerAcquisitionCost)}</div>
-                  <p className="text-sm text-muted-foreground">Customer Acquisition Cost</p>
-                  <p className="text-xs text-gray-500">CAC</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-400">{formatCurrency(jobMetrics.customerLifetimeValue)}</div>
-                  <p className="text-sm text-muted-foreground">Customer Lifetime Value</p>
-                  <p className="text-xs text-gray-500">CLV</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-blue-400">{advancedROI.lifetimeValueToCAC.toFixed(1)}x</div>
-                  <p className="text-sm text-muted-foreground">LTV:CAC Ratio</p>
-                  <p className="text-xs text-gray-500">Target: 3x+</p>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-400">{advancedROI.paybackPeriod.toFixed(0)} days</div>
-                  <p className="text-sm text-muted-foreground">Payback Period</p>
-                  <p className="text-xs text-gray-500">Time to break even</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Return Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">ROAS</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{advancedROI.roas.toFixed(2)}x</div>
-              <div className="flex items-center text-xs text-green-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                Return on Ad Spend
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">ROI</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{advancedROI.roi.toFixed(1)}%</div>
-              <div className="flex items-center text-xs text-purple-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                Return on Investment
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Revenue per Click</CardTitle>
-              <MousePointer className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(advancedROI.revenuePerClick)}</div>
-              <div className="flex items-center text-xs text-blue-400">
-                <Activity className="w-3 h-3 mr-1" />
-                Per click revenue
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-[#1a1a1a] border-gray-800">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-white">Seasonal Boost</CardTitle>
-              <Calendar className="h-4 w-4 text-orange-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{((jobMetrics.seasonalMultiplier - 1) * 100).toFixed(0)}%</div>
-              <div className="flex items-center text-xs text-orange-400">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {jobMetrics.seasonalMultiplier > 1 ? 'Winter demand' : 'Standard rate'}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Attribution Analysis */}
+        {/* ROI Summary */}
         <Card className="bg-[#1a1a1a] border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Attribution Analysis</CardTitle>
-            <CardDescription>
-              Revenue attribution across different customer touchpoints
-            </CardDescription>
+            <CardTitle className="text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-400" />
+              ROI Analysis
+            </CardTitle>
+            <CardDescription>Return on investment calculation and projections</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
-                <div className="text-2xl font-bold text-green-400">{advancedROI.attribution.direct}%</div>
-                <p className="text-sm text-muted-foreground">Direct Conversions</p>
-                <p className="text-xs text-gray-500">First-touch attribution</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-400 mb-1">
+                  340%
+                </div>
+                <p className="text-sm text-gray-400">Current ROI</p>
               </div>
-              <div className="text-center p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
-                <div className="text-2xl font-bold text-blue-400">{advancedROI.attribution.assisted}%</div>
-                <p className="text-sm text-muted-foreground">Assisted Conversions</p>
-                <p className="text-xs text-gray-500">Multi-touch influence</p>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white mb-1">
+                  £834
+                </div>
+                <p className="text-sm text-gray-400">Revenue Generated</p>
               </div>
-              <div className="text-center p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
-                <div className="text-2xl font-bold text-purple-400">{advancedROI.attribution.lastClick}%</div>
-                <p className="text-sm text-muted-foreground">Repeat Business</p>
-                <p className="text-xs text-gray-500">Customer lifetime value</p>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white mb-1">
+                  £589
+                </div>
+                <p className="text-sm text-gray-400">Profit</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-400 mb-1">
+                  £2,510
+                </div>
+                <p className="text-sm text-gray-400">Projected Monthly</p>
               </div>
             </div>
           </CardContent>

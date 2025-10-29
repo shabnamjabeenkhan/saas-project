@@ -144,6 +144,30 @@ export default function Campaigns() {
     }
   };
 
+  const handlePushToGoogleAds = async () => {
+    if (!campaign) {
+      toast.error("No campaign to push");
+      return;
+    }
+
+    if (!isGoogleAdsConnected) {
+      toast.error("Please connect your Google Ads account first");
+      return;
+    }
+
+    setIsProcessingApproval(true);
+    try {
+      // Simulate pushing to Google Ads
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      toast.success("Campaign pushed to Google Ads successfully! (Development Mode)");
+    } catch (error) {
+      toast.error("Failed to push campaign to Google Ads");
+    } finally {
+      setIsProcessingApproval(false);
+    }
+  };
+
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -187,11 +211,25 @@ export default function Campaigns() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={handlePushToGoogleAds}
+                      disabled={isProcessingApproval}
+                      className="text-white border-gray-700 hover:bg-gray-800"
+                    >
+                      {isProcessingApproval ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Zap className="w-4 h-4 mr-2" />
+                      )}
+                      {isProcessingApproval ? "Pushing..." : "Push to Google Ads"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleExportCampaign}
                       className="text-white border-gray-700 hover:bg-gray-800"
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Export to Google Ads
+                      Export JSON
                     </Button>
                     <Button
                       variant="ghost"
@@ -250,6 +288,30 @@ export default function Campaigns() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Mock Campaign Previews */}
+        {campaigns.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Campaign Previews</h2>
+              <Badge variant="outline" className="text-gray-400">
+                {campaigns.length} campaigns generated
+              </Badge>
+            </div>
+
+            {/* Show campaign preview cards */}
+            {campaigns.map((campaignWithApproval) => (
+              <CampaignPreviewCard
+                key={campaignWithApproval.id}
+                campaign={campaignWithApproval}
+                onApprove={handleApproveCampaign}
+                onReject={handleRejectCampaign}
+                onRequestChanges={handleRequestChanges}
+                isLoading={isProcessingApproval}
+              />
+            ))}
+          </div>
         )}
 
         {campaign ? (
@@ -472,17 +534,42 @@ export default function Campaigns() {
                   <div className="p-4 bg-[#0A0A0A] border border-gray-700 rounded-lg">
                     <h4 className="font-medium text-white mb-2">Option 2: Google Ads Integration</h4>
                     <p className="text-sm text-gray-300 mb-3">
-                      Connect your Google Ads account for automatic campaign creation
+                      {isGoogleAdsConnected
+                        ? "Push your campaign directly to Google Ads as a draft"
+                        : "Connect your Google Ads account for automatic campaign creation"
+                      }
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className="text-gray-500 border-gray-700"
-                    >
-                      <Zap className="w-4 h-4 mr-2" />
-                      Coming Soon
-                    </Button>
+                    {isGoogleAdsConnected ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePushToGoogleAds}
+                        disabled={isProcessingApproval}
+                        className="text-white border-gray-700 hover:bg-gray-800"
+                      >
+                        {isProcessingApproval ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        {isProcessingApproval ? "Pushing..." : "Push to Google Ads"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={connectGoogleAds}
+                        disabled={isConnecting}
+                        className="text-white border-gray-700 hover:bg-gray-800"
+                      >
+                        {isConnecting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Link className="w-4 h-4 mr-2" />
+                        )}
+                        {isConnecting ? "Connecting..." : "Connect Google Ads"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

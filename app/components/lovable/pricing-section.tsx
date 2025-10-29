@@ -45,7 +45,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   ];
 
   return (
-    <section className="py-32">
+    <section className="py-32 bg-neutral-900">
       <div className="mx-auto max-w-5xl px-6">
         <div className="mx-auto max-w-2xl space-y-6 text-center">
           <h2 className="text-center text-4xl font-semibold lg:text-5xl">
@@ -61,7 +61,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
             <div
               key={index}
               className="border border-border rounded-3xl flex flex-col justify-between space-y-6 shadow-sm p-6 relative"
-              style={{ backgroundColor: 'rgb(33, 33, 38)', width: '360px' }}
+              style={{ width: '360px' }}
             >
               {plan.badge && (
                 <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-gradient-to-br from-purple-400 to-primary px-3 py-1 text-xs font-medium text-white shadow-md">
@@ -94,10 +94,9 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
                   asChild
                   variant={plan.buttonVariant}
                   size="sm"
-                  className={`w-full bg-transparent hover:bg-white/20 transition-all duration-300 hover:scale-105 border ${
+                  className={`w-full bg-transparent hover:bg-white/10 transition-all duration-300 hover:scale-105 border ${
                     plan.name === 'Premium' ? 'border-white' : 'border-border'
                   }`}
-                  style={{ backgroundColor: '#ffffff0d' }}
                 >
                   <Link to={isSignedIn ? "/dashboard" : "/sign-up"}>
                     Get Started

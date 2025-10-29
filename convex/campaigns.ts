@@ -177,6 +177,45 @@ export const getCampaign = query({
   },
 });
 
+// Update campaign status (e.g., when pushed to Google Ads)
+export const updateCampaignStatus = mutation({
+  args: {
+    campaignId: v.string(),
+    googleCampaignId: v.optional(v.string()),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserToken(ctx);
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Find the campaign by its Convex _id
+    const campaignDoc = await ctx.db.get(args.campaignId as any);
+
+    if (!campaignDoc) {
+      throw new Error("Campaign not found");
+    }
+
+    // Type assertion to ensure we have a campaign document
+    const campaign = campaignDoc as any;
+
+    if (campaign.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Update the campaign
+    await ctx.db.patch(args.campaignId as any, {
+      status: args.status,
+      updatedAt: Date.now(),
+      ...(args.googleCampaignId && { googleCampaignId: args.googleCampaignId }),
+    });
+
+    return args.campaignId;
+  },
+});
+
 // Helper functions for enhanced prompts
 function getSeason(month: number): 'winter' | 'spring' | 'summer' | 'autumn' {
   if (month >= 2 && month <= 4) return 'spring';

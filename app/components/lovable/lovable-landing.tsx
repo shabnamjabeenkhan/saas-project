@@ -1,5 +1,6 @@
 import { LovableHeader } from "./header";
 import { LovableHero } from "./hero";
+import { DashboardPreview } from "./dashboard-preview";
 import { LovableProblemSection } from "./problem-section";
 import { LovableHowItWorksSection } from "./how-it-works-section";
 import { LovablePricingSection } from "./pricing-section";
@@ -17,6 +18,7 @@ export const LovableLanding = ({ isSignedIn = false }: LovableLandingProps) => {
       <LovableHeader isSignedIn={isSignedIn} />
       <main>
         <LovableHero isSignedIn={isSignedIn} />
+        <DashboardPreview />
         <LovableProblemSection />
         <div id="how-it-works">
           <LovableHowItWorksSection />
