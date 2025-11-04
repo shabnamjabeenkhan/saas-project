@@ -45,7 +45,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   ];
 
   return (
-    <section className="py-32 bg-neutral-900">
+    <section className="py-32" style={{ backgroundColor: '#18191a' }}>
       <div className="mx-auto max-w-5xl px-6">
         <div className="mx-auto max-w-2xl space-y-6 text-center">
           <h2 className="text-center text-4xl font-semibold lg:text-5xl">
