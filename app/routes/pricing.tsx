@@ -30,17 +30,18 @@ export default function Pricing() {
   ];
 
   return (
-    <section id="pricing" className="py-16 md:py-32">
-      <div className="mx-auto max-w-6xl px-6">
+    <section id="pricing" className="py-16 md:py-32 overflow-x-hidden w-full">
+      <div className="w-full px-4 sm:px-6 max-w-none">
         <div className="mx-auto max-w-2xl space-y-2 text-center">
-          <h1 className="text-center text-4xl font-semibold lg:text-5xl">
+          <h1 className="text-center text-3xl sm:text-4xl font-semibold lg:text-5xl break-words">
             Lifetime access
           </h1>
           <p className="text-muted-foreground">for one developer</p>
         </div>
 
-        <div className="mt-8 flex justify-center md:mt-16">
-          <PricingCard.Card className="max-w-lg w-full">
+        <div className="mt-8 flex justify-center md:mt-16 w-full px-2">
+          <div className="w-full max-w-[280px] sm:max-w-sm mx-auto">
+            <PricingCard.Card className="w-full">
             <PricingCard.Header>
               <PricingCard.Plan>
                 <PricingCard.PlanName>
@@ -83,6 +84,7 @@ export default function Pricing() {
               </PricingCard.List>
             </PricingCard.Body>
           </PricingCard.Card>
+          </div>
         </div>
       </div>
     </section>
