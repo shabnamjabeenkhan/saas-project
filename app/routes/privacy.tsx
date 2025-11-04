@@ -122,6 +122,60 @@ export default function Privacy() {
               If you have questions or would like to exercise data rights, please reach out via the in-app support channel. A dedicated email address will be provided in future updates.
             </p>
           </section>
+
+          <section className="mb-8 bg-blue-50 border border-blue-200 p-6 rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-blue-700">14. Compliance & Regulatory Data</h2>
+
+            <h3 className="text-xl font-semibold mb-3 text-blue-600">Certification Verification Data</h3>
+            <p className="mb-4 text-blue-700">
+              To ensure compliance with UK trade regulations, we may collect and verify:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-blue-700">
+              <li><strong>Gas Safe registration numbers</strong> and certification documents</li>
+              <li><strong>Part P electrical certification</strong> and qualification records</li>
+              <li><strong>Public liability insurance</strong> policies and coverage details</li>
+              <li><strong>Business registration information</strong> from Companies House or HMRC</li>
+              <li><strong>Professional accreditation</strong> from trade bodies (NICEIC, etc.)</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-blue-600">Compliance Monitoring</h3>
+            <p className="mb-4 text-blue-700">
+              We monitor advertising content for compliance purposes, including:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-blue-700">
+              <li><strong>Automated scanning</strong> of generated advertising content</li>
+              <li><strong>Violation tracking</strong> and compliance issue reporting</li>
+              <li><strong>Certification status monitoring</strong> and renewal reminders</li>
+              <li><strong>Regulatory correspondence</strong> if investigations occur</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-blue-600">Data Sharing for Compliance</h3>
+            <p className="mb-4 text-blue-700">
+              We may share information with regulatory authorities when legally required:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-blue-700">
+              <li><strong>Trading Standards</strong> investigations of advertising practices</li>
+              <li><strong>Gas Safe Register</strong> verification of certification claims</li>
+              <li><strong>HMRC</strong> business registration and tax compliance inquiries</li>
+              <li><strong>Consumer protection agencies</strong> investigating service complaints</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-blue-600">Data Retention for Legal Protection</h3>
+            <p className="mb-4 text-blue-700">
+              We retain different types of data for varying periods to meet legal obligations and protect against regulatory investigations:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-blue-700">
+              <li><strong>Personal data</strong> (names, emails, contact info): 1 year after account closure</li>
+              <li><strong>Compliance records</strong> (warnings shown, user acknowledgments): 6 years after account closure</li>
+              <li><strong>Certification verification</strong> (Gas Safe checks, insurance validation): 6 years after account closure</li>
+              <li><strong>Advertising content</strong> (generated campaigns, claims made): 6 years for regulatory compliance</li>
+              <li><strong>Violation reports</strong> (compliance breaches, regulatory issues): 7 years for legal defense</li>
+              <li><strong>Regulatory correspondence</strong> (Trading Standards communications): 7 years or as legally required</li>
+            </ul>
+            <p className="text-sm text-blue-600 mt-4">
+              Extended retention periods protect both users and TradeBoost AI from potential legal claims that may arise years after account closure, in accordance with UK limitation periods and regulatory requirements.
+            </p>
+          </section>
         </div>
       </div>
     </div>

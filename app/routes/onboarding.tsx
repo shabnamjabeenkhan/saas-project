@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Badge } from "~/components/ui/badge";
 import { Progress } from "~/components/ui/progress";
 import { ChevronLeft, ChevronRight, CheckCircle, Wrench, Zap, Building2, MapPin, Target } from "lucide-react";
+import { useComplianceLogging, ComplianceProvider } from "~/lib/complianceContext";
 
 // Step schemas
 const step1Schema = z.object({
@@ -283,58 +284,60 @@ export default function OnboardingWizard() {
   const progress = ((currentStep + 1) / steps.length) * 100;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Progress Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">Setup Your Trade Business</h1>
-            <Badge variant="secondary">{currentStep + 1} of {steps.length}</Badge>
-          </div>
-          <Progress value={progress} className="mb-2" />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            {steps.map((step, index) => (
-              <div key={index} className={`flex items-center gap-1 ${index <= currentStep ? 'text-primary' : ''}`}>
-                <step.icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{step.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Step Content */}
-        <Card className="bg-[#1a1a1a] border-gray-800">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              {React.createElement(steps[currentStep].icon, { className: "w-6 h-6 text-primary" })}
-              <div>
-                <CardTitle className="text-white">{steps[currentStep].title}</CardTitle>
-                <CardDescription>{steps[currentStep].description}</CardDescription>
-              </div>
+    <ComplianceProvider>
+      <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl">
+          {/* Progress Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold">Setup Your Trade Business</h1>
+              <Badge variant="secondary">{currentStep + 1} of {steps.length}</Badge>
             </div>
-          </CardHeader>
-          <CardContent>
-            {/* Step 1: Trade Type */}
-            {currentStep === 0 && <Step1Form onNext={handleNext} defaultValues={formData.step1} />}
+            <Progress value={progress} className="mb-2" />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              {steps.map((step, index) => (
+                <div key={index} className={`flex items-center gap-1 ${index <= currentStep ? 'text-primary' : ''}`}>
+                  <step.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{step.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {/* Step 2: Contact Info */}
-            {currentStep === 1 && <Step2Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step2} />}
+          {/* Step Content */}
+          <Card className="bg-[#1a1a1a] border-gray-800">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                {React.createElement(steps[currentStep].icon, { className: "w-6 h-6 text-primary" })}
+                <div>
+                  <CardTitle className="text-white">{steps[currentStep].title}</CardTitle>
+                  <CardDescription>{steps[currentStep].description}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Step 1: Trade Type */}
+              {currentStep === 0 && <Step1Form onNext={handleNext} defaultValues={formData.step1} />}
 
-            {/* Step 3: Service Area */}
-            {currentStep === 2 && <Step3Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step3} />}
+              {/* Step 2: Contact Info */}
+              {currentStep === 1 && <Step2Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step2} />}
 
-            {/* Step 4: Service Offerings */}
-            {currentStep === 3 && <Step4Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step4} availableServices={getAvailableServices()} />}
+              {/* Step 3: Service Area */}
+              {currentStep === 2 && <Step3Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step3} />}
 
-            {/* Step 5: Availability & Goals */}
-            {currentStep === 4 && <Step5Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step5} />}
+              {/* Step 4: Service Offerings */}
+              {currentStep === 3 && <Step4Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step4} availableServices={getAvailableServices()} />}
 
-            {/* Step 6: Summary */}
-            {currentStep === 5 && <SummaryStep formData={formData} onNext={handleNext} onPrevious={handlePrevious} onEdit={(step: number) => setCurrentStep(step)} />}
-          </CardContent>
-        </Card>
+              {/* Step 5: Availability & Goals */}
+              {currentStep === 4 && <Step5Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step5} />}
+
+              {/* Step 6: Summary */}
+              {currentStep === 5 && <SummaryStep formData={formData} onNext={handleNext} onPrevious={handlePrevious} onEdit={(step: number) => setCurrentStep(step)} />}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </ComplianceProvider>
   );
 }
 
@@ -723,7 +726,62 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
   onPrevious: () => void;
   onEdit: (step: number) => void;
 }) {
-  const handleSubmit = () => {
+  // Compliance acknowledgment state
+  const [complianceAcknowledged, setComplianceAcknowledged] = useState({
+    understanding: false,
+    certifications: false,
+    legalAdvice: false,
+  });
+
+  // Use compliance logging with real user ID
+  const { logAcknowledgment } = useComplianceLogging();
+
+  // Check if all compliance boxes are checked
+  const allComplianceChecked = Object.values(complianceAcknowledged).every(Boolean);
+
+  const handleComplianceChange = async (type: string, checked: boolean) => {
+    setComplianceAcknowledged(prev => ({ ...prev, [type]: checked }));
+
+    if (checked) {
+      // Log the acknowledgment for legal evidence
+      const warningContent = getWarningContent(type);
+
+      try {
+        await logAcknowledgment(type, warningContent, 'onboarding');
+        console.log(`Compliance acknowledged: ${type} - ${warningContent}`);
+      } catch (error) {
+        console.error("Failed to log compliance acknowledgment:", error);
+      }
+    }
+  };
+
+  const getWarningContent = (type: string): string => {
+    const warnings = {
+      understanding: "I understand I am solely responsible for advertising compliance and accuracy",
+      certifications: "I confirm I have all required certifications, insurance, and business registration",
+      legalAdvice: "I understand TradeBoost AI provides suggestions only, not legal advice",
+    };
+    return warnings[type as keyof typeof warnings] || "";
+  };
+
+  const handleSubmit = async () => {
+    if (!allComplianceChecked) {
+      alert("Please acknowledge all compliance requirements before proceeding.");
+      return;
+    }
+
+    // Log final onboarding completion
+    try {
+      await logAcknowledgment(
+        'onboarding_completed',
+        'User completed onboarding with all compliance acknowledgments',
+        'onboarding'
+      );
+      console.log("Onboarding completed with full compliance acknowledgment");
+    } catch (error) {
+      console.error("Failed to log onboarding completion:", error);
+    }
+
     onNext({}); // Empty data since this is just confirmation
   };
 
@@ -875,12 +933,85 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         )}
       </div>
 
+      {/* Compliance Warning Section */}
+      <div className="bg-red-950/50 border border-red-800 rounded-lg p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="bg-red-500 rounded-full p-1">
+            <span className="text-white text-xs font-bold">!</span>
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-semibold text-red-300">⚠️ CRITICAL: Legal Compliance Requirements</h3>
+
+            <div className="space-y-2 text-sm">
+              <p className="text-red-200">
+                <strong>WARNING:</strong> You are responsible for ensuring all claims are accurate and compliant with UK regulations.
+              </p>
+              <p className="text-red-200">
+                <strong>FALSE ADVERTISING CAN RESULT IN £5,000+ FINES AND LEGAL ACTION.</strong>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="compliance-understanding"
+                  className="border-red-400"
+                  checked={complianceAcknowledged.understanding}
+                  onCheckedChange={(checked) => handleComplianceChange('understanding', !!checked)}
+                />
+                <Label htmlFor="compliance-understanding" className="text-red-200 text-sm">
+                  I understand I am solely responsible for advertising compliance and accuracy
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="certifications-confirmed"
+                  className="border-red-400"
+                  checked={complianceAcknowledged.certifications}
+                  onCheckedChange={(checked) => handleComplianceChange('certifications', !!checked)}
+                />
+                <Label htmlFor="certifications-confirmed" className="text-red-200 text-sm">
+                  I confirm I have all required certifications, insurance, and business registration
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="legal-advice-understood"
+                  className="border-red-400"
+                  checked={complianceAcknowledged.legalAdvice}
+                  onCheckedChange={(checked) => handleComplianceChange('legalAdvice', !!checked)}
+                />
+                <Label htmlFor="legal-advice-understood" className="text-red-200 text-sm">
+                  I understand TradeBoost AI provides suggestions only, not legal advice
+                </Label>
+              </div>
+            </div>
+
+            <div className="text-xs text-red-300 space-y-1">
+              <p>• Gas work requires valid Gas Safe registration</p>
+              <p>• Electrical work requires Part P certification</p>
+              <p>• All trades require £1M+ public liability insurance</p>
+              <p>• Business must be registered with HMRC or Companies House</p>
+              <p>• Claims like "24/7 service" must be accurate and deliverable</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-between pt-6">
         <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
           <ChevronLeft className="w-4 h-4" />
           Previous
         </Button>
-        <Button onClick={handleSubmit} className="flex items-center gap-2">
+        <Button
+          onClick={handleSubmit}
+          disabled={!allComplianceChecked}
+          className={`flex items-center gap-2 ${
+            !allComplianceChecked ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
           <CheckCircle className="w-4 h-4" />
           Complete Setup
         </Button>

@@ -112,4 +112,125 @@ export default defineSchema({
     disconnectedAt: v.optional(v.number()),
   })
     .index("userId", ["userId"]),
+
+  // LEGAL COMPLIANCE TABLES - Evidence for legal protection
+  complianceAuditTrail: defineTable({
+    userId: v.string(),
+    eventType: v.string(), // "warning_shown", "terms_accepted", "acknowledgment_clicked", "violation_flagged"
+    eventData: v.any(), // Full details of what happened
+    timestamp: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    pageUrl: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+  })
+    .index("userId", ["userId"])
+    .index("eventType", ["eventType"])
+    .index("timestamp", ["timestamp"]),
+
+  // Terms of Service acceptance tracking
+  termsAcceptances: defineTable({
+    userId: v.string(),
+    termsVersion: v.string(), // "v2.1_compliance_enhanced"
+    acceptedAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    acceptanceMethod: v.string(), // "checkbox_click", "button_click", "signup_flow"
+    pageUrl: v.optional(v.string()),
+  })
+    .index("userId", ["userId"])
+    .index("termsVersion", ["termsVersion"]),
+
+  // Compliance warnings and user acknowledgments
+  complianceAcknowledgments: defineTable({
+    userId: v.string(),
+    warningType: v.string(), // "gas_safe_warning", "24_7_service_warning", "compliance_responsibility"
+    warningContent: v.string(), // Exact text shown to user
+    acknowledgedAt: v.number(),
+    pageContext: v.string(), // "onboarding", "campaign_generation", "settings"
+    ipAddress: v.optional(v.string()),
+    required: v.boolean(), // Was this a required acknowledgment?
+    sessionId: v.optional(v.string()),
+  })
+    .index("userId", ["userId"])
+    .index("warningType", ["warningType"])
+    .index("pageContext", ["pageContext"]),
+
+  // User certifications and verification
+  userCertifications: defineTable({
+    userId: v.string(),
+    certificationType: v.string(), // "gas_safe", "part_p", "insurance", "business_registration"
+
+    // Gas Safe details
+    gasSafeNumber: v.optional(v.string()),
+    gasSafeExpiry: v.optional(v.number()),
+    gasSafeVerified: v.optional(v.boolean()),
+
+    // Electrical certification
+    partPNumber: v.optional(v.string()),
+    niceicNumber: v.optional(v.string()),
+    electricalVerified: v.optional(v.boolean()),
+
+    // Insurance
+    insuranceProvider: v.optional(v.string()),
+    insurancePolicyNumber: v.optional(v.string()),
+    insuranceCoverage: v.optional(v.number()),
+    insuranceExpiry: v.optional(v.number()),
+    insuranceVerified: v.optional(v.boolean()),
+
+    // Business registration
+    companyNumber: v.optional(v.string()),
+    companyName: v.optional(v.string()),
+    businessType: v.optional(v.string()), // "limited_company", "sole_trader", "partnership"
+    businessVerified: v.optional(v.boolean()),
+
+    // Document storage
+    documentUrl: v.optional(v.string()),
+    documentType: v.optional(v.string()), // "certificate", "insurance_policy", "registration"
+
+    // Verification tracking
+    uploadedAt: v.number(),
+    verifiedAt: v.optional(v.number()),
+    verifiedBy: v.optional(v.string()), // Admin who verified
+    verificationNotes: v.optional(v.string()),
+    verificationStatus: v.string(), // "pending", "verified", "rejected", "expired"
+
+    // Legal audit trail
+    lastChecked: v.optional(v.number()),
+    autoVerificationAttempted: v.optional(v.boolean()),
+  })
+    .index("userId", ["userId"])
+    .index("certificationType", ["certificationType"])
+    .index("verificationStatus", ["verificationStatus"]),
+
+  // Compliance violations tracking
+  complianceViolations: defineTable({
+    userId: v.string(),
+    violationType: v.string(), // "false_certification", "misleading_availability", "unsubstantiated_claims"
+    description: v.string(),
+    severity: v.string(), // "low", "medium", "high", "critical"
+
+    // Context
+    campaignId: v.optional(v.string()),
+    contentFlagged: v.optional(v.string()),
+    detectionMethod: v.string(), // "ai_filter", "manual_review", "user_report", "external_complaint"
+
+    // Resolution
+    resolved: v.boolean(),
+    resolutionAction: v.optional(v.string()), // "content_updated", "user_educated", "account_suspended"
+    resolutionNotes: v.optional(v.string()),
+    resolvedBy: v.optional(v.string()),
+
+    // Timestamps
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+
+    // Legal tracking
+    reportedToAuthorities: v.optional(v.boolean()),
+    authorityReference: v.optional(v.string()),
+  })
+    .index("userId", ["userId"])
+    .index("violationType", ["violationType"])
+    .index("severity", ["severity"])
+    .index("resolved", ["resolved"]),
 });

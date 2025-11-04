@@ -47,6 +47,55 @@ export default function Terms() {
             </ul>
           </section>
 
+          <section className="mb-8 bg-red-50 border border-red-200 p-6 rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-red-700">⚠️ CRITICAL: User Compliance Responsibilities</h2>
+
+            <h3 className="text-xl font-semibold mb-3 text-red-600">Advertising Compliance</h3>
+            <p className="mb-4 text-red-700">
+              <strong>YOU ARE SOLELY RESPONSIBLE</strong> for ensuring all advertising content complies with UK regulations including:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-red-700">
+              <li>Trading Standards regulations and advertising codes</li>
+              <li>Industry-specific certification requirements (Gas Safe, Part P, etc.)</li>
+              <li>Consumer protection laws and truthful advertising standards</li>
+              <li>Competition and Markets Authority guidelines</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-red-600">Required Certifications & Insurance</h3>
+            <p className="mb-4 text-red-700">
+              You warrant and represent that you possess and maintain:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-red-700">
+              <li><strong>Valid business registration</strong> with HMRC or Companies House</li>
+              <li><strong>Public Liability Insurance</strong> of at least £1,000,000 coverage</li>
+              <li><strong>Gas Safe Registration</strong> (if advertising gas-related services)</li>
+              <li><strong>Part P Certification</strong> (if advertising electrical work)</li>
+              <li><strong>All relevant trade licenses</strong> required for your advertised services</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-red-600">No Legal or Compliance Advice</h3>
+            <p className="mb-4 text-red-700">
+              <strong>TradeBoost AI DOES NOT provide legal, regulatory, or compliance advice.</strong> Our AI suggestions are not legal guidance. You must:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-red-700">
+              <li>Consult qualified legal professionals for compliance advice</li>
+              <li>Verify all advertising claims with relevant regulatory bodies</li>
+              <li>Ensure all generated content is accurate before publication</li>
+              <li>Take full responsibility for all advertising content and claims</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-red-600">Prohibited Content</h3>
+            <p className="mb-4 text-red-700">
+              You may not create or publish advertisements containing:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-red-700">
+              <li>False certification claims (e.g., claiming Gas Safe registration without valid certification)</li>
+              <li>Misleading availability claims (e.g., "24/7 service" without actual 24/7 availability)</li>
+              <li>Unsubstantiated guarantees or pricing claims</li>
+              <li>Services you are not qualified, licensed, or insured to provide</li>
+            </ul>
+          </section>
+
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">5. Subscriptions & Billing</h2>
             <ul className="mb-4 list-disc pl-6">
@@ -115,11 +164,34 @@ export default function Terms() {
             </p>
           </section>
 
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">14. Indemnification</h2>
-            <p className="mb-4">
-              You agree to indemnify and hold TradeBoost harmless from claims arising out of your use of the services or violation of these Terms.
+          <section className="mb-8 bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4 text-yellow-700">14. Indemnification & Legal Protection</h2>
+
+            <h3 className="text-xl font-semibold mb-3 text-yellow-600">Full User Indemnification</h3>
+            <p className="mb-4 text-yellow-700">
+              You agree to <strong>indemnify, defend, and hold harmless</strong> TradeBoost AI, its directors, officers, employees, and affiliates from and against any and all:
             </p>
+            <ul className="mb-4 list-disc pl-6 text-yellow-700">
+              <li><strong>Legal claims or lawsuits</strong> arising from your advertising content or business operations</li>
+              <li><strong>Regulatory investigations</strong> by Trading Standards, Gas Safe Register, or other authorities</li>
+              <li><strong>Compliance violations</strong> including false advertising, certification claims, or service representations</li>
+              <li><strong>Customer disputes</strong> related to services you advertise or provide</li>
+              <li><strong>Insurance claims or damages</strong> resulting from your work or advertising</li>
+              <li><strong>Tax or business registration issues</strong> related to your use of the platform</li>
+            </ul>
+
+            <h3 className="text-xl font-semibold mb-3 text-yellow-600">Limitation of TradeBoost AI Liability</h3>
+            <p className="mb-4 text-yellow-700">
+              TradeBoost AI's liability is limited to the subscription fees paid in the previous 12 months. We are not liable for:
+            </p>
+            <ul className="mb-4 list-disc pl-6 text-yellow-700">
+              <li>Compliance violations in user-generated content</li>
+              <li>False or misleading advertising claims made by users</li>
+              <li>Work quality, safety, or certification issues</li>
+              <li>Customer disputes or unsatisfied service claims</li>
+              <li>Lost business, revenue, or reputation</li>
+              <li>Regulatory fines or legal penalties imposed on users</li>
+            </ul>
           </section>
 
           <section className="mb-8">

@@ -7,13 +7,15 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import { ClerkProvider, useAuth } from "@clerk/react-router";
+import { ClerkProvider, useAuth, useClerk } from "@clerk/react-router";
 import { ConvexReactClient, ConvexProvider } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { config, initializeConfig, isFeatureEnabled, isServiceEnabled } from "../config";
 import { Toaster } from "sonner";
+import { ComplianceProvider } from "~/lib/complianceContext";
+import { TermsGuard } from "~/components/compliance/TermsGuard";
 
 // Defer configuration initialization
 let configInitialized = false;
@@ -113,6 +115,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Wrapper component for terms guard with sign-out capability
+function TermsGuardWrapper({ children }: { children: React.ReactNode }) {
+  const clerk = useClerk();
+
+  const handleSignOut = () => {
+    clerk.signOut();
+  };
+
+  return (
+    <ComplianceProvider>
+      <TermsGuard onSignOut={handleSignOut}>
+        {children}
+      </TermsGuard>
+    </ComplianceProvider>
+  );
+}
+
 export default function App({ loaderData }: Route.ComponentProps) {
   ensureConfigInitialized();
   const authEnabled = isFeatureEnabled('auth') && isServiceEnabled('clerk');
@@ -128,7 +147,9 @@ export default function App({ loaderData }: Route.ComponentProps) {
       signInFallbackRedirectUrl="/"
     >
       <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
-        <Outlet />
+        <TermsGuardWrapper>
+          <Outlet />
+        </TermsGuardWrapper>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );
@@ -142,7 +163,9 @@ export default function App({ loaderData }: Route.ComponentProps) {
         signUpFallbackRedirectUrl="/"
         signInFallbackRedirectUrl="/"
       >
-        <Outlet />
+        <TermsGuardWrapper>
+          <Outlet />
+        </TermsGuardWrapper>
       </ClerkProvider>
     );
   }
