@@ -2,8 +2,8 @@ import type { Route } from "./+types/privacy";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Privacy Policy - Kaizen" },
-    { name: "description", content: "Privacy Policy for Kaizen" },
+    { title: "Privacy Policy - TradeBoost AI" },
+    { name: "description", content: "Privacy Policy for TradeBoost AI" },
   ];
 }
 
@@ -11,59 +11,115 @@ export default function Privacy() {
   return (
     <div className="min-h-screen bg-background text-foreground py-16">
       <div className="mx-auto max-w-4xl px-6">
-        <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
+        <h1 className="text-4xl font-bold mb-8">TradeBoost Privacy Policy</h1>
         <div className="prose prose-lg max-w-none">
           <p className="text-muted-foreground mb-6">
-            Last updated: {new Date().toLocaleDateString()}
+            Last updated: October 7, 2025
           </p>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">1. Information We Collect</h2>
+            <h2 className="text-2xl font-semibold mb-4">1. Overview</h2>
             <p className="mb-4">
-              We collect information you provide directly to us, such as when you create an account, subscribe to our service, or contact us for support.
+              TradeBoost ("we", "us", "our") provides an AI-driven advertising platform for UK trades. This Privacy Policy explains how we collect, use, and safeguard personal and non-personal data when you access or use our services.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">2. How We Use Your Information</h2>
+            <h2 className="text-2xl font-semibold mb-4">2. Information We Collect</h2>
+            <ul className="mb-4 list-disc pl-6">
+              <li><strong>Account Information:</strong> name, email address, and authentication data supplied via Clerk.</li>
+              <li><strong>Billing Information:</strong> payment method details processed through Polar.sh; we store only necessary identifiers for billing status.</li>
+              <li><strong>Usage Data:</strong> interactions with onboarding flows, campaign settings, and dashboard activity captured through Convex.</li>
+              <li><strong>Cookies & Analytics:</strong> browser cookies, device identifiers, and analytics events for improving performance and security.</li>
+            </ul>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">3. How We Use Information</h2>
+            <ul className="mb-4 list-disc pl-6">
+              <li>Provide, maintain, and improve the TradeBoost platform and AI campaign outputs.</li>
+              <li>Process subscription payments, manage billing status, and prevent fraud.</li>
+              <li>Communicate service updates, onboarding guidance, and critical alerts via Resend.</li>
+              <li>Monitor usage trends, diagnose technical issues, and enhance user experience.</li>
+            </ul>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">4. Legal Basis</h2>
             <p className="mb-4">
-              We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.
+              We process personal data where it is necessary to perform our contract with you, comply with legal obligations, and pursue legitimate interests such as platform security and product improvement.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">3. Data Sharing and Disclosure</h2>
+            <h2 className="text-2xl font-semibold mb-4">5. Sharing & Disclosure</h2>
+            <ul className="mb-4 list-disc pl-6">
+              <li><strong>Infrastructure & Hosting:</strong> Vercel (application hosting) and Convex (real-time backend).</li>
+              <li><strong>Authentication:</strong> Clerk for account creation and session management.</li>
+              <li><strong>Billing & Payments:</strong> Polar.sh for subscription processing and invoicing.</li>
+              <li><strong>Advertising Integrations:</strong> Google Ads API for campaign drafts and reporting.</li>
+              <li><strong>AI Services:</strong> OpenAI to generate campaign copy using context you supply.</li>
+              <li><strong>Email Delivery:</strong> Resend for transactional messages.</li>
+              <li><strong>Compliance:</strong> We may disclose information when required by law or to protect rights, safety, or security.</li>
+            </ul>
             <p className="mb-4">
-              We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy.
-            </p>
-            <h3 className="text-xl font-semibold mb-2">Service Providers</h3>
-            <p className="mb-4">
-              We may share your information with third-party service providers who assist us in operating our platform, conducting our business, or serving you.
-            </p>
-            <h3 className="text-xl font-semibold mb-2">Legal Requirements</h3>
-            <p className="mb-4">
-              We may disclose your information if required to do so by law or in response to valid requests by public authorities.
-            </p>
-          </section>
-
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">4. Data Security</h2>
-            <p className="mb-4">
-              We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+              All third parties only receive the minimum data required to perform their services.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">5. Your Rights</h2>
+            <h2 className="text-2xl font-semibold mb-4">6. International Data Transfers</h2>
             <p className="mb-4">
-              You have the right to access, update, or delete your personal information. You may also opt out of certain communications from us.
+              Our partners may operate in jurisdictions outside your home country. We rely on appropriate safeguards (such as Standard Contractual Clauses) where required by applicable laws.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">6. Contact Us</h2>
+            <h2 className="text-2xl font-semibold mb-4">7. Data Retention</h2>
             <p className="mb-4">
-              If you have any questions about this Privacy Policy, please contact us at privacy@kaizen.com
+              We retain personal data while your account is active and for a reasonable period afterward to meet legal, tax, or accounting requirements. We delete or anonymize data when it is no longer needed.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">8. Your Rights</h2>
+            <p className="mb-4">
+              Depending on your location, you may request access, correction, deletion, restriction, portability, or objection to processing of your personal data. Submit requests through in-app support; we'll respond in line with applicable law.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">9. Cookies & Tracking</h2>
+            <p className="mb-4">
+              You can set your browser to refuse cookies, though certain features may become unavailable. We do not respond to Do Not Track signals at this time.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">10. Children's Privacy</h2>
+            <p className="mb-4">
+              TradeBoost is not directed to children under 16, and we do not knowingly collect personal data from them.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">11. Security</h2>
+            <p className="mb-4">
+              We implement administrative, technical, and physical safeguards to protect data, including encryption of sensitive credentials and role-based access controls.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">12. Changes to This Policy</h2>
+            <p className="mb-4">
+              We may update this Privacy Policy from time to time. Material changes will be communicated through the dashboard or other prominent notice.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">13. Contact</h2>
+            <p className="mb-4">
+              If you have questions or would like to exercise data rights, please reach out via the in-app support channel. A dedicated email address will be provided in future updates.
             </p>
           </section>
         </div>

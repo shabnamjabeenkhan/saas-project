@@ -40,7 +40,7 @@ export const LovableHero = ({ isSignedIn = false }: LovableHeroProps) => {
               </Link>
 
               <p className="mt-3 text-xs text-muted-foreground sm:mt-4 sm:text-sm">
-                From £69/month · No contracts · Cancel anytime
+                From $69/month · No contracts · Cancel anytime
               </p>
             </div>
           </div>
