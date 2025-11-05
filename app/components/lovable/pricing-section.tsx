@@ -45,8 +45,8 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   ];
 
   return (
-    <section className="py-32" style={{ backgroundColor: '#18191a' }}>
-      <div className="mx-auto max-w-5xl px-6">
+    <section className="py-32 overflow-x-hidden" style={{ backgroundColor: '#18191a' }}>
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-6 text-center">
           <h2 className="text-center text-4xl font-semibold lg:text-5xl">
             Simple, Transparent Pricing
@@ -56,12 +56,11 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
           </p>
         </div>
 
-        <div className="mt-20 grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+        <div className="mt-20 flex flex-col md:grid md:gap-6 md:grid-cols-2 max-w-4xl mx-auto space-y-6 md:space-y-0 px-4">
           {plans.map((plan, index) => (
             <div
               key={index}
-              className="border border-border rounded-3xl flex flex-col justify-between space-y-6 shadow-sm p-6 relative"
-              style={{ width: '360px' }}
+              className="border border-border rounded-3xl flex flex-col justify-between space-y-6 shadow-sm p-6 relative w-full max-w-[280px] sm:max-w-sm md:max-w-md mx-auto"
             >
               {plan.badge && (
                 <span className="absolute inset-x-0 -top-3 mx-auto flex h-6 w-fit items-center rounded-full bg-gradient-to-br from-purple-400 to-primary px-3 py-1 text-xs font-medium text-white shadow-md">

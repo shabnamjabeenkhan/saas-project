@@ -74,60 +74,70 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="xl:hidden absolute top-16 left-0 right-0 bg-card/98 backdrop-blur-sm border-b border-border shadow-lg z-40">
-            <nav className="container mx-auto px-4 py-6">
-              <div className="flex flex-col space-y-2">
+          <div className="xl:hidden fixed inset-0 z-50" style={{ backgroundColor: '#18191a' }}>
+            <nav className="flex flex-col h-full">
+              {/* Close button */}
+              <div className="flex justify-end p-6">
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-white hover:text-primary transition-colors p-2"
+                  aria-label="Close menu"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="flex-1 flex flex-col justify-center items-center px-8 py-12 space-y-8">
                 <Link
                   to="/"
-                  className="text-foreground hover:text-primary transition-colors py-3 px-2 border-b border-border/50 text-base"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Home
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="text-foreground hover:text-primary transition-colors py-3 px-2 border-b border-border/50 text-base"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   How It Works
                 </a>
                 <a
                   href="#benefits"
-                  className="text-foreground hover:text-primary transition-colors py-3 px-2 border-b border-border/50 text-base"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Benefits
                 </a>
                 <a
                   href="#pricing"
-                  className="text-foreground hover:text-primary transition-colors py-3 px-2 border-b border-border/50 text-base"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Pricing
                 </a>
                 <a
                   href="#faq"
-                  className="text-foreground hover:text-primary transition-colors py-3 px-2 border-b border-border/50 text-base"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   FAQ
                 </a>
-                <div className="flex flex-col gap-3 pt-6">
-                  {!isSignedIn ? (
-                    <>
-                      <Button asChild variant="ghost" className="w-full justify-start text-base py-3">
-                        <Link to="/sign-in">Login</Link>
-                      </Button>
-                      <Button asChild variant="default" className="w-full text-base py-3">
-                        <Link to="/sign-up">Sign Up</Link>
-                      </Button>
-                    </>
-                  ) : (
-                    <Button asChild variant="default" className="w-full text-base py-3">
-                      <Link to="/dashboard">Dashboard</Link>
+              </div>
+              <div className="px-8 pb-12 space-y-4">
+                {!isSignedIn ? (
+                  <>
+                    <Button asChild className="w-full bg-white text-black hover:bg-gray-100 text-lg py-6 h-auto font-medium">
+                      <Link to="/sign-in" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
                     </Button>
-                  )}
-                </div>
+                    <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 text-lg py-6 h-auto font-medium">
+                      <Link to="/sign-up" onClick={() => setIsMobileMenuOpen(false)}>Sign Up</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 text-lg py-6 h-auto font-medium">
+                    <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
+                  </Button>
+                )}
               </div>
             </nav>
           </div>
