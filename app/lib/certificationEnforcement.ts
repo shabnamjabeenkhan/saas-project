@@ -2,6 +2,7 @@
 // Prevents users from advertising services they're not qualified for
 
 import { useCompliance } from './complianceContext';
+import { isAdminEmail } from '~/utils/admin';
 
 export interface UserCertifications {
   gasSafe: {
@@ -124,8 +125,19 @@ export interface CertificationCheckResult {
 export class CertificationEnforcer {
   static checkServiceEligibility(
     requestedServices: string[],
-    userCertifications: UserCertifications
+    userCertifications: UserCertifications,
+    userEmail?: string
   ): CertificationCheckResult {
+    // Skip all certification requirements for admins
+    if (userEmail && isAdminEmail(userEmail)) {
+      return {
+        canAdvertise: true,
+        missingCertifications: [],
+        blockedServices: [],
+        warnings: ['Admin access: Certification requirements bypassed'],
+        legalRisks: []
+      };
+    }
     const missingCertifications: string[] = [];
     const blockedServices: string[] = [];
     const warnings: string[] = [];
@@ -244,9 +256,10 @@ export const useCertificationEnforcement = () => {
 
   const checkAndEnforce = async (
     requestedServices: string[],
-    userCertifications: UserCertifications
+    userCertifications: UserCertifications,
+    userEmail?: string
   ): Promise<CertificationCheckResult> => {
-    const result = CertificationEnforcer.checkServiceEligibility(requestedServices, userCertifications);
+    const result = CertificationEnforcer.checkServiceEligibility(requestedServices, userCertifications, userEmail);
 
     // Log any violations
     if (result.blockedServices.length > 0) {
@@ -265,9 +278,10 @@ export const useCertificationEnforcement = () => {
 
   const canAdvertiseService = (
     service: string,
-    userCertifications: UserCertifications
+    userCertifications: UserCertifications,
+    userEmail?: string
   ): boolean => {
-    const result = CertificationEnforcer.checkServiceEligibility([service], userCertifications);
+    const result = CertificationEnforcer.checkServiceEligibility([service], userCertifications, userEmail);
     return result.canAdvertise;
   };
 

@@ -1,4 +1,4 @@
-# TradeBoost Privacy Policy
+whe# TradeBoost Privacy Policy
 
 _Last updated: October 7, 2025_
 

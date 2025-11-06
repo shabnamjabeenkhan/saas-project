@@ -277,6 +277,22 @@ export function CampaignPreviewCard({
             </div>
           </div>
 
+          {/* Compliance Reminder */}
+          {campaign.status === 'draft' && (
+            <div className="text-xs text-gray-400 mb-3 p-2 bg-gray-800/30 rounded">
+              <span>Reminder: You are responsible for the accuracy of all claims. See </span>
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                Terms
+              </a>
+              <span>.</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           {campaign.status === 'draft' && (
             <div className="flex gap-2 pt-4 border-t border-gray-700">

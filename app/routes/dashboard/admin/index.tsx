@@ -2,6 +2,7 @@ import { useLoaderData } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { requireAdmin } from "~/utils/admin";
+import { SyncStatusComponent } from "~/components/dashboard/sync-status";
 import type { Route } from "./+types/index";
 
 export async function loader(args: Route.LoaderArgs) {
@@ -128,6 +129,21 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </div>
+
+          {/* Sync Telemetry - Admin Only */}
+          <div className="px-4 lg:px-6 mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Sync Status</CardTitle>
+                <CardDescription>
+                  Detailed Google Ads sync telemetry and health monitoring
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SyncStatusComponent />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Recent Customers */}

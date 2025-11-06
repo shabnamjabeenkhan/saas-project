@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useCompliance } from '~/lib/complianceContext';
 import { TermsVersionManager } from '~/lib/termsVersioning';
 import { TermsAcceptanceModal } from './TermsAcceptanceModal';
+import { useUser } from '@clerk/react-router';
+import { isAdminEmail } from '~/utils/admin';
 
 interface TermsGuardProps {
   children: React.ReactNode;
@@ -10,6 +12,7 @@ interface TermsGuardProps {
 
 export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) => {
   const { userId, isAuthenticated } = useCompliance();
+  const { user } = useUser();
   const [needsAcceptance, setNeedsAcceptance] = useState<boolean>(false);
   const [userLastVersion, setUserLastVersion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,13 +24,22 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
         return;
       }
 
+      // Check if user is admin - bypass terms acceptance for admins
+      const userEmail = user?.emailAddresses?.[0]?.emailAddress;
+      if (userEmail && isAdminEmail(userEmail)) {
+        console.log('Admin user detected, bypassing terms acceptance');
+        setNeedsAcceptance(false);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         // Get user's last accepted version
         const lastAcceptedVersion = TermsVersionManager.getUserLastAcceptedVersion(userId);
         setUserLastVersion(lastAcceptedVersion);
 
         // Check if user needs to re-accept terms
-        const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion);
+        const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
         setNeedsAcceptance(needsToAccept);
 
         console.log('Terms check:', {
@@ -46,7 +58,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
     };
 
     checkTermsAcceptance();
-  }, [userId, isAuthenticated]);
+  }, [userId, isAuthenticated, user]);
 
   const handleTermsAccepted = async () => {
     try {

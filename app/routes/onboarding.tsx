@@ -17,6 +17,8 @@ import { Badge } from "~/components/ui/badge";
 import { Progress } from "~/components/ui/progress";
 import { ChevronLeft, ChevronRight, CheckCircle, Wrench, Zap, Building2, MapPin, Target } from "lucide-react";
 import { useComplianceLogging, ComplianceProvider } from "~/lib/complianceContext";
+import { useUser } from "@clerk/react-router";
+import { isAdminEmail } from "~/utils/admin";
 
 // Step schemas
 const step1Schema = z.object({
@@ -99,10 +101,24 @@ export default function OnboardingWizard() {
   const [formData, setFormData] = useState<OnboardingData>({});
   const navigate = useNavigate();
 
+  const { user } = useUser();
+
   const saveOnboardingData = useMutation(api.onboarding.saveOnboardingData);
   const completeOnboarding = useMutation(api.onboarding.completeOnboarding);
   const generateCampaign = useAction(api.campaigns.generateCampaign);
   const existingData = useQuery(api.onboarding.getOnboardingData);
+
+  // Check if user is admin and bypass onboarding
+  useEffect(() => {
+    if (user?.emailAddresses?.[0]?.emailAddress) {
+      const userEmail = user.emailAddresses[0].emailAddress;
+      if (isAdminEmail(userEmail)) {
+        console.log("Admin user detected, redirecting to dashboard...");
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+    }
+  }, [user, navigate]);
 
 
   // Load existing data when available

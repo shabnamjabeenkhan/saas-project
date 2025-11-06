@@ -183,6 +183,28 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
             </div>
           </div>
 
+          {/* Compliance Reminder */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+              ⚠️ COMPLIANCE REMINDER
+            </h4>
+            <p className="text-sm font-medium text-gray-800 mb-2">
+              You are responsible for ensuring all claims are accurate and compliant.
+            </p>
+            <p className="text-sm font-medium text-red-700 mb-3">
+              False advertising can result in £5,000+ fines and legal action.
+            </p>
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li>• Only claim services you're qualified to provide</li>
+              <li>• "24/7 service" must be actually available 24/7</li>
+              <li>• Gas work requires valid Gas Safe registration</li>
+              <li>• Electrical work requires Part P certification</li>
+              <li>• Insurance claims must be accurate (£1M+ required)</li>
+              <li>• Price guarantees must be deliverable</li>
+            </ul>
+          </div>
+
           {/* Legal Consequences */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h4 className="font-medium text-gray-900 mb-2">Legal Responsibility</h4>

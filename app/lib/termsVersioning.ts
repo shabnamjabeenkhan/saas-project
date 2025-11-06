@@ -1,4 +1,5 @@
 // Terms of Service Version Management System
+import React from 'react';
 
 export interface TermsVersion {
   version: string;
@@ -291,7 +292,7 @@ export function useTermsVersioning(userId: string) {
     if (!userId) return;
 
     const lastAcceptedVersion = TermsVersionManager.getUserLastAcceptedVersion(userId);
-    const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion);
+    const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
 
     setNeedsAcceptance(needsToAccept);
 

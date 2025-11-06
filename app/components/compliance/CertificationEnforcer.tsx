@@ -23,6 +23,7 @@ import {
 interface CertificationEnforcerProps {
   selectedServices: string[];
   userCertifications: UserCertifications;
+  userEmail?: string;
   onCertificationUpdate?: (certType: keyof UserCertifications) => void;
   onComplianceCheck?: (result: CertificationCheckResult) => void;
   blockInvalidServices?: boolean;
@@ -32,6 +33,7 @@ interface CertificationEnforcerProps {
 export const CertificationEnforcer: React.FC<CertificationEnforcerProps> = ({
   selectedServices,
   userCertifications,
+  userEmail,
   onCertificationUpdate,
   onComplianceCheck,
   blockInvalidServices = true,
@@ -51,14 +53,14 @@ export const CertificationEnforcer: React.FC<CertificationEnforcerProps> = ({
         return;
       }
 
-      const result = await checkAndEnforce(selectedServices, userCertifications);
+      const result = await checkAndEnforce(selectedServices, userCertifications, userEmail);
       setCheckResult(result);
       setHasChecked(true);
       onComplianceCheck?.(result);
     };
 
     performCheck();
-  }, [selectedServices, userCertifications, checkAndEnforce, onComplianceCheck]);
+  }, [selectedServices, userCertifications, userEmail, checkAndEnforce, onComplianceCheck]);
 
   const getCertificationIcon = (status: string) => {
     switch (status) {

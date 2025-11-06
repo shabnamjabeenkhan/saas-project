@@ -203,25 +203,40 @@ export default function Campaigns() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             {campaign && (
               <>
-                {isGoogleAdsConnected ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePushToGoogleAds}
-                      disabled={isProcessingApproval}
-                      className="text-white border-gray-700 hover:bg-gray-800"
-                    >
-                      {isProcessingApproval ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Zap className="w-4 h-4 mr-2" />
-                      )}
-                      {isProcessingApproval ? "Pushing..." : "Push to Google Ads"}
-                    </Button>
+                {/* Compliance Reminder */}
+                <div className="text-xs text-gray-400 text-right">
+                  <span>Reminder: You are responsible for the accuracy of all claims. See </span>
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 underline"
+                  >
+                    Terms
+                  </a>
+                  <span>.</span>
+                </div>
+
+                <div className="flex gap-2">
+                  {isGoogleAdsConnected ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePushToGoogleAds}
+                        disabled={isProcessingApproval}
+                        className="text-white border-gray-700 hover:bg-gray-800"
+                      >
+                        {isProcessingApproval ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        {isProcessingApproval ? "Pushing..." : "Push to Google Ads"}
+                      </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -256,6 +271,7 @@ export default function Campaigns() {
                     {isConnecting ? "Connecting..." : "Connect Google Ads"}
                   </Button>
                 )}
+                </div>
               </>
             )}
 

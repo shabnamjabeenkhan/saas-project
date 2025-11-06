@@ -73,6 +73,14 @@ export interface AppConfig {
       projectId?: string;
       webhookUrl?: string;
     };
+    googleAds?: {
+      enabled: boolean;
+      customerId?: string;
+      developerToken?: string;
+      clientId?: string;
+      clientSecret?: string;
+      refreshToken?: string;
+    };
   };
   ui: {
     showPricing: boolean;   // Show pricing page and components
