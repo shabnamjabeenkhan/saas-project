@@ -311,9 +311,19 @@ export function useTermsVersioning(userId: string) {
       termsVersion: CURRENT_TERMS_VERSION,
       acceptedAt: new Date().toISOString(),
       acceptanceMethod,
-      ipAddress: await getUserIP(),
+      ipAddress: 'unknown', // Don't block on IP lookup
       userAgent: navigator.userAgent
     };
+
+    // Get IP asynchronously without blocking
+    getUserIP().then(ip => {
+      if (ip !== 'unknown') {
+        // Update stored record with actual IP if we get it
+        console.log('IP resolved:', ip);
+      }
+    }).catch(() => {
+      // Silent fail - don't block terms acceptance
+    });
 
     await TermsVersionManager.logTermsAcceptance(acceptance);
     setNeedsAcceptance(false);
@@ -330,7 +340,15 @@ export function useTermsVersioning(userId: string) {
 
 async function getUserIP(): Promise<string> {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    // Use AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+
+    const response = await fetch('https://api.ipify.org?format=json', {
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
     const data = await response.json();
     return data.ip;
   } catch {

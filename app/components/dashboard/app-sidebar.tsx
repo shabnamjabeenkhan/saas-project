@@ -94,10 +94,7 @@ export function AppSidebar({
       <SidebarHeader className="border-b border-gray-800/50 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link to="/" prefetch="viewport" className="flex items-center gap-2 p-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">T</span>
-              </div>
+            <Link to="/" prefetch="viewport" className="flex items-center p-2">
               <span className="text-lg font-semibold text-white">TradeBoost AI</span>
             </Link>
           </SidebarMenuItem>

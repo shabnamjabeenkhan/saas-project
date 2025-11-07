@@ -9,16 +9,6 @@ export const LovableFAQSection = () => {
       answer: 'Not at all! TradeBoost AI is designed for tradespeople with zero marketing experience. Our AI handles all the technical setup, keyword research, and campaign optimization. You just answer 5 simple questions about your business.',
     },
     {
-      id: 'item-2',
-      question: 'How quickly will I see results?',
-      answer: 'Most customers see their first leads within 24-48 hours of campaign launch. The AI optimizes continuously, so results typically improve over the first 2-3 weeks as it learns what works best for your specific area and services.',
-    },
-    {
-      id: 'item-3',
-      question: 'What if I serve multiple areas?',
-      answer: 'The Standard plan covers up to 3 service areas, while Premium offers unlimited areas. You can target different cities, postcodes, or set custom radius zones around your location. Perfect for tradespeople covering wider regions.',
-    },
-    {
       id: 'item-4',
       question: 'Can I use this for both plumbing and electrical work?',
       answer: 'Absolutely! TradeBoost AI supports multi-trade businesses. The Premium plan includes specialized campaigns for different services, so you can promote both plumbing and electrical work to the same customers and maximize your opportunities.',
@@ -42,6 +32,11 @@ export const LovableFAQSection = () => {
       id: 'item-8',
       question: 'How is this different from hiring a marketing agency?',
       answer: 'Marketing agencies typically charge £2,000-4,000/month with 6-12 month contracts, plus setup fees. TradeBoost AI costs £69-189/month with no contracts, no setup fees, and gives you full control and transparency over your campaigns.',
+    },
+    {
+      id: 'item-9',
+      question: 'What certifications do I need to use TradeBoost AI?',
+      answer: 'All trades require valid Business Registration. Plumbers need Gas Safe Registration if working on gas appliances, heating systems, or gas pipework - it\'s legally required for all engineers who work on boilers, heating systems, gas appliances, and gas pipework to be on the Gas Safe Register. Electricians must have Part P Electrical Certification for domestic electrical work.',
     },
   ];
 

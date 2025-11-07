@@ -83,7 +83,7 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             {getSeverityIcon()}
@@ -95,9 +95,9 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Legal Compliance Notice */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-red-600 mt-0.5" />
               <div className="text-sm text-red-800">
@@ -111,36 +111,39 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
             </div>
           </div>
 
-          {/* What's Changed */}
+          {/* What's Changed - Condensed */}
           {updateMessage.changes.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">What's Changed:</h3>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <ul className="text-sm text-blue-800 space-y-1">
-                  {updateMessage.changes.map((change, index) => (
+            <div className="space-y-2">
+              <h3 className="font-medium text-gray-900 text-sm">What's Changed:</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <ul className="text-xs text-blue-800 space-y-0.5">
+                  {updateMessage.changes.slice(0, 3).map((change, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <span className="text-blue-600 mt-0.5">•</span>
                       <span>{change}</span>
                     </li>
                   ))}
+                  {updateMessage.changes.length > 3 && (
+                    <li className="text-blue-600 text-xs">+ {updateMessage.changes.length - 3} more changes</li>
+                  )}
                 </ul>
               </div>
             </div>
           )}
 
           {/* Required Reading Confirmations */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-gray-900">Required Actions:</h3>
+          <div className="space-y-3">
+            <h3 className="font-medium text-gray-900 text-sm">Required Actions:</h3>
 
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 border rounded-lg">
+            <div className="space-y-2">
+              <div className="flex items-start gap-2 p-2 border rounded-lg">
                 <Checkbox
                   id="terms-read"
                   checked={hasReadTerms}
                   onCheckedChange={(checked) => setHasReadTerms(checked === true)}
                 />
                 <div className="flex-1">
-                  <label htmlFor="terms-read" className="text-sm font-medium cursor-pointer">
+                  <label htmlFor="terms-read" className="text-xs font-medium cursor-pointer">
                     I have read and understand the updated Terms of Service ({currentTerms.version})
                   </label>
                   <div className="mt-1">
@@ -148,7 +151,14 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
                       variant="link"
                       size="sm"
                       className="h-auto p-0 text-blue-600"
-                      onClick={() => window.open('/terms', '_blank')}
+                      onClick={() => {
+                        // Open in new window using absolute URL
+                        const newWindow = window.open(window.location.origin + '/terms', '_blank', 'noopener,noreferrer');
+                        if (!newWindow) {
+                          // Fallback if popup blocked - navigate in same tab temporarily
+                          window.location.href = '/terms';
+                        }
+                      }}
                     >
                       <FileText className="w-4 h-4 mr-1" />
                       View Terms of Service
@@ -157,14 +167,14 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 border rounded-lg">
+              <div className="flex items-start gap-2 p-2 border rounded-lg">
                 <Checkbox
                   id="privacy-read"
                   checked={hasReadPrivacy}
                   onCheckedChange={(checked) => setHasReadPrivacy(checked === true)}
                 />
                 <div className="flex-1">
-                  <label htmlFor="privacy-read" className="text-sm font-medium cursor-pointer">
+                  <label htmlFor="privacy-read" className="text-xs font-medium cursor-pointer">
                     I have read and understand the updated Privacy Policy ({currentPrivacy.version})
                   </label>
                   <div className="mt-1">
@@ -172,7 +182,14 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
                       variant="link"
                       size="sm"
                       className="h-auto p-0 text-blue-600"
-                      onClick={() => window.open('/privacy', '_blank')}
+                      onClick={() => {
+                        // Open in new window using absolute URL
+                        const newWindow = window.open(window.location.origin + '/privacy', '_blank', 'noopener,noreferrer');
+                        if (!newWindow) {
+                          // Fallback if popup blocked - navigate in same tab temporarily
+                          window.location.href = '/privacy';
+                        }
+                      }}
                     >
                       <FileText className="w-4 h-4 mr-1" />
                       View Privacy Policy
@@ -183,41 +200,38 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
             </div>
           </div>
 
-          {/* Compliance Reminder */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+          {/* Compliance Reminder - Condensed */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <h4 className="font-medium text-gray-900 mb-1 flex items-center gap-2 text-sm">
               <AlertTriangle className="w-4 h-4 text-yellow-600" />
               ⚠️ COMPLIANCE REMINDER
             </h4>
-            <p className="text-sm font-medium text-gray-800 mb-2">
+            <p className="text-xs font-medium text-gray-800 mb-1">
               You are responsible for ensuring all claims are accurate and compliant.
             </p>
-            <p className="text-sm font-medium text-red-700 mb-3">
+            <p className="text-xs font-medium text-red-700 mb-2">
               False advertising can result in £5,000+ fines and legal action.
             </p>
-            <ul className="text-sm text-gray-700 space-y-1">
+            <ul className="text-xs text-gray-700 space-y-0.5">
               <li>• Only claim services you're qualified to provide</li>
               <li>• "24/7 service" must be actually available 24/7</li>
               <li>• Gas work requires valid Gas Safe registration</li>
               <li>• Electrical work requires Part P certification</li>
-              <li>• Insurance claims must be accurate (£1M+ required)</li>
-              <li>• Price guarantees must be deliverable</li>
             </ul>
           </div>
 
-          {/* Legal Consequences */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-2">Legal Responsibility</h4>
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li>• By accepting, you confirm legal responsibility for all advertising compliance</li>
+          {/* Legal Consequences - Condensed */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+            <h4 className="font-medium text-gray-900 mb-1 text-sm">Legal Responsibility</h4>
+            <ul className="text-xs text-gray-700 space-y-0.5">
+              <li>• You confirm legal responsibility for all advertising compliance</li>
               <li>• You confirm you have required certifications for advertised services</li>
               <li>• You acknowledge TradeBoost AI provides tools only, not legal advice</li>
-              <li>• False claims can result in £5,000+ fines and legal action against you</li>
             </ul>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <Button
               onClick={handleDecline}
               variant="outline"
@@ -244,7 +258,7 @@ export const TermsAcceptanceModal: React.FC<TermsAcceptanceModalProps> = ({
 
           {/* Cannot proceed notice */}
           {!canAccept && (
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-xs text-gray-500 text-center">
               You must read and confirm both documents to continue using TradeBoost AI
             </p>
           )}

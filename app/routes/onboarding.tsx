@@ -15,7 +15,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { Badge } from "~/components/ui/badge";
 import { Progress } from "~/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle, Wrench, Zap, Building2, MapPin, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Wrench, Zap, Building2, MapPin, Target, Shield, AlertTriangle } from "lucide-react";
 import { useComplianceLogging, ComplianceProvider } from "~/lib/complianceContext";
 import { useUser } from "@clerk/react-router";
 import { isAdminEmail } from "~/utils/admin";
@@ -51,11 +51,23 @@ const step5Schema = z.object({
   monthlyBudget: z.number().min(50, "Minimum budget is £50"),
 });
 
+const step6Schema = z.object({
+  businessRegistration: z.boolean().refine(val => val === true, "You must confirm business registration"),
+  requiredCertifications: z.boolean().refine(val => val === true, "You must confirm required certifications"),
+  publicLiabilityInsurance: z.boolean().refine(val => val === true, "You must confirm public liability insurance"),
+  businessEmail: z.string().email("Valid business email is required"),
+  businessNumber: z.string().min(1, "Business number is required"),
+  termsAccepted: z.boolean().refine(val => val === true, "You must accept terms of service"),
+  complianceUnderstood: z.boolean().refine(val => val === true, "You must acknowledge compliance responsibility"),
+  certificationWarning: z.boolean().refine(val => val === true, "You must acknowledge certification verification warning"),
+});
+
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 type Step3Data = z.infer<typeof step3Schema>;
 type Step4Data = z.infer<typeof step4Schema>;
 type Step5Data = z.infer<typeof step5Schema>;
+type Step6Data = z.infer<typeof step6Schema>;
 
 const steps = [
   { title: "Trade Type", icon: Building2, description: "What type of trade services do you provide?" },
@@ -63,6 +75,7 @@ const steps = [
   { title: "Service Area", icon: MapPin, description: "Where do you provide services?" },
   { title: "Services", icon: Wrench, description: "What services do you offer?" },
   { title: "Goals", icon: Target, description: "Your business goals and availability" },
+  { title: "Compliance", icon: Shield, description: "Legal requirements and verification" },
   { title: "Summary", icon: CheckCircle, description: "Review your information" },
 ];
 
@@ -94,6 +107,7 @@ interface OnboardingData {
   step3?: Step3Data;
   step4?: Step4Data;
   step5?: Step5Data;
+  step6?: Step6Data;
 }
 
 export default function OnboardingWizard() {
@@ -173,10 +187,25 @@ export default function OnboardingWizard() {
         };
       }
 
+      if (existingData.complianceData) {
+        mappedData.step6 = {
+          businessRegistration: existingData.complianceData.businessRegistration || false,
+          requiredCertifications: existingData.complianceData.requiredCertifications || false,
+          publicLiabilityInsurance: existingData.complianceData.publicLiabilityInsurance || false,
+          businessEmail: existingData.complianceData.businessEmail || "",
+          businessNumber: existingData.complianceData.businessNumber || "",
+          termsAccepted: existingData.complianceData.termsAccepted || false,
+          complianceUnderstood: existingData.complianceData.complianceUnderstood || false,
+          certificationWarning: existingData.complianceData.certificationWarning || false,
+        };
+      }
+
       setFormData(mappedData);
 
       // Set current step based on completed data
-      if (mappedData.step5) {
+      if (mappedData.step6) {
+        setCurrentStep(5);
+      } else if (mappedData.step5) {
         setCurrentStep(4);
       } else if (mappedData.step4) {
         setCurrentStep(3);
@@ -252,6 +281,19 @@ export default function OnboardingWizard() {
         monthlyLeads: allData.step5.monthlyLeads,
         averageJobValue: allData.step5.averageJobValue,
         monthlyBudget: allData.step5.monthlyBudget,
+      };
+    }
+
+    if (allData.step6) {
+      convexData.complianceData = {
+        businessRegistration: allData.step6.businessRegistration,
+        requiredCertifications: allData.step6.requiredCertifications,
+        publicLiabilityInsurance: allData.step6.publicLiabilityInsurance,
+        businessEmail: allData.step6.businessEmail,
+        businessNumber: allData.step6.businessNumber,
+        termsAccepted: allData.step6.termsAccepted,
+        complianceUnderstood: allData.step6.complianceUnderstood,
+        certificationWarning: allData.step6.certificationWarning,
       };
     }
 
@@ -347,8 +389,11 @@ export default function OnboardingWizard() {
               {/* Step 5: Availability & Goals */}
               {currentStep === 4 && <Step5Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step5} />}
 
-              {/* Step 6: Summary */}
-              {currentStep === 5 && <SummaryStep formData={formData} onNext={handleNext} onPrevious={handlePrevious} onEdit={(step: number) => setCurrentStep(step)} />}
+              {/* Step 6: Compliance & Verification */}
+              {currentStep === 5 && <Step6Form onNext={handleNext} onPrevious={handlePrevious} defaultValues={formData.step6} />}
+
+              {/* Step 7: Summary */}
+              {currentStep === 6 && <SummaryStep formData={formData} onNext={handleNext} onPrevious={handlePrevious} onEdit={(step: number) => setCurrentStep(step)} />}
             </CardContent>
           </Card>
         </div>
@@ -735,6 +780,233 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
   );
 }
 
+// Step 6 Component - Compliance & Verification
+function Step6Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step6Data) => void; onPrevious: () => void; defaultValues?: Step6Data }) {
+  const form = useForm<Step6Data>({
+    resolver: zodResolver(step6Schema),
+    defaultValues: defaultValues || {
+      businessRegistration: false,
+      requiredCertifications: false,
+      publicLiabilityInsurance: false,
+      businessEmail: "",
+      businessNumber: "",
+      termsAccepted: false,
+      complianceUnderstood: false,
+      certificationWarning: false,
+    },
+  });
+
+  const { logAcknowledgment } = useComplianceLogging();
+
+  const handleComplianceChange = async (field: string, checked: boolean) => {
+    form.setValue(field as keyof Step6Data, checked as any);
+
+    if (checked) {
+      try {
+        await logAcknowledgment(field, `User acknowledged: ${field}`, 'onboarding');
+        console.log(`Compliance logged: ${field}`);
+      } catch (error) {
+        console.error("Failed to log compliance:", error);
+      }
+    }
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
+      {/* Certification Verification Warning */}
+      <div className="bg-yellow-950/50 border border-yellow-800 rounded-lg p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-6 h-6 text-yellow-500 mt-1 flex-shrink-0" />
+          <div className="space-y-3">
+            <h3 className="font-semibold text-yellow-300">Certification Verification Notice</h3>
+            <div className="space-y-2 text-sm text-yellow-200">
+              <p><strong>Important:</strong> TradeBoost AI may contact you to request proof of certifications via email.</p>
+              <p><strong>Warning:</strong> Failure to provide required documentation when requested can result in <strong>permanent suspension or ban</strong> from the platform.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Identity Verification */}
+      <div className="space-y-4">
+        <h3 className="font-medium text-white flex items-center gap-2">
+          <Shield className="w-5 h-5" />
+          Business Identity Verification
+        </h3>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="businessEmail" className="text-white">Business Email Address *</Label>
+            <Input
+              id="businessEmail"
+              type="email"
+              {...form.register("businessEmail")}
+              placeholder="info@yourbusiness.co.uk"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
+            />
+            {form.formState.errors.businessEmail && (
+              <p className="text-sm text-red-500">{form.formState.errors.businessEmail.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="businessNumber" className="text-white">Business Registration Number *</Label>
+            <Input
+              id="businessNumber"
+              {...form.register("businessNumber")}
+              placeholder="Company Number, UTR, or VAT Number"
+              className="bg-[#0A0A0A] border-gray-700 text-white"
+            />
+            <p className="text-xs text-muted-foreground">
+              Provide your Company Number, UTR (Unique Taxpayer Reference), or VAT Number
+            </p>
+            {form.formState.errors.businessNumber && (
+              <p className="text-sm text-red-500">{form.formState.errors.businessNumber.message}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Certification Requirements */}
+      <div className="space-y-4">
+        <h3 className="font-medium text-white">Required Certifications & Registrations</h3>
+
+        <div className="space-y-3">
+          <div className="flex items-start space-x-3 p-4 border border-gray-700 rounded-lg">
+            <Checkbox
+              id="businessRegistration"
+              checked={form.watch("businessRegistration")}
+              onCheckedChange={(checked) => handleComplianceChange('businessRegistration', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="businessRegistration" className="text-white font-medium">
+                Business Registration *
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                I confirm my business is registered with HMRC or Companies House
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3 p-4 border border-gray-700 rounded-lg">
+            <Checkbox
+              id="requiredCertifications"
+              checked={form.watch("requiredCertifications")}
+              onCheckedChange={(checked) => handleComplianceChange('requiredCertifications', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="requiredCertifications" className="text-white font-medium">
+                Required Trade Certifications *
+              </Label>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>• <strong>Gas work:</strong> Gas Safe Registration (legally required for boilers, heating, gas appliances)</p>
+                <p>• <strong>Electrical work:</strong> Part P Electrical Certification for domestic work</p>
+                <p>I confirm I hold all necessary certifications for the services I advertise</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3 p-4 border border-gray-700 rounded-lg">
+            <Checkbox
+              id="publicLiabilityInsurance"
+              checked={form.watch("publicLiabilityInsurance")}
+              onCheckedChange={(checked) => handleComplianceChange('publicLiabilityInsurance', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="publicLiabilityInsurance" className="text-white font-medium">
+                Public Liability Insurance *
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                I confirm I have valid public liability insurance (minimum £1 million coverage recommended)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {(form.formState.errors.businessRegistration || form.formState.errors.requiredCertifications || form.formState.errors.publicLiabilityInsurance) && (
+          <p className="text-sm text-red-500">All certifications must be confirmed to continue</p>
+        )}
+      </div>
+
+      {/* Legal Acknowledgments */}
+      <div className="bg-red-950/50 border border-red-800 rounded-lg p-6 space-y-4">
+        <h3 className="font-semibold text-red-300 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5" />
+          Legal Compliance Requirements
+        </h3>
+
+        <div className="space-y-3">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="complianceUnderstood"
+              className="border-red-400 mt-1"
+              checked={form.watch("complianceUnderstood")}
+              onCheckedChange={(checked) => handleComplianceChange('complianceUnderstood', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="complianceUnderstood" className="text-red-200 font-medium">
+                Advertising Compliance Responsibility *
+              </Label>
+              <p className="text-sm text-red-200">
+                I understand I am solely responsible for ensuring all advertising claims are accurate, legal, and compliant with UK regulations. False advertising can result in £5,000+ fines and legal action.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="certificationWarning"
+              className="border-red-400 mt-1"
+              checked={form.watch("certificationWarning")}
+              onCheckedChange={(checked) => handleComplianceChange('certificationWarning', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="certificationWarning" className="text-red-200 font-medium">
+                Certification Verification Warning *
+              </Label>
+              <p className="text-sm text-red-200">
+                I acknowledge that TradeBoost AI may request proof of certifications and that failure to provide documentation when requested can result in permanent account suspension.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="termsAccepted"
+              className="border-red-400 mt-1"
+              checked={form.watch("termsAccepted")}
+              onCheckedChange={(checked) => handleComplianceChange('termsAccepted', !!checked)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="termsAccepted" className="text-red-200 font-medium">
+                Terms of Service *
+              </Label>
+              <p className="text-sm text-red-200">
+                I have read and agree to the <a href="/terms" target="_blank" className="underline hover:text-red-100">Terms of Service</a> and understand that TradeBoost AI provides advertising suggestions only, not legal advice.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {(form.formState.errors.complianceUnderstood || form.formState.errors.certificationWarning || form.formState.errors.termsAccepted) && (
+          <p className="text-sm text-red-400">All legal requirements must be acknowledged to continue</p>
+        )}
+      </div>
+
+      <div className="flex justify-between pt-6">
+        <Button type="button" variant="outline" onClick={onPrevious} className="flex items-center gap-2 text-white">
+          <ChevronLeft className="w-4 h-4" />
+          Previous
+        </Button>
+        <Button type="submit" className="flex items-center gap-2">
+          Review & Complete
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 // Summary Step Component
 function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
   formData: OnboardingData;
@@ -742,50 +1014,9 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
   onPrevious: () => void;
   onEdit: (step: number) => void;
 }) {
-  // Compliance acknowledgment state
-  const [complianceAcknowledged, setComplianceAcknowledged] = useState({
-    understanding: false,
-    certifications: false,
-    legalAdvice: false,
-  });
-
-  // Use compliance logging with real user ID
   const { logAcknowledgment } = useComplianceLogging();
 
-  // Check if all compliance boxes are checked
-  const allComplianceChecked = Object.values(complianceAcknowledged).every(Boolean);
-
-  const handleComplianceChange = async (type: string, checked: boolean) => {
-    setComplianceAcknowledged(prev => ({ ...prev, [type]: checked }));
-
-    if (checked) {
-      // Log the acknowledgment for legal evidence
-      const warningContent = getWarningContent(type);
-
-      try {
-        await logAcknowledgment(type, warningContent, 'onboarding');
-        console.log(`Compliance acknowledged: ${type} - ${warningContent}`);
-      } catch (error) {
-        console.error("Failed to log compliance acknowledgment:", error);
-      }
-    }
-  };
-
-  const getWarningContent = (type: string): string => {
-    const warnings = {
-      understanding: "I understand I am solely responsible for advertising compliance and accuracy",
-      certifications: "I confirm I have all required certifications, insurance, and business registration",
-      legalAdvice: "I understand TradeBoost AI provides suggestions only, not legal advice",
-    };
-    return warnings[type as keyof typeof warnings] || "";
-  };
-
   const handleSubmit = async () => {
-    if (!allComplianceChecked) {
-      alert("Please acknowledge all compliance requirements before proceeding.");
-      return;
-    }
-
     // Log final onboarding completion
     try {
       await logAcknowledgment(
@@ -812,7 +1043,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <Building2 className="w-4 h-4" />
                 Trade Type
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => onEdit(0)}>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(0)} className="text-white hover:text-gray-300">
                 Edit
               </Button>
             </div>
@@ -838,7 +1069,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <MapPin className="w-4 h-4" />
                 Contact Information
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => onEdit(1)}>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(1)} className="text-white hover:text-gray-300">
                 Edit
               </Button>
             </div>
@@ -871,7 +1102,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <MapPin className="w-4 h-4" />
                 Service Area
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => onEdit(2)}>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(2)} className="text-white hover:text-gray-300">
                 Edit
               </Button>
             </div>
@@ -890,7 +1121,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <Wrench className="w-4 h-4" />
                 Services Offered
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => onEdit(3)}>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(3)} className="text-white hover:text-gray-300">
                 Edit
               </Button>
             </div>
@@ -913,7 +1144,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <Target className="w-4 h-4" />
                 Business Goals & Availability
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => onEdit(4)}>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(4)} className="text-white hover:text-gray-300">
                 Edit
               </Button>
             </div>
@@ -947,71 +1178,65 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
             </div>
           </div>
         )}
+
+        {/* Compliance & Verification */}
+        {formData.step6 && (
+          <div className="border border-gray-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-medium flex items-center gap-2 text-white">
+                <Shield className="w-4 h-4" />
+                Compliance & Verification
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(5)} className="text-white hover:text-gray-300">
+                Edit
+              </Button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Business Email:</span>
+                <p className="text-white">{formData.step6.businessEmail}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Business Number:</span>
+                <p className="text-white">{formData.step6.businessNumber}</p>
+              </div>
+              <div className="space-y-2">
+                <span className="text-muted-foreground">Verified Requirements:</span>
+                <div className="grid grid-cols-1 gap-1">
+                  {formData.step6.businessRegistration && (
+                    <span className="text-green-400 text-xs">✓ Business Registration Confirmed</span>
+                  )}
+                  {formData.step6.requiredCertifications && (
+                    <span className="text-green-400 text-xs">✓ Trade Certifications Confirmed</span>
+                  )}
+                  {formData.step6.publicLiabilityInsurance && (
+                    <span className="text-green-400 text-xs">✓ Public Liability Insurance Confirmed</span>
+                  )}
+                  {formData.step6.termsAccepted && (
+                    <span className="text-green-400 text-xs">✓ Terms of Service Accepted</span>
+                  )}
+                  {formData.step6.complianceUnderstood && (
+                    <span className="text-green-400 text-xs">✓ Compliance Responsibility Acknowledged</span>
+                  )}
+                  {formData.step6.certificationWarning && (
+                    <span className="text-green-400 text-xs">✓ Verification Warning Acknowledged</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Compliance Warning Section */}
-      <div className="bg-red-950/50 border border-red-800 rounded-lg p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="bg-red-500 rounded-full p-1">
-            <span className="text-white text-xs font-bold">!</span>
-          </div>
-          <div className="space-y-3">
-            <h3 className="font-semibold text-red-300">⚠️ CRITICAL: Legal Compliance Requirements</h3>
-
-            <div className="space-y-2 text-sm">
-              <p className="text-red-200">
-                <strong>WARNING:</strong> You are responsible for ensuring all claims are accurate and compliant with UK regulations.
-              </p>
-              <p className="text-red-200">
-                <strong>FALSE ADVERTISING CAN RESULT IN £5,000+ FINES AND LEGAL ACTION.</strong>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="compliance-understanding"
-                  className="border-red-400"
-                  checked={complianceAcknowledged.understanding}
-                  onCheckedChange={(checked) => handleComplianceChange('understanding', !!checked)}
-                />
-                <Label htmlFor="compliance-understanding" className="text-red-200 text-sm">
-                  I understand I am solely responsible for advertising compliance and accuracy
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="certifications-confirmed"
-                  className="border-red-400"
-                  checked={complianceAcknowledged.certifications}
-                  onCheckedChange={(checked) => handleComplianceChange('certifications', !!checked)}
-                />
-                <Label htmlFor="certifications-confirmed" className="text-red-200 text-sm">
-                  I confirm I have all required certifications, insurance, and business registration
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="legal-advice-understood"
-                  className="border-red-400"
-                  checked={complianceAcknowledged.legalAdvice}
-                  onCheckedChange={(checked) => handleComplianceChange('legalAdvice', !!checked)}
-                />
-                <Label htmlFor="legal-advice-understood" className="text-red-200 text-sm">
-                  I understand TradeBoost AI provides suggestions only, not legal advice
-                </Label>
-              </div>
-            </div>
-
-            <div className="text-xs text-red-300 space-y-1">
-              <p>• Gas work requires valid Gas Safe registration</p>
-              <p>• Electrical work requires Part P certification</p>
-              <p>• All trades require £1M+ public liability insurance</p>
-              <p>• Business must be registered with HMRC or Companies House</p>
-              <p>• Claims like "24/7 service" must be accurate and deliverable</p>
-            </div>
+      {/* Final Confirmation */}
+      <div className="bg-green-950/50 border border-green-800 rounded-lg p-6 space-y-3">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-6 h-6 text-green-500" />
+          <div>
+            <h3 className="font-semibold text-green-300">Ready to Launch</h3>
+            <p className="text-sm text-green-200">
+              You've completed all requirements and can now access your dashboard to start generating campaigns.
+            </p>
           </div>
         </div>
       </div>
@@ -1023,10 +1248,7 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!allComplianceChecked}
-          className={`flex items-center gap-2 ${
-            !allComplianceChecked ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
+          className="flex items-center gap-2"
         >
           <CheckCircle className="w-4 h-4" />
           Complete Setup

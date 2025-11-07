@@ -17,8 +17,23 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
   const [userLastVersion, setUserLastVersion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check if current route should bypass terms check
+  const isPublicRoute = () => {
+    if (typeof window === 'undefined') return false;
+    const pathname = window.location.pathname;
+    const publicRoutes = ['/terms', '/privacy'];
+    return publicRoutes.includes(pathname);
+  };
+
   useEffect(() => {
     const checkTermsAcceptance = async () => {
+      // Skip terms check for public routes
+      if (isPublicRoute()) {
+        setNeedsAcceptance(false);
+        setIsLoading(false);
+        return;
+      }
+
       if (!isAuthenticated || !userId || userId === 'anonymous') {
         setIsLoading(false);
         return;
@@ -62,12 +77,12 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
 
   const handleTermsAccepted = async () => {
     try {
-      // Update local state
+      // Update local state immediately
       setNeedsAcceptance(false);
       setUserLastVersion(TermsVersionManager.getCurrentTermsVersion().version);
 
-      // Force refresh to ensure clean state
-      window.location.reload();
+      // No reload needed - let React handle the state update
+      console.log('Terms accepted successfully');
     } catch (error) {
       console.error('Failed to handle terms acceptance:', error);
     }

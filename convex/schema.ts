@@ -71,6 +71,16 @@ export default defineSchema({
       averageJobValue: v.number(),
       monthlyBudget: v.number(),
     })),
+    complianceData: v.optional(v.object({
+      businessRegistration: v.boolean(),
+      requiredCertifications: v.boolean(),
+      publicLiabilityInsurance: v.boolean(),
+      businessEmail: v.string(),
+      businessNumber: v.string(),
+      termsAccepted: v.boolean(),
+      complianceUnderstood: v.boolean(),
+      certificationWarning: v.boolean(),
+    })),
     completedAt: v.optional(v.number()),
     isComplete: v.optional(v.boolean()),
   })

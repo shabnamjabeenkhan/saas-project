@@ -31,6 +31,16 @@ export const saveOnboardingData = mutation({
       averageJobValue: v.number(),
       monthlyBudget: v.number(),
     })),
+    complianceData: v.optional(v.object({
+      businessRegistration: v.boolean(),
+      requiredCertifications: v.boolean(),
+      publicLiabilityInsurance: v.boolean(),
+      businessEmail: v.string(),
+      businessNumber: v.string(),
+      termsAccepted: v.boolean(),
+      complianceUnderstood: v.boolean(),
+      certificationWarning: v.boolean(),
+    })),
     isComplete: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
