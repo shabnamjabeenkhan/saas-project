@@ -177,6 +177,34 @@ export const getCampaign = query({
   },
 });
 
+// Get campaign by ID
+export const getCampaignById = query({
+  args: {
+    campaignId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserToken(ctx);
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    const campaign = await ctx.db.get(args.campaignId as any);
+
+    if (!campaign) {
+      return null;
+    }
+
+    // Type assertion and ownership check
+    const campaignData = campaign as any;
+    if (campaignData.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    return campaignData;
+  },
+});
+
 // Update campaign status (e.g., when pushed to Google Ads)
 export const updateCampaignStatus = mutation({
   args: {
@@ -213,6 +241,154 @@ export const updateCampaignStatus = mutation({
     });
 
     return args.campaignId;
+  },
+});
+
+// Push campaign to Google Ads
+export const pushToGoogleAds: any = action({
+  args: {
+    campaignId: v.string(),
+    pushOptions: v.optional(v.object({
+      createAsDraft: v.boolean(),
+      testMode: v.boolean(),
+    })),
+  },
+  handler: async (ctx, args): Promise<any> => {
+    const userId = await getCurrentUserToken(ctx);
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    try {
+      // Get the campaign data using a query
+      const campaign: any = await ctx.runQuery(api.campaigns.getCampaignById, {
+        campaignId: args.campaignId
+      });
+
+      if (!campaign) {
+        throw new Error("Campaign not found");
+      }
+
+      if (campaign.userId !== userId) {
+        throw new Error("Unauthorized");
+      }
+
+      // Check if user has connected Google Ads account
+      const googleAdsTokens = await ctx.runQuery(api.googleAds.getTokens);
+
+      if (!googleAdsTokens) {
+        throw new Error("Google Ads account not connected. Please connect your account first.");
+      }
+
+      // Prepare campaign data for Google Ads API
+      const googleAdsData: any = {
+        name: campaign.campaignName,
+        budget: campaign.dailyBudget,
+        keywords: campaign.adGroups[0]?.keywords || [],
+        adCopy: {
+          headline: campaign.adGroups[0]?.adCopy.headlines[0] || "Professional Service",
+          description: campaign.adGroups[0]?.adCopy.descriptions[0] || "Quality service you can trust",
+        },
+        location: campaign.targetLocation,
+        phone: campaign.businessInfo.phone,
+        finalUrl: campaign.adGroups[0]?.adCopy.finalUrl || "https://example.com",
+      };
+
+      // Options for the push
+      const pushOptions = args.pushOptions || { createAsDraft: true, testMode: true };
+
+      console.log('🚀 Pushing campaign to Google Ads:', {
+        campaignName: googleAdsData.name,
+        budget: googleAdsData.budget,
+        options: pushOptions,
+      });
+
+      // Call the Node.js Google Ads action
+      const result: any = await ctx.runAction(api.campaigns.createGoogleAdsCampaign, {
+        campaignData: googleAdsData,
+        pushOptions,
+      });
+
+      if (result.success) {
+        // Update campaign status
+        await ctx.runMutation(api.campaigns.updateCampaignStatus, {
+          campaignId: args.campaignId,
+          googleCampaignId: result.campaignId,
+          status: pushOptions.createAsDraft ? "pushed_draft" : "pushed_live",
+        });
+
+        return {
+          success: true,
+          message: `Campaign ${pushOptions.createAsDraft ? 'drafted' : 'launched'} successfully in Google Ads`,
+          googleCampaignId: result.campaignId,
+          resourceName: result.resourceName,
+          budget: result.budget,
+          status: result.status,
+        };
+      } else {
+        throw new Error('Failed to create campaign in Google Ads');
+      }
+
+    } catch (error) {
+      console.error('Push to Google Ads failed:', error);
+
+      // Update campaign with error status
+      await ctx.runMutation(api.campaigns.updateCampaignStatus, {
+        campaignId: args.campaignId,
+        status: "push_failed",
+      });
+
+      throw new Error(`Failed to push to Google Ads: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+});
+
+// Mock Google Ads API operations (for development and testing)
+export const createGoogleAdsCampaign = action({
+  args: {
+    campaignData: v.object({
+      name: v.string(),
+      budget: v.number(),
+      keywords: v.array(v.string()),
+      adCopy: v.object({
+        headline: v.string(),
+        description: v.string(),
+      }),
+      location: v.string(),
+      phone: v.string(),
+      finalUrl: v.string(),
+    }),
+    pushOptions: v.object({
+      createAsDraft: v.boolean(),
+      testMode: v.boolean(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    console.log('🔧 Mock Google Ads API: Creating campaign', args.campaignData.name);
+
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+
+    // Simulate 95% success rate
+    const success = Math.random() > 0.05;
+
+    if (!success) {
+      throw new Error('Mock API error: Rate limit exceeded');
+    }
+
+    const mockCampaignId = `mock_campaign_${Date.now()}`;
+
+    console.log('✅ Mock campaign creation successful!');
+    console.log('🎯 Mock campaign ID:', mockCampaignId);
+
+    return {
+      success: true,
+      campaignId: mockCampaignId,
+      resourceName: `customers/mock/campaigns/${mockCampaignId}`,
+      budget: Math.min(args.campaignData.budget, 0.01),
+      status: 'PAUSED',
+    };
   },
 });
 
