@@ -157,12 +157,37 @@ export default function Campaigns() {
 
     setIsProcessingApproval(true);
     try {
-      // Simulate pushing to Google Ads
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare campaign data for Google Ads API
+      const campaignData = {
+        name: campaign.campaignName,
+        budget: campaign.dailyBudget,
+        keywords: campaign.adGroups[0]?.keywords || [],
+        adCopy: {
+          headline: campaign.adGroups[0]?.adCopy.headlines[0] || "Professional Service",
+          description: campaign.adGroups[0]?.adCopy.descriptions[0] || "Quality service you can trust",
+        }
+      };
 
-      toast.success("Campaign pushed to Google Ads successfully! (Development Mode)");
+      console.log('🚀 Pushing campaign to Google Ads:', campaignData);
+
+      // Call Google Ads API directly (no separate route needed)
+      const { createSafeCampaign } = await import('~/lib/googleAds');
+      const result = await createSafeCampaign(campaignData);
+
+      if (result.success) {
+        toast.success(`🎯 Campaign created in Google Ads!`, {
+          description: `Campaign ID: ${result.campaignId} | Budget: £${result.budget}/day | Status: ${result.status}`,
+          duration: 8000,
+        });
+      } else {
+        throw new Error('Failed to create campaign');
+      }
     } catch (error) {
-      toast.error("Failed to push campaign to Google Ads");
+      console.error('Campaign push error:', error);
+      toast.error(`❌ Failed to push to Google Ads`, {
+        description: error instanceof Error ? error.message : 'Check API connection and try again',
+        duration: 8000,
+      });
     } finally {
       setIsProcessingApproval(false);
     }

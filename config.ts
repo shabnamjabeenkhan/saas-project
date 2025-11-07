@@ -164,6 +164,14 @@ export const config: AppConfig = {
       projectId: getEnvVar('OPENSTATUS_PROJECT_ID'),
       webhookUrl: getEnvVar('OPENSTATUS_WEBHOOK_URL'),
     },
+    googleAds: {
+      enabled: true,
+      customerId: '909-963-3029', // Your test account
+      developerToken: getEnvVar('GOOGLE_ADS_DEVELOPER_TOKEN'),
+      clientId: getEnvVar('VITE_GOOGLE_CLIENT_ID'),
+      clientSecret: getEnvVar('GOOGLE_CLIENT_SECRET'),
+      refreshToken: getEnvVar('GOOGLE_ADS_REFRESH_TOKEN'),
+    },
   },
   ui: {
     showPricing: true,    // Show pricing page and components
@@ -248,6 +256,7 @@ export const syncConfigWithEnv = () => {
     process.env.OPENAI_ENABLED = isServiceEnabled('openai') ? 'true' : 'false';
     process.env.SENTRY_ENABLED = isServiceEnabled('sentry') ? 'true' : 'false';
     process.env.OPENSTATUS_ENABLED = isServiceEnabled('openstatus') ? 'true' : 'false';
+    process.env.GOOGLE_ADS_ENABLED = isServiceEnabled('googleAds') ? 'true' : 'false';
     
     if (isDevelopment) {
       console.log('🔄 Synced configuration with environment variables');
