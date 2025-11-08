@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "~/components/ui/sidebar";
 
 export const NavMain = memo(({
@@ -20,6 +21,13 @@ export const NavMain = memo(({
   }[];
 }) => {
   const location = useLocation();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   const navItems = useMemo(() => 
     items.map((item) => ({
@@ -43,7 +51,11 @@ export const NavMain = memo(({
                   item.isActive ? 'bg-white/10 text-white font-medium' : 'text-gray-300'
                 }`}
               >
-                <Link to={item.url} prefetch="intent">
+                <Link
+                  to={item.url}
+                  prefetch="intent"
+                  onClick={handleLinkClick}
+                >
                   <span>{item.title}</span>
                 </Link>
               </SidebarMenuButton>
