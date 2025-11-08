@@ -29,7 +29,7 @@ export default function Page() {
           <div className="px-4 lg:px-6 space-y-6">
             {/* Business Information Card */}
             {onboardingData && (
-              <Card className="bg-gray-900 border-gray-800">
+              <Card className="bg-[#1a1a1a] border-gray-800">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

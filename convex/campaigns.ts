@@ -237,7 +237,7 @@ export const saveCampaign = mutation({
       ...args.campaignData,
       userId: args.userId,
       createdAt: Date.now(),
-      status: "draft" as const,
+      status: "ready" as const,
     };
 
     if (existingCampaign) {

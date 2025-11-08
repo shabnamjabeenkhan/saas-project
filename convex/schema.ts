@@ -106,7 +106,7 @@ export default defineSchema({
     })),
     callExtensions: v.array(v.string()),
     complianceNotes: v.array(v.string()),
-    status: v.string(), // "draft" | "active" | "paused"
+    status: v.string(), // "ready" | "active" | "paused"
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     // Regeneration tracking fields

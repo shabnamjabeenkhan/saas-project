@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAction } from "convex/react";
 import { Mail, Send, Loader2 } from "lucide-react";
-import { Link } from "react-router";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 
@@ -61,28 +60,22 @@ export function TestEmailForm() {
 
   return (
     <section className="w-full max-w-screen-md px-2">
-      <h2 className="mt-4 mb-5 bg-gradient-to-br from-gray-300 via-blue-300 to-gray-700 bg-clip-text text-center text-4xl font-bold text-transparent md:text-6xl">
+      <h2 className="mt-4 mb-5 text-center text-4xl font-bold text-white md:text-6xl">
         Contact Us
       </h2>
-      <p className="text-muted-foreground mb-6 text-center">
-      Have a question or feedback? We'd love to hear from you..
+      <p className="text-gray-400 mb-6 text-center">
+        Have a question or feedback? We'd love to hear from you.
       </p>
-      <div
-        className="bg-opacity-10 mx-auto mb-6 grid w-full items-start gap-12 rounded-lg border bg-white px-4 pt-10 pb-6 shadow shadow-slate-800 md:grid-cols-2 lg:px-12"
-        style={{
-          backgroundImage:
-            'radial-gradient(164.75% 100% at 50% 0,#272f3c 0,#0b1224 48.73%)',
-        }}
-      >
-        <form className="space-y-8 text-slate-300" onSubmit={handleSubmit}>
+      <div className="bg-[#1a1a1a] border-gray-800 mx-auto mb-6 grid w-full items-start gap-12 rounded-lg border px-4 pt-10 pb-6 shadow-lg md:grid-cols-2 lg:px-12">
+        <form className="space-y-8 text-white" onSubmit={handleSubmit}>
           <div className="space-y-4 text-lg">
-            <label htmlFor="name">
+            <label htmlFor="name" className="text-gray-300 font-medium">
               Name
             </label>
             <input
               id="name"
               type="text"
-              className="bg-background flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm shadow-inner shadow-slate-800 outline-none hover:border-slate-600 hover:transition-all hover:outline-none focus:border-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full rounded-md border border-gray-700 bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder:text-gray-500 outline-none hover:border-gray-600 focus:border-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="Enter your name"
               name="name"
               value={name}
@@ -92,14 +85,14 @@ export function TestEmailForm() {
           </div>
 
           <div className="space-y-4 text-lg">
-            <label htmlFor="toEmail">
+            <label htmlFor="toEmail" className="text-gray-300 font-medium">
               To Email Address *
             </label>
             <input
               id="toEmail"
               placeholder="Enter your email"
               type="email"
-              className="hover:transition-al bg-background placeholder:text-muted-foreground flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm shadow-inner shadow-slate-800 outline-none file:text-sm file:font-medium hover:border-slate-400 hover:outline-none focus:border-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full rounded-md border border-gray-700 bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder:text-gray-500 outline-none hover:border-gray-600 focus:border-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               name="toEmail"
               required
               value={toEmail}
@@ -108,13 +101,13 @@ export function TestEmailForm() {
             />
           </div>
           <div className="space-y-4 text-lg">
-            <label htmlFor="message" className="text-lg">
+            <label htmlFor="message" className="text-gray-300 font-medium">
               Message (Optional)
             </label>
             <textarea
-              className="bg-background ring-offset-background placeholder:text-muted-foreground mb-5 flex min-h-[100px] w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white shadow-inner shadow-slate-800 outline-none hover:border-slate-400 hover:transition-all hover:outline-none focus:border-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-[100px] w-full rounded-md border border-gray-700 bg-[#0A0A0A] px-3 py-2 text-sm text-white placeholder:text-gray-500 outline-none hover:border-gray-600 focus:border-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none"
               id="message"
-              placeholder=""
+              placeholder="Your message here..."
               name="message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -122,37 +115,34 @@ export function TestEmailForm() {
             />
           </div>
           <button
-            className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-slate-800 to-slate-700 py-2 text-center font-medium text-white shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] transition-all duration-300 ease-in-out hover:from-slate-700 hover:to-slate-800 hover:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex h-12 w-full items-center justify-center rounded-md bg-white py-2 text-center font-medium text-black transition-all duration-200 ease-in-out hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed"
             type="submit"
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="mx-2 inline h-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Sending Test Email...
               </>
             ) : (
               <>
                 Send Test Email
-                <Send className="mx-2 inline h-4" />
+                <Send className="ml-2 h-4 w-4" />
               </>
             )}
           </button>
         </form>
         <div>
-          <h3 className="mb-10 text-2xl font-semibold text-slate-300">
+          <h3 className="mb-10 text-2xl font-semibold text-white">
             Connect with Us
           </h3>
-          <div className="mb-12 flex gap-8">
-            <Link
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 shadow-inner shadow-gray-800 hover:shadow-md hover:shadow-slate-500 hover:transition hover:duration-300 hover:ease-in-out"
-              to="#"
-            >
-              <Mail className="h-5 w-5 text-white" />
-            </Link>
-            <div className="text-md text-slate-300">
-              <p>Email to us at </p>
-              <p>support@tradeboost-ai.com</p>
+          <div className="mb-12 flex gap-6 items-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-700 bg-[#0A0A0A] hover:border-gray-600 hover:bg-gray-900 transition-all duration-200">
+              <Mail className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="text-gray-300">
+              <p className="text-sm text-gray-400">Email to us at</p>
+              <p className="font-medium text-white">admin@tech-horizonai.io</p>
             </div>
           </div>
         </div>

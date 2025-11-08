@@ -26,18 +26,11 @@ import { validateCampaignCompliance } from "~/lib/ukComplianceRules";
 
 // Conditionally import mock data for development
 let mockCampaignScenarios: any = null;
-let CampaignPreviewCard: any = null;
-let campaignApprovalWorkflow: any = null;
 
 if (process.env.NODE_ENV === 'development') {
   try {
     const mockModule = await import("~/lib/mockCampaignData");
-    const previewModule = await import("~/components/campaign/CampaignPreviewCard");
-    const workflowModule = await import("~/lib/campaignApprovalWorkflow");
-
     mockCampaignScenarios = mockModule.mockCampaignScenarios;
-    CampaignPreviewCard = previewModule.CampaignPreviewCard;
-    campaignApprovalWorkflow = workflowModule.campaignApprovalWorkflow;
   } catch (e) {
     console.warn('Mock components not available in production');
   }
@@ -57,11 +50,9 @@ export default function Campaigns() {
   const campaign = useQuery(api.campaigns.getCampaign, {});
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
 
-  // Mock campaigns for development (approval workflow moved to admin panel)
-  const mockCampaigns = process.env.NODE_ENV === 'development' && mockCampaignScenarios && campaignApprovalWorkflow
-    ? Object.values(mockCampaignScenarios).map((campaign: any) =>
-        campaignApprovalWorkflow.initializeCampaign(campaign)
-      )
+  // Mock campaigns for development (simple display, no approval workflow)
+  const mockCampaigns = process.env.NODE_ENV === 'development' && mockCampaignScenarios
+    ? Object.values(mockCampaignScenarios)
     : [];
 
   const handleCopyToClipboard = (text: string) => {
@@ -89,32 +80,38 @@ export default function Campaigns() {
           </Card>
         )}
 
-        {/* Mock Campaign Previews - Development Only (Approval workflow moved to admin panel) */}
-        {process.env.NODE_ENV === 'development' && mockCampaigns.length > 0 && CampaignPreviewCard && (
+        {/* Mock Campaign Previews - Development Only */}
+        {process.env.NODE_ENV === 'development' && mockCampaigns.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Campaign Previews</h2>
+              <h2 className="text-xl font-semibold text-white">Development Mock Data</h2>
               <Badge variant="outline" className="text-gray-400">
-                {mockCampaigns.length} campaigns generated (Admin View)
+                {mockCampaigns.length} test scenarios
               </Badge>
             </div>
 
-            <div className="p-4 bg-orange-900/20 border border-orange-500/20 rounded-lg mb-4">
-              <p className="text-orange-300 text-sm">
-                <strong>Note:</strong> Campaign approval workflow has been moved to the admin panel.
-                This preview is for development only.
+            <div className="p-4 bg-blue-900/20 border border-blue-500/20 rounded-lg mb-4">
+              <p className="text-blue-300 text-sm">
+                <strong>Note:</strong> These are mock campaign scenarios used for development testing.
+                Real users generate campaigns automatically after onboarding.
               </p>
             </div>
 
-            {/* Show campaign preview cards without approval actions */}
-            {mockCampaigns.map((campaignWithApproval: any) => (
-              <Card key={campaignWithApproval.id} className="bg-[#1a1a1a] border-gray-800">
+            {/* Show simplified campaign preview cards */}
+            {mockCampaigns.map((mockCampaign: any) => (
+              <Card key={mockCampaign.id} className="bg-[#1a1a1a] border-gray-800">
                 <CardHeader>
-                  <CardTitle className="text-white">{campaignWithApproval.campaignName}</CardTitle>
-                  <CardDescription>Preview - Approval actions moved to admin panel</CardDescription>
+                  <CardTitle className="text-white">{mockCampaign.campaignName}</CardTitle>
+                  <CardDescription>
+                    Mock scenario: {mockCampaign.businessInfo.businessName} - Quality Score: {mockCampaign.qualityScore || 'N/A'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-300">Campaign data available, approval workflow in admin panel.</p>
+                  <div className="flex gap-4 text-sm text-gray-300">
+                    <span>Budget: £{mockCampaign.dailyBudget}/day</span>
+                    <span>Ad Groups: {mockCampaign.adGroups.length}</span>
+                    <span>Keywords: {mockCampaign.adGroups.reduce((sum: number, ag: any) => sum + ag.keywords.length, 0)}</span>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -154,7 +151,7 @@ export default function Campaigns() {
                       </CardDescription>
                     </div>
                     <Badge variant="outline" className="text-green-400 border-green-400">
-                      Draft
+                      Ready to Launch
                     </Badge>
                   </div>
                 </CardHeader>
@@ -296,7 +293,6 @@ export default function Campaigns() {
                   'Add "frozen pipes" and "no heating" keywords for winter peak demand',
                   'Consider increasing budget during cold weather forecasts',
                 ]}
-                onApprove={() => toast.success('Campaign approved and ready for launch!')}
               />
 
               {/* Compliance Notes */}

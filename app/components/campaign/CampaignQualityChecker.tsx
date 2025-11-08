@@ -20,7 +20,6 @@ interface CampaignQualityCheckerProps {
   complianceChecks: ComplianceCheck[];
   optimizationSuggestions: string[];
   seasonalRecommendations: string[];
-  onApprove?: () => void;
   onRegenerate?: () => void;
 }
 
@@ -28,7 +27,6 @@ export function CampaignQualityChecker({
   complianceChecks,
   optimizationSuggestions,
   seasonalRecommendations,
-  onApprove,
   onRegenerate,
 }: CampaignQualityCheckerProps) {
   const [activeTab, setActiveTab] = useState<'compliance' | 'optimization' | 'seasonal'>('compliance');
@@ -40,7 +38,6 @@ export function CampaignQualityChecker({
   const passed = complianceChecks.filter(c => c.passed);
 
   const overallScore = Math.round((passed.length / complianceChecks.length) * 100);
-  const canApprove = errors.length === 0;
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-400';
@@ -188,8 +185,8 @@ export function CampaignQualityChecker({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
-          {onRegenerate && (
+        {onRegenerate && (
+          <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
             <Button
               variant="outline"
               onClick={onRegenerate}
@@ -197,38 +194,16 @@ export function CampaignQualityChecker({
             >
               Regenerate Campaign
             </Button>
-          )}
-          {onApprove && (
-            <Button
-              onClick={onApprove}
-              disabled={!canApprove}
-              className={`${canApprove
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {canApprove ? (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve Campaign
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Fix Errors First
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
 
-        {!canApprove && (
+        {errors.length > 0 && (
           <div className="mt-4 p-3 bg-red-900/20 border border-red-700 rounded-lg">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400" />
               <p className="text-sm text-red-400">
-                Campaign cannot be approved due to {errors.length} compliance error{errors.length !== 1 ? 's' : ''}.
-                Please address the errors above before proceeding.
+                {errors.length} compliance error{errors.length !== 1 ? 's' : ''} found.
+                Please review and regenerate campaign if needed.
               </p>
             </div>
           </div>

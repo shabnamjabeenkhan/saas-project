@@ -19,10 +19,10 @@ export default function SubscriptionStatus() {
   // Early return if payments are not enabled
   if (!isFeatureEnabled('payments') || !config.ui.showPricing) {
     return (
-      <Card>
+      <Card className="bg-[#1a1a1a] border-gray-800">
         <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Subscription Status</CardTitle>
+          <CardDescription className="text-gray-400">
             Subscription functionality is currently disabled.
           </CardDescription>
         </CardHeader>
@@ -33,10 +33,10 @@ export default function SubscriptionStatus() {
   // Early return if convex is not enabled (needed for subscription data)
   if (!isFeatureEnabled('convex')) {
     return (
-      <Card>
+      <Card className="bg-[#1a1a1a] border-gray-800">
         <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Subscription Status</CardTitle>
+          <CardDescription className="text-gray-400">
             Subscription data requires backend services.
           </CardDescription>
         </CardHeader>
@@ -74,10 +74,10 @@ export default function SubscriptionStatus() {
 
   if (!isSignedIn) {
     return (
-      <Card>
+      <Card className="bg-[#1a1a1a] border-gray-800">
         <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Subscription Status</CardTitle>
+          <CardDescription className="text-gray-400">
             Please sign in to view your subscription details
           </CardDescription>
         </CardHeader>
@@ -87,10 +87,10 @@ export default function SubscriptionStatus() {
 
   if (!subscription) {
     return (
-      <Card>
+      <Card className="bg-[#1a1a1a] border-gray-800">
         <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Subscription Status</CardTitle>
+          <CardDescription className="text-gray-400">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading subscription details...
@@ -103,10 +103,10 @@ export default function SubscriptionStatus() {
 
   if (!subscriptionStatus?.hasActiveSubscription) {
     return (
-      <Card>
+      <Card className="bg-[#1a1a1a] border-gray-800">
         <CardHeader>
-          <CardTitle>Subscription Status</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-white">Subscription Status</CardTitle>
+          <CardDescription className="text-gray-400">
             You don't have an active subscription
           </CardDescription>
         </CardHeader>
@@ -133,11 +133,11 @@ export default function SubscriptionStatus() {
   };
 
   return (
-    <Card>
+    <Card className="bg-[#1a1a1a] border-gray-800">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-white">
               Subscription Status
               <Badge
                 variant="outline"
@@ -146,7 +146,7 @@ export default function SubscriptionStatus() {
                 {subscription.status || "unknown"}
               </Badge>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-400">
               Manage your subscription and billing
             </CardDescription>
           </div>
@@ -155,10 +155,10 @@ export default function SubscriptionStatus() {
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-center gap-3">
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CreditCard className="h-4 w-4 text-gray-400" />
             <div>
-              <p className="text-sm font-medium">Amount</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm font-medium text-white">Amount</p>
+              <p className="text-sm text-gray-400">
                 $
                 {subscription.amount
                   ? (subscription.amount / 100).toFixed(2)
@@ -170,10 +170,10 @@ export default function SubscriptionStatus() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-gray-400" />
             <div>
-              <p className="text-sm font-medium">Next Billing</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm font-medium text-white">Next Billing</p>
+              <p className="text-sm text-gray-400">
                 {subscription.currentPeriodEnd
                   ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
                   : "N/A"}
@@ -182,8 +182,8 @@ export default function SubscriptionStatus() {
           </div>
         </div>
         {subscription.cancelAtPeriodEnd && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
+          <div className="p-3 bg-yellow-900/20 border border-yellow-700 rounded-md">
+            <p className="text-sm text-yellow-300">
               Your subscription will be canceled at the end of the current
               billing period.
             </p>
