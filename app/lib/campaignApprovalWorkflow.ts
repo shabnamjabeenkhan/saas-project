@@ -13,7 +13,7 @@ export interface CampaignApprovalAction {
 }
 
 export interface CampaignApprovalStatus {
-  status: 'draft' | 'pending_review' | 'approved' | 'rejected' | 'pending_changes' | 'live';
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'pending_changes' | 'pending_review' | 'live';
   approvedBy?: string;
   approvedAt?: Date;
   rejectedBy?: string;
@@ -287,8 +287,10 @@ export class CampaignApprovalWorkflow {
     }
 
     // Check budget
-    if (campaign.budget.total < 100) {
+    if (campaign.budget && campaign.budget < 100) {
       warnings.push('Budget is below recommended minimum of £100');
+    } else if (campaign.dailyBudget && campaign.dailyBudget * 30 < 100) {
+      warnings.push('Monthly budget is below recommended minimum of £100');
     }
 
     // Check ad groups
@@ -304,14 +306,12 @@ export class CampaignApprovalWorkflow {
 
     // Check ad copy
     campaign.adGroups.forEach((adGroup, index) => {
-      if (adGroup.ads.length === 0) {
-        errors.push(`Ad group "${adGroup.name}" has no ads`);
+      if (!adGroup.adCopy || adGroup.adCopy.headlines.length === 0) {
+        errors.push(`Ad group "${adGroup.name}" has no ad headlines`);
       }
-      adGroup.ads.forEach((ad, adIndex) => {
-        if (ad.headlines.length < 3) {
-          warnings.push(`Ad ${index + 1}.${adIndex + 1} should have at least 3 headlines`);
-        }
-      });
+      if (adGroup.adCopy && adGroup.adCopy.headlines.length < 3) {
+        warnings.push(`Ad group ${index + 1} should have at least 3 headlines`);
+      }
     });
 
     return {

@@ -89,7 +89,8 @@ export function AppSidebar({
     <Sidebar
       collapsible="offcanvas"
       variant={variant}
-      className="[&_[data-slot=sidebar-inner]]:bg-[#0a0a0a] [&_[data-slot=sidebar-inner]]:text-white [&_[data-slot=sidebar-inner]]:border-r [&_[data-slot=sidebar-inner]]:border-gray-800/50"
+      className="bg-[#0a0a0a] text-white border-r border-gray-800/[0.02] md:border-gray-800/50 [&_[data-slot=sidebar-inner]]:bg-[#0a0a0a] [&_[data-slot=sidebar-inner]]:text-white [&_[data-slot=sidebar-inner]]:border-r [&_[data-slot=sidebar-inner]]:border-gray-800/[0.02] [&_[data-slot=sidebar-inner]]:md:border-gray-800/50 [&_.bg-sidebar]:!bg-[#0a0a0a] [&_.text-sidebar-foreground]:!text-white [&_[data-sidebar=sidebar]]:!bg-[#0a0a0a] [&_[data-sidebar=sidebar]]:!text-white [&_[data-mobile=true]]:!bg-[#0a0a0a] [&_[data-mobile=true]]:!text-white [&_.sheet-content]:!bg-[#0a0a0a]"
+      side="left"
     >
       <SidebarHeader className="border-b border-gray-800/50 pb-4">
         <SidebarMenu>

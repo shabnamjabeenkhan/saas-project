@@ -103,7 +103,7 @@ export function NavUser({ user }: any) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-white/10 data-[state=open]:text-white hover:bg-white/5 text-white"
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={userProfile} alt={userFullName} />
@@ -113,7 +113,7 @@ export function NavUser({ user }: any) {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{userFullName}</span>
-                <span className="text-muted-foreground truncate text-xs">
+                <span className="text-gray-400 truncate text-xs">
                   {userEmail}
                 </span>
               </div>
@@ -136,7 +136,7 @@ export function NavUser({ user }: any) {
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{userFullName}</span>
-                  <span className="text-muted-foreground truncate text-xs">
+                  <span className="text-gray-400 truncate text-xs">
                     {userEmail}
                   </span>
                 </div>

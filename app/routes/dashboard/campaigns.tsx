@@ -61,7 +61,7 @@ export default function Campaigns() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0 bg-[#0A0A0A] text-white">
+    <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6 pt-0 bg-[#0A0A0A] text-white min-h-0">
       <div className="max-w-6xl mx-auto w-full">
         {/* Header Controls */}
         <CampaignHeaderControls
@@ -119,19 +119,22 @@ export default function Campaigns() {
         )}
 
         {campaign ? (
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-[#1a1a1a] border-gray-800">
-              <TabsTrigger value="overview" className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Overview
+          <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+            <TabsList className="grid w-full grid-cols-3 bg-[#1a1a1a] border-gray-800 text-xs sm:text-sm">
+              <TabsTrigger value="overview" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Overview</span>
+                <span className="sm:hidden">Info</span>
               </TabsTrigger>
-              <TabsTrigger value="creatives" className="flex items-center gap-2">
-                <Palette className="w-4 h-4" />
-                Creatives
+              <TabsTrigger value="creatives" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+                <Palette className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Creatives</span>
+                <span className="sm:hidden">Ads</span>
               </TabsTrigger>
-              <TabsTrigger value="compliance" className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Compliance
+              <TabsTrigger value="compliance" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+                <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Compliance</span>
+                <span className="sm:hidden">Rules</span>
               </TabsTrigger>
             </TabsList>
 
@@ -156,7 +159,7 @@ export default function Campaigns() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-green-400" />
                       <div>

@@ -68,7 +68,7 @@ export function GoogleAdsConnectionComponent() {
               <p><strong>Account ID:</strong> 909-963-3029</p>
               <p><strong>Connected:</strong> {tokens?.createdAt ? new Date(tokens.createdAt).toLocaleDateString() : 'Recently'}</p>
               <p><strong>Status:</strong> Active</p>
-              {tokens?.isExpired && <p className="text-yellow-400"><strong>Note:</strong> Token will be auto-refreshed</p>}
+              {tokens?.expiresAt && new Date(tokens.expiresAt) < new Date() && <p className="text-yellow-400"><strong>Note:</strong> Token will be auto-refreshed</p>}
             </div>
             <Button
               onClick={handleDisconnect}

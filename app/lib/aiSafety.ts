@@ -7,12 +7,28 @@ export interface ComplianceResult {
   suggestions: string[];
 }
 
+export interface ComplianceResultWithViolations {
+  approved: boolean;
+  violations: ViolationResult[];
+  warnings: ComplianceWarning[];
+  suggestions: string[];
+}
+
 export interface ComplianceViolation {
   type: string;
   phrase: string;
   reason: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   replacement?: string;
+}
+
+export interface ViolationResult {
+  type: string;
+  phrase?: string;
+  reason: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  suggestion?: string;
+  legalRisk?: string;
 }
 
 export interface ComplianceWarning {
@@ -178,8 +194,9 @@ const warningPhrases = {
   ]
 };
 
-export function scanContentForCompliance(content: string): ComplianceResult {
+export function scanContentForCompliance(content: string): ComplianceResultWithViolations {
   const violations: ComplianceViolation[] = [];
+  const violationResults: ViolationResult[] = [];
   const warnings: ComplianceWarning[] = [];
   const suggestions: string[] = [];
 
@@ -189,7 +206,7 @@ export function scanContentForCompliance(content: string): ComplianceResult {
   Object.entries(complianceFilters).forEach(([category, filter]) => {
     filter.bannedPhrases.forEach(phrase => {
       if (lowerContent.includes(phrase.toLowerCase())) {
-        const replacement = filter.replacements?.[phrase];
+        const replacement = filter.replacements?.[phrase as keyof typeof filter.replacements];
 
         violations.push({
           type: category,
@@ -197,6 +214,15 @@ export function scanContentForCompliance(content: string): ComplianceResult {
           reason: filter.reason,
           severity: filter.severity,
           replacement
+        });
+
+        violationResults.push({
+          type: category,
+          phrase,
+          reason: filter.reason,
+          severity: filter.severity,
+          suggestion: replacement,
+          legalRisk: getLegalRiskMessage(category)
         });
 
         if (replacement) {
@@ -221,11 +247,24 @@ export function scanContentForCompliance(content: string): ComplianceResult {
   });
 
   return {
-    approved: violations.length === 0,
-    violations,
+    approved: violationResults.length === 0,
+    violations: violationResults,
     warnings,
     suggestions
   };
+}
+
+function getLegalRiskMessage(category: string): string {
+  const riskMessages: Record<string, string> = {
+    gasWork: "Advertising gas work without Gas Safe registration violates Health and Safety at Work Act 1974",
+    electricalWork: "Advertising electrical work without Part P certification violates Building Regulations 2010",
+    availability: "False availability claims violate Consumer Protection from Unfair Trading Regulations 2008",
+    pricing: "Unsubstantiated price guarantees violate Consumer Protection from Unfair Trading Regulations 2008",
+    certificationClaims: "False certification claims violate Fraud Act 2006 and Trading Standards regulations",
+    safetyClaims: "Absolute safety guarantees may constitute misleading advertising under CPRs 2008"
+  };
+
+  return riskMessages[category] || "May violate advertising standards and trade regulations";
 }
 
 function getWarningConcern(category: string, phrase: string): string {

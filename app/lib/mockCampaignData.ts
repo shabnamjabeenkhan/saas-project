@@ -5,6 +5,7 @@ export interface MockCampaignData {
   campaignName: string;
   dailyBudget: number;
   targetLocation: string;
+  createdAt: string | Date;
   businessInfo: {
     businessName: string;
     phone: string;
@@ -23,7 +24,7 @@ export interface MockCampaignData {
   complianceNotes: string[];
   optimizationSuggestions?: string[];
   seasonalRecommendations?: string[];
-  status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'pending_changes' | 'pending_review' | 'live';
   qualityScore?: number;
   estimatedPerformance?: {
     expectedClicks: number;
@@ -31,6 +32,8 @@ export interface MockCampaignData {
     expectedConversions: number;
     competitionLevel: 'low' | 'medium' | 'high';
   };
+  compliance?: any;
+  budget?: number;
 }
 
 export const mockCampaignScenarios: Record<string, MockCampaignData> = {
@@ -41,6 +44,7 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
     campaignName: "London Emergency Plumbing - 24/7 Service",
     dailyBudget: 35,
     targetLocation: "London, UK",
+    createdAt: new Date("2024-01-15"),
     businessInfo: {
       businessName: "QuickFix Plumbing",
       phone: "020 7123 4567",
@@ -131,6 +135,7 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
     campaignName: "Cheapest Plumber - Guaranteed Best Prices!",
     dailyBudget: 50,
     targetLocation: "Birmingham, UK",
+    createdAt: new Date("2024-01-20"),
     businessInfo: {
       businessName: "Budget Plumbing",
       phone: "0121 456 7890",
@@ -183,6 +188,7 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
     campaignName: "Manchester Electrical Services - Part P Compliant",
     dailyBudget: 28,
     targetLocation: "Manchester, UK",
+    createdAt: new Date("2024-01-25"),
     businessInfo: {
       businessName: "PowerTech Electrical",
       phone: "0161 234 5678",
@@ -268,6 +274,7 @@ export const mockCampaignScenarios: Record<string, MockCampaignData> = {
     campaignName: "Leeds Plumbing & Electrical - All Trades",
     dailyBudget: 45,
     targetLocation: "Leeds, UK",
+    createdAt: new Date("2024-02-01"),
     businessInfo: {
       businessName: "AllTrades Leeds",
       phone: "0113 567 8901",

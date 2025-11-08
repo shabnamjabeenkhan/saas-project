@@ -217,12 +217,12 @@ export const CertificationUpload: React.FC<CertificationUploadProps> = ({
                 </Label>
                 <Input
                   id={field.key}
-                  type={field.type || 'text'}
-                  placeholder={field.placeholder}
-                  value={formData[field.key as keyof CertificationData] || ''}
+                  type={(field as any).type || 'text'}
+                  placeholder={(field as any).placeholder}
+                  value={String(formData[field.key as keyof CertificationData] || '')}
                   onChange={(e) => handleInputChange(
                     field.key,
-                    field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                    (field as any).type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
                   )}
                   required={field.required}
                 />
