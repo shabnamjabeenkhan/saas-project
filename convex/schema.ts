@@ -109,6 +109,11 @@ export default defineSchema({
     status: v.string(), // "draft" | "active" | "paused"
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
+    // Regeneration tracking fields
+    regenerationCount: v.optional(v.number()),
+    lastRegeneration: v.optional(v.number()),
+    monthlyRegenCount: v.optional(v.number()),
+    monthlyRegenResetDate: v.optional(v.number()),
   })
     .index("userId", ["userId"]),
   googleAdsTokens: defineTable({

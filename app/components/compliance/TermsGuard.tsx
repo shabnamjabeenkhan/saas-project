@@ -4,6 +4,8 @@ import { TermsVersionManager } from '~/lib/termsVersioning';
 import { TermsAcceptanceModal } from './TermsAcceptanceModal';
 import { useUser } from '@clerk/react-router';
 import { isAdminEmail } from '~/utils/admin';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 interface TermsGuardProps {
   children: React.ReactNode;
@@ -17,6 +19,36 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
   const [userLastVersion, setUserLastVersion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Convex queries and mutations
+  const getUserLastAcceptedTermsVersion = useQuery(
+    api.compliance.getUserLastAcceptedTermsVersion,
+    userId && userId !== 'anonymous' ? { userId } : "skip"
+  );
+  const recordTermsAcceptance = useMutation(api.compliance.recordTermsAcceptance);
+
+  // Add timeout fallback to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.log('⚠️ Terms check timeout - falling back to localStorage');
+        // Fallback to localStorage check if database is taking too long
+        try {
+          const lastAcceptedVersion = TermsVersionManager.getUserLastAcceptedVersion(userId || '');
+          const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
+          setUserLastVersion(lastAcceptedVersion);
+          setNeedsAcceptance(needsToAccept);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Fallback terms check failed:', error);
+          setNeedsAcceptance(true);
+          setIsLoading(false);
+        }
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading, userId]);
+
   // Check if current route should bypass terms check
   const isPublicRoute = () => {
     if (typeof window === 'undefined') return false;
@@ -26,7 +58,14 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
   };
 
   useEffect(() => {
-    const checkTermsAcceptance = async () => {
+    const checkTermsAcceptance = () => {
+      console.log('🔍 Terms check triggered:', {
+        userId,
+        isAuthenticated,
+        queryResult: getUserLastAcceptedTermsVersion,
+        queryState: getUserLastAcceptedTermsVersion === undefined ? 'loading' : 'loaded'
+      });
+
       // Skip terms check for public routes
       if (isPublicRoute()) {
         setNeedsAcceptance(false);
@@ -35,6 +74,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
       }
 
       if (!isAuthenticated || !userId || userId === 'anonymous') {
+        console.log('🚫 User not authenticated, skipping terms check');
         setIsLoading(false);
         return;
       }
@@ -42,49 +82,74 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
       // Check if user is admin - bypass terms acceptance for admins
       const userEmail = user?.emailAddresses?.[0]?.emailAddress;
       if (userEmail && isAdminEmail(userEmail)) {
-        console.log('Admin user detected, bypassing terms acceptance');
+        console.log('👑 Admin user detected, bypassing terms acceptance');
         setNeedsAcceptance(false);
         setIsLoading(false);
         return;
       }
 
+      // Check if Convex query is still loading or failed
+      if (getUserLastAcceptedTermsVersion === undefined) {
+        console.log('⏳ Convex query still loading...');
+        // Don't change loading state - keep waiting
+        return;
+      }
+
       try {
-        // Get user's last accepted version
-        const lastAcceptedVersion = TermsVersionManager.getUserLastAcceptedVersion(userId);
+        // Use result from Convex query (null means no records found)
+        const lastAcceptedVersion = getUserLastAcceptedTermsVersion;
         setUserLastVersion(lastAcceptedVersion);
 
         // Check if user needs to re-accept terms
         const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
         setNeedsAcceptance(needsToAccept);
 
-        console.log('Terms check:', {
+        console.log('✅ Terms check completed:', {
           userId,
           lastAcceptedVersion,
           needsToAccept,
           currentVersion: TermsVersionManager.getCurrentTermsVersion().version
         });
+
+        // Query completed successfully
+        setIsLoading(false);
       } catch (error) {
-        console.error('Failed to check terms acceptance:', error);
+        console.error('❌ Failed to check terms acceptance:', error);
         // On error, require acceptance for safety
         setNeedsAcceptance(true);
-      } finally {
         setIsLoading(false);
       }
     };
 
     checkTermsAcceptance();
-  }, [userId, isAuthenticated, user]);
+  }, [userId, isAuthenticated, user, getUserLastAcceptedTermsVersion]);
 
   const handleTermsAccepted = async () => {
     try {
+      if (!userId) {
+        throw new Error('No user ID available');
+      }
+
+      // Save to database via Convex
+      await recordTermsAcceptance({
+        userId,
+        termsVersion: TermsVersionManager.getCurrentTermsVersion().version,
+        acceptanceMethod: 'update_prompt',
+        ipAddress: 'unknown', // Will be resolved asynchronously if needed
+        userAgent: navigator.userAgent,
+        pageUrl: window.location.href,
+      });
+
       // Update local state immediately
       setNeedsAcceptance(false);
       setUserLastVersion(TermsVersionManager.getCurrentTermsVersion().version);
 
-      // No reload needed - let React handle the state update
-      console.log('Terms accepted successfully');
+      console.log('Terms accepted and saved to database successfully');
     } catch (error) {
       console.error('Failed to handle terms acceptance:', error);
+      // Don't block the user - set acceptance state anyway
+      setNeedsAcceptance(false);
+      setUserLastVersion(TermsVersionManager.getCurrentTermsVersion().version);
     }
   };
 

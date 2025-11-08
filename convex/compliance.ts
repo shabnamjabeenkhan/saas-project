@@ -26,6 +26,39 @@ export const logComplianceEvent = mutation({
   },
 });
 
+// Get user's last accepted terms version
+export const getUserLastAcceptedTermsVersion = query({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const lastAcceptance = await ctx.db
+      .query("termsAcceptances")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .first();
+
+    return lastAcceptance?.termsVersion || null;
+  },
+});
+
+// Check if user has accepted current terms version
+export const hasUserAcceptedCurrentTerms = query({
+  args: {
+    userId: v.string(),
+    currentTermsVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const lastAcceptance = await ctx.db
+      .query("termsAcceptances")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .first();
+
+    return lastAcceptance?.termsVersion === args.currentTermsVersion;
+  },
+});
+
 // Record terms of service acceptance
 export const recordTermsAcceptance = mutation({
   args: {

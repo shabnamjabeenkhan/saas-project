@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   Download,
   Link,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAdsAuth } from "~/lib/useGoogleAdsAuth";
@@ -28,9 +29,20 @@ export function CampaignHeaderControls({
   const pushToGoogleAds = useAction(api.campaigns.pushToGoogleAds);
   const { connectGoogleAds, disconnectGoogleAds, isLoading: isConnecting, isConnected: isGoogleAdsConnected } = useGoogleAdsAuth();
 
+  // Check regeneration limits
+  const regenerationLimits = useQuery(api.campaigns.checkRegenerationLimits,
+    campaign?.userId ? { userId: campaign.userId } : "skip"
+  );
+
   const handleGenerateCampaign = async () => {
     if (!onboardingData?.isComplete) {
       toast.error("Please complete your onboarding first");
+      return;
+    }
+
+    // Check regeneration limits
+    if (regenerationLimits && !regenerationLimits.allowed) {
+      toast.error(regenerationLimits.reason);
       return;
     }
 
@@ -185,9 +197,23 @@ export function CampaignHeaderControls({
           </>
         )}
 
+        {/* Regeneration limit indicator */}
+        {regenerationLimits && campaign && (
+          <div className="text-xs text-gray-400 text-right mb-1">
+            {regenerationLimits.allowed ? (
+              <span>{regenerationLimits.remaining}/10 regenerations remaining this month</span>
+            ) : (
+              <span className="text-orange-400 flex items-center justify-end gap-1">
+                <Clock className="w-3 h-3" />
+                {regenerationLimits.reason}
+              </span>
+            )}
+          </div>
+        )}
+
         <Button
           onClick={handleGenerateCampaign}
-          disabled={isGenerating || !onboardingData?.isComplete}
+          disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
           className="bg-primary hover:bg-primary/90"
         >
           {isGenerating ? (

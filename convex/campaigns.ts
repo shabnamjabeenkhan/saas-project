@@ -49,6 +49,13 @@ export const generateCampaign = action({
       throw new Error("User not authenticated");
     }
 
+    // Check regeneration limits before proceeding
+    const canRegenerate = await ctx.runQuery(api.campaigns.checkRegenerationLimits, { userId });
+
+    if (!canRegenerate.allowed) {
+      throw new Error(canRegenerate.reason);
+    }
+
     // Get user's onboarding data
     const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
 
@@ -111,6 +118,9 @@ export const generateCampaign = action({
         campaignData,
       });
 
+      // Update regeneration tracking
+      await ctx.runMutation(api.campaigns.updateRegenerationTracking, { userId });
+
       return {
         success: true,
         campaignId,
@@ -121,6 +131,92 @@ export const generateCampaign = action({
       console.error('Campaign generation failed:', error);
       throw new Error(`Failed to generate campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  },
+});
+
+// Check regeneration limits
+export const checkRegenerationLimits = query({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.db
+      .query("campaigns")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!campaign) {
+      return { allowed: true, remaining: 10 };
+    }
+
+    const now = Date.now();
+    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+    // Check cooldown period (30 minutes)
+    if (campaign.lastRegeneration && (now - campaign.lastRegeneration) < thirtyMinutes) {
+      const remainingCooldown = Math.ceil((thirtyMinutes - (now - campaign.lastRegeneration)) / 60000);
+      return {
+        allowed: false,
+        reason: `Please wait ${remainingCooldown} minutes before regenerating again.`,
+        remaining: Math.max(0, 10 - (campaign.monthlyRegenCount || 0))
+      };
+    }
+
+    // Reset monthly count if it's a new month
+    const shouldResetMonthly = !campaign.monthlyRegenResetDate ||
+                               (now - campaign.monthlyRegenResetDate) > oneMonth;
+
+    const currentMonthlyCount = shouldResetMonthly ? 0 : (campaign.monthlyRegenCount || 0);
+
+    // Check monthly limit (10 per month)
+    if (currentMonthlyCount >= 10) {
+      return {
+        allowed: false,
+        reason: "Monthly regeneration limit reached (10/month). Try again next month.",
+        remaining: 0
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: 10 - currentMonthlyCount
+    };
+  },
+});
+
+// Update regeneration tracking
+export const updateRegenerationTracking = mutation({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.db
+      .query("campaigns")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!campaign) {
+      return;
+    }
+
+    const now = Date.now();
+    const oneMonth = 30 * 24 * 60 * 60 * 1000;
+
+    // Reset monthly count if it's a new month
+    const shouldResetMonthly = !campaign.monthlyRegenResetDate ||
+                               (now - campaign.monthlyRegenResetDate) > oneMonth;
+
+    const newMonthlyCount = shouldResetMonthly ? 1 : (campaign.monthlyRegenCount || 0) + 1;
+    const newResetDate = shouldResetMonthly ? now : campaign.monthlyRegenResetDate;
+
+    await ctx.db.patch(campaign._id, {
+      regenerationCount: (campaign.regenerationCount || 0) + 1,
+      lastRegeneration: now,
+      monthlyRegenCount: newMonthlyCount,
+      monthlyRegenResetDate: newResetDate,
+      updatedAt: now,
+    });
   },
 });
 
@@ -145,15 +241,27 @@ export const saveCampaign = mutation({
     };
 
     if (existingCampaign) {
-      // Update existing campaign
+      // Update existing campaign (preserve regeneration tracking)
       await ctx.db.patch(existingCampaign._id, {
         ...saveData,
         updatedAt: Date.now(),
+        // Preserve regeneration tracking fields
+        regenerationCount: existingCampaign.regenerationCount,
+        lastRegeneration: existingCampaign.lastRegeneration,
+        monthlyRegenCount: existingCampaign.monthlyRegenCount,
+        monthlyRegenResetDate: existingCampaign.monthlyRegenResetDate,
       });
       return existingCampaign._id;
     } else {
       // Create new campaign
-      return await ctx.db.insert("campaigns", saveData);
+      const newCampaign = {
+        ...saveData,
+        regenerationCount: 0,
+        lastRegeneration: undefined,
+        monthlyRegenCount: 0,
+        monthlyRegenResetDate: Date.now(),
+      };
+      return await ctx.db.insert("campaigns", newCampaign);
     }
   },
 });
@@ -245,7 +353,7 @@ export const updateCampaignStatus = mutation({
 });
 
 // Push campaign to Google Ads
-export const pushToGoogleAds: any = action({
+export const pushToGoogleAds = action({
   args: {
     campaignId: v.string(),
     pushOptions: v.optional(v.object({
@@ -253,7 +361,14 @@ export const pushToGoogleAds: any = action({
       testMode: v.boolean(),
     })),
   },
-  handler: async (ctx, args): Promise<any> => {
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    message: string;
+    googleCampaignId: string;
+    resourceName: string;
+    budget: number;
+    status: string;
+  }> => {
     const userId = await getCurrentUserToken(ctx);
 
     if (!userId) {

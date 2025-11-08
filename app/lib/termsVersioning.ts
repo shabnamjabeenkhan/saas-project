@@ -205,27 +205,71 @@ export class TermsVersionManager {
     };
   }
 
-  static async logTermsAcceptance(acceptance: UserTermsAcceptance): Promise<void> {
-    // TODO: This will be implemented once Convex API is available
-    console.log('Terms acceptance logged:', acceptance);
+  static async logTermsAcceptance(
+    acceptance: UserTermsAcceptance,
+    recordTermsAcceptanceMutation?: any
+  ): Promise<void> {
+    if (recordTermsAcceptanceMutation) {
+      // Use Convex mutation if available
+      try {
+        await recordTermsAcceptanceMutation({
+          userId: acceptance.userId,
+          termsVersion: acceptance.termsVersion,
+          acceptanceMethod: acceptance.acceptanceMethod,
+          ipAddress: acceptance.ipAddress,
+          userAgent: acceptance.userAgent,
+          pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+        });
+        console.log('Terms acceptance logged to database:', acceptance);
+        return;
+      } catch (error) {
+        console.error('Failed to log terms acceptance to database:', error);
+        // Fall back to localStorage
+      }
+    }
 
-    // Store in local storage temporarily for demo
-    const acceptances = JSON.parse(localStorage.getItem('terms_acceptances') || '[]');
-    acceptances.push({
-      ...acceptance,
-      timestamp: new Date().toISOString()
-    });
-    localStorage.setItem('terms_acceptances', JSON.stringify(acceptances));
+    // Fallback: Store in local storage
+    console.log('Terms acceptance logged to localStorage:', acceptance);
+    if (typeof window !== 'undefined') {
+      const acceptances = JSON.parse(localStorage.getItem('terms_acceptances') || '[]');
+      acceptances.push({
+        ...acceptance,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('terms_acceptances', JSON.stringify(acceptances));
+    }
   }
 
   static getUserLastAcceptedVersion(userId: string): string | null {
-    // TODO: This will query Convex once API is available
+    // This method is now deprecated in favor of the async version
+    // Keep for backward compatibility
+    if (typeof window === 'undefined') return null;
+
     const acceptances = JSON.parse(localStorage.getItem('terms_acceptances') || '[]');
     const userAcceptances = acceptances
       .filter((a: any) => a.userId === userId)
       .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return userAcceptances[0]?.termsVersion || null;
+  }
+
+  // New async method that uses Convex query
+  static async getUserLastAcceptedVersionAsync(
+    userId: string,
+    getUserLastAcceptedTermsVersionQuery?: any
+  ): Promise<string | null> {
+    if (getUserLastAcceptedTermsVersionQuery) {
+      try {
+        const version = await getUserLastAcceptedTermsVersionQuery({ userId });
+        return version;
+      } catch (error) {
+        console.error('Failed to get terms version from database:', error);
+        // Fall back to localStorage
+      }
+    }
+
+    // Fallback to localStorage
+    return this.getUserLastAcceptedVersion(userId);
   }
 
   static createVersionUpdateNotification(fromVersion: string, toVersion: string) {
@@ -284,57 +328,86 @@ export class TermsVersionManager {
 }
 
 // Helper hook for React components
-export function useTermsVersioning(userId: string) {
+export function useTermsVersioning(
+  userId: string,
+  getUserLastAcceptedTermsVersionQuery?: any,
+  recordTermsAcceptanceMutation?: any
+) {
   const [needsAcceptance, setNeedsAcceptance] = React.useState<boolean>(false);
   const [updateMessage, setUpdateMessage] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState<boolean>(true);
 
   React.useEffect(() => {
-    if (!userId) return;
-
-    const lastAcceptedVersion = TermsVersionManager.getUserLastAcceptedVersion(userId);
-    const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
-
-    setNeedsAcceptance(needsToAccept);
-
-    if (needsToAccept) {
-      const message = TermsVersionManager.generateReAcceptanceMessage(
-        lastAcceptedVersion || 'none',
-        CURRENT_TERMS_VERSION
-      );
-      setUpdateMessage(message);
+    if (!userId) {
+      setIsLoading(false);
+      return;
     }
-  }, [userId]);
 
-  const acceptTerms = async (acceptanceMethod: 'signup' | 'update_prompt' | 'forced_reaccept') => {
-    const acceptance: UserTermsAcceptance = {
-      userId,
-      termsVersion: CURRENT_TERMS_VERSION,
-      acceptedAt: new Date().toISOString(),
-      acceptanceMethod,
-      ipAddress: 'unknown', // Don't block on IP lookup
-      userAgent: navigator.userAgent
+    const checkTermsAcceptance = async () => {
+      try {
+        const lastAcceptedVersion = await TermsVersionManager.getUserLastAcceptedVersionAsync(
+          userId,
+          getUserLastAcceptedTermsVersionQuery
+        );
+        const needsToAccept = TermsVersionManager.checkIfUserNeedsToReAccept(lastAcceptedVersion || '');
+
+        setNeedsAcceptance(needsToAccept);
+
+        if (needsToAccept) {
+          const message = TermsVersionManager.generateReAcceptanceMessage(
+            lastAcceptedVersion || 'none',
+            CURRENT_TERMS_VERSION
+          );
+          setUpdateMessage(message);
+        }
+      } catch (error) {
+        console.error('Failed to check terms acceptance:', error);
+        // On error, require acceptance for safety
+        setNeedsAcceptance(true);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Get IP asynchronously without blocking
-    getUserIP().then(ip => {
-      if (ip !== 'unknown') {
-        // Update stored record with actual IP if we get it
-        console.log('IP resolved:', ip);
-      }
-    }).catch(() => {
-      // Silent fail - don't block terms acceptance
-    });
+    checkTermsAcceptance();
+  }, [userId, getUserLastAcceptedTermsVersionQuery]);
 
-    await TermsVersionManager.logTermsAcceptance(acceptance);
-    setNeedsAcceptance(false);
-    setUpdateMessage(null);
+  const acceptTerms = async (acceptanceMethod: 'signup' | 'update_prompt' | 'forced_reaccept') => {
+    try {
+      const acceptance: UserTermsAcceptance = {
+        userId,
+        termsVersion: CURRENT_TERMS_VERSION,
+        acceptedAt: new Date().toISOString(),
+        acceptanceMethod,
+        ipAddress: 'unknown', // Don't block on IP lookup
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+      };
+
+      // Get IP asynchronously without blocking
+      getUserIP().then(ip => {
+        if (ip !== 'unknown') {
+          // Update stored record with actual IP if we get it
+          console.log('IP resolved:', ip);
+        }
+      }).catch(() => {
+        // Silent fail - don't block terms acceptance
+      });
+
+      await TermsVersionManager.logTermsAcceptance(acceptance, recordTermsAcceptanceMutation);
+      setNeedsAcceptance(false);
+      setUpdateMessage(null);
+    } catch (error) {
+      console.error('Failed to accept terms:', error);
+      throw error;
+    }
   };
 
   return {
     needsAcceptance,
     updateMessage,
     acceptTerms,
-    currentVersion: CURRENT_TERMS_VERSION
+    currentVersion: CURRENT_TERMS_VERSION,
+    isLoading
   };
 }
 
