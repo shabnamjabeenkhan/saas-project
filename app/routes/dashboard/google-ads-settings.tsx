@@ -1,4 +1,5 @@
 import { SyncStatusComponent } from "~/components/dashboard/sync-status";
+import { GoogleAdsConnectionComponent } from "~/components/dashboard/google-ads-connection";
 
 export default function GoogleAdsSettings() {
   return (
@@ -18,7 +19,7 @@ export default function GoogleAdsSettings() {
         {/* Connection Settings */}
         <div className="bg-white/5 border border-gray-800/50 rounded-xl p-6">
           <h2 className="text-lg font-medium text-white mb-4">Connection Settings</h2>
-          <p className="text-muted-foreground">Google Ads account connection and API settings coming soon...</p>
+          <GoogleAdsConnectionComponent />
         </div>
       </div>
     </div>

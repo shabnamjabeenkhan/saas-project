@@ -71,7 +71,7 @@ export default function GoogleAdsCallback() {
 
       // Production mode: Real token exchange
       try {
-        const redirectUri = `${window.location.origin}/auth/google-ads`;
+        const redirectUri = `${window.location.origin}/auth.google-ads`;
         const result = await exchangeCodeForTokens({ code, redirectUri });
 
         if (result.success) {

@@ -43,7 +43,7 @@ export function useGoogleAdsAuth() {
     }
 
     // Production mode: Real OAuth flow
-    const REDIRECT_URI = `${window.location.origin}/auth/google-ads`;
+    const REDIRECT_URI = `${window.location.origin}/auth.google-ads`;
 
     console.log("Google Client ID:", GOOGLE_CLIENT_ID);
     console.log("Redirect URI:", REDIRECT_URI);

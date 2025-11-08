@@ -16,6 +16,7 @@ const routes: RouteConfig = [
   // Authentication routes (always included, conditionally rendered)
   route("sign-in/*", "routes/sign-in.tsx"),
   route("sign-up/*", "routes/sign-up.tsx"),
+  route("auth.google-ads", "routes/auth.google-ads.tsx"),
 
   // Onboarding route
   route("onboarding", "routes/onboarding.tsx"),
