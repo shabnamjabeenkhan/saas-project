@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -27,12 +28,14 @@ import { validateCampaignCompliance } from "~/lib/ukComplianceRules";
 // Conditionally import mock data for development
 let mockCampaignScenarios: any = null;
 
-if (process.env.NODE_ENV === 'development') {
-  try {
-    const mockModule = await import("~/lib/mockCampaignData");
-    mockCampaignScenarios = mockModule.mockCampaignScenarios;
-  } catch (e) {
-    console.warn('Mock components not available in production');
+async function loadMockData() {
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      const mockModule = await import("~/lib/mockCampaignData");
+      mockCampaignScenarios = mockModule.mockCampaignScenarios;
+    } catch (e) {
+      console.warn('Mock components not available in production');
+    }
   }
 }
 import type { Route } from "./+types/campaigns";
@@ -49,6 +52,11 @@ export default function Campaigns() {
 
   const campaign = useQuery(api.campaigns.getCampaign, {});
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
+
+  // Load mock data in development
+  React.useEffect(() => {
+    loadMockData();
+  }, []);
 
   // Mock campaigns for development (simple display, no approval workflow)
   const mockCampaigns = process.env.NODE_ENV === 'development' && mockCampaignScenarios
