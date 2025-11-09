@@ -63,6 +63,10 @@ export const generateCampaign = action({
       throw new Error("No onboarding data found");
     }
 
+    // Check if this is a regeneration (existing campaign exists)
+    const existingCampaign = await ctx.runQuery(api.campaigns.getCampaign, { userId });
+    const isRegeneration = !!existingCampaign;
+
     // Check if OpenAI API key is configured
     const openAIApiKey = process.env.OPENAI_API_KEY;
 
@@ -71,8 +75,8 @@ export const generateCampaign = action({
     }
 
     try {
-      // Prepare prompt with user data
-      const prompt = buildCampaignPrompt(onboardingData);
+      // Prepare prompt with user data and variation context
+      const prompt = buildCampaignPrompt(onboardingData, isRegeneration, existingCampaign);
 
       // Call OpenAI API
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -93,7 +97,7 @@ export const generateCampaign = action({
               content: prompt,
             },
           ],
-          temperature: 0.7,
+          temperature: isRegeneration ? 0.9 : 0.7, // Higher temperature for more variation on regenerations
           max_tokens: 2000,
         }),
       });
@@ -551,7 +555,7 @@ function buildComplianceRequirements(tradeType: string): string {
 }
 
 // Helper function to build the enhanced campaign generation prompt
-function buildCampaignPrompt(onboardingData: any): string {
+function buildCampaignPrompt(onboardingData: any, isRegeneration: boolean = false, existingCampaign: any = null): string {
   const tradeType = onboardingData.tradeType;
   const businessName = onboardingData.businessName;
   const serviceArea = onboardingData.serviceArea;
@@ -565,6 +569,41 @@ function buildCampaignPrompt(onboardingData: any): string {
   const weekendText = availability?.weekendWork ? 'Works weekends' : 'Weekdays only';
   const currentMonth = new Date().getMonth();
   const season = getSeason(currentMonth);
+
+  // Add variation logic for regenerations
+  let variationInstructions = '';
+  let randomSeed = '';
+
+  if (isRegeneration && existingCampaign) {
+    // Generate random variation seed for unique outputs
+    const variationWords = ['fast', 'quick', 'rapid', 'speedy', 'instant', 'immediate', 'prompt'];
+    const emphasisWords = ['reliable', 'trusted', 'professional', 'experienced', 'skilled', 'certified', 'qualified'];
+    const actionWords = ['fix', 'repair', 'solve', 'resolve', 'service', 'maintain', 'install'];
+
+    const randomVariation = variationWords[Math.floor(Math.random() * variationWords.length)];
+    const randomEmphasis = emphasisWords[Math.floor(Math.random() * emphasisWords.length)];
+    const randomAction = actionWords[Math.floor(Math.random() * actionWords.length)];
+
+    randomSeed = `Variation seed: ${randomVariation}-${randomEmphasis}-${randomAction}-${Date.now()}`;
+
+    variationInstructions = `
+**REGENERATION VARIATION REQUIREMENTS:**
+IMPORTANT: This is a regeneration request. Create subtle variations of the existing campaign while maintaining the same structure and intent:
+
+1. PRESERVE: Same 4 ad groups, same daily budget, same business info, same target location
+2. VARY: Headlines and descriptions using synonyms, alternative phrasing, different emphasis
+3. SHUFFLE: Keyword order and include mild variations (e.g., "plumber London" vs "London plumber")
+4. MAINTAIN: Core business intent, compliance requirements, and service offerings
+5. ENHANCE: Use different seasonal angles, varied call-to-action phrases, alternative value propositions
+
+Existing campaign structure to maintain:
+- Ad Groups: ${existingCampaign.adGroups?.map((ag: any) => ag.name).join(', ')}
+- Previous headlines: ${existingCampaign.adGroups?.[0]?.adCopy?.headlines?.join(', ') || 'None'}
+- Keywords count per group: ${existingCampaign.adGroups?.map((ag: any) => ag.keywords?.length || 0).join(', ')}
+
+Use this seed for randomization: ${randomSeed}
+`;
+  }
 
   return `
 You are an expert Google Ads campaign manager specializing in UK trades marketing. Generate a comprehensive, compliance-focused Google Ads campaign for the following business:
@@ -584,13 +623,13 @@ You are an expert Google Ads campaign manager specializing in UK trades marketin
 
 **UK COMPLIANCE REQUIREMENTS:**
 ${buildComplianceRequirements(tradeType)}
-
+${variationInstructions}
 **SEASONAL CONTEXT:**
 - Current Season: ${season}
 - Seasonal Focus: ${getSeasonalFocus(season)}
 
 **CAMPAIGN REQUIREMENTS:**
-1. Create 3-4 targeted ad groups with distinct themes (emergency, installation, maintenance, etc.)
+1. Create exactly 4 targeted ad groups with distinct themes (emergency, installation, maintenance, repair, etc.)
 2. Generate 8-10 high-intent keywords per ad group including local variations for ${city}
 3. Write 3 compelling headlines (max 30 chars) and 2 descriptions (max 90 chars) per ad group
 4. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
