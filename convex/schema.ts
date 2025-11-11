@@ -114,6 +114,8 @@ export default defineSchema({
     lastRegeneration: v.optional(v.number()),
     monthlyRegenCount: v.optional(v.number()),
     monthlyRegenResetDate: v.optional(v.number()),
+    // Google Ads integration
+    googleCampaignId: v.optional(v.string()),
   })
     .index("userId", ["userId"]),
   googleAdsTokens: defineTable({

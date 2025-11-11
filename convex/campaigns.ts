@@ -423,30 +423,41 @@ export const pushToGoogleAds = action({
         options: pushOptions,
       });
 
+      // First test if the module is accessible
+      console.log('🧪 Testing googleAdsCampaigns module...');
+      try {
+        const testResult = await ctx.runAction(api.googleAdsCampaigns.testGoogleAdsConnection, {});
+        console.log('🧪 Test result:', testResult);
+      } catch (testError) {
+        console.error('🧪 Test function failed:', testError);
+      }
+
       // Call the Node.js Google Ads action
-      const result: any = await ctx.runAction(api.campaigns.createGoogleAdsCampaign, {
-        campaignData: googleAdsData,
-        pushOptions,
+      console.log('📞 Calling googleAdsCampaigns.createGoogleAdsCampaign with campaignId:', args.campaignId);
+      const result: any = await ctx.runAction(api.googleAdsCampaigns.createGoogleAdsCampaign, {
+        campaignId: args.campaignId,
       });
+      console.log('📞 Google Ads result received:', JSON.stringify(result, null, 2));
 
       if (result.success) {
         // Update campaign status
         await ctx.runMutation(api.campaigns.updateCampaignStatus, {
           campaignId: args.campaignId,
-          googleCampaignId: result.campaignId,
+          googleCampaignId: result.googleCampaignId,
           status: pushOptions.createAsDraft ? "pushed_draft" : "pushed_live",
         });
 
         return {
           success: true,
           message: `Campaign ${pushOptions.createAsDraft ? 'drafted' : 'launched'} successfully in Google Ads`,
-          googleCampaignId: result.campaignId,
-          resourceName: result.resourceName,
-          budget: result.budget,
+          googleCampaignId: result.googleCampaignId,
+          resourceName: result.resourceName || '',
+          budget: result.budget || 0,
           status: result.status,
         };
       } else {
-        throw new Error('Failed to create campaign in Google Ads');
+        console.error('❌ Campaign creation failed. Result:', result);
+        throw new Error(`Failed to create campaign in Google Ads: ${result.error || 'Unknown error'}`);
       }
 
     } catch (error) {
@@ -464,7 +475,7 @@ export const pushToGoogleAds = action({
 });
 
 // Mock Google Ads API operations (for development and testing)
-export const createGoogleAdsCampaign = action({
+export const createMockGoogleAdsCampaign = action({
   args: {
     campaignData: v.object({
       name: v.string(),

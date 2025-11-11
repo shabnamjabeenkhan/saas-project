@@ -6,7 +6,7 @@ _Last updated: October 7, 2025_
 By creating an account or using TradeBoost, you agree to these Terms of Service (“Terms”). If you do not agree, do not access or use the platform.
 
 ## 2. Services
-TradeBoost delivers AI-assisted advertising campaign generation, Google Ads drafting, and performance dashboards for plumbers and lelectricians.'
+TradeBoost delivers AI-assisted advertising campaign generation, Google Ads drafting, and performance dashboards for plumbers and lelectricians.'ex
 
 ## 3. Eligibility
 You must be at least 18 and capable of entering a binding contract. If you register on behalf of a business, you confirm you have authority to bind that entity.
