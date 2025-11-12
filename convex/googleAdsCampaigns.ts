@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
+import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 
 // Helper function to get current user's token identifier
@@ -15,7 +15,7 @@ async function getCurrentUserToken(ctx: any) {
 const DEVELOPMENT_MODE = false;
 
 // Google Ads REST API Client Configuration
-async function getGoogleAdsAccessToken(ctx: any) {
+async function getGoogleAdsAccessToken(ctx: any): Promise<string> {
   // Get tokens from database
   const tokens = await ctx.runQuery(api.googleAds.getTokens, {});
 
@@ -119,7 +119,7 @@ const mockGoogleAdsAPI = {
 // Simple test function to verify module is working
 export const testGoogleAdsConnection = action({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (_ctx, _args) => {
     console.log('🧪 TEST FUNCTION CALLED - googleAds module is working!');
     return { success: true, message: "Test function working" };
   }
@@ -129,39 +129,19 @@ export const createGoogleAdsCampaign = action({
   args: {
     campaignId: v.string(), // ID from our campaigns table
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: { campaignId: string }): Promise<any> => {
     console.log('🎯🎯🎯 REAL FUNCTION CALLED - createGoogleAdsCampaign with args:', args);
 
-    console.log('🔥 ABOUT TO RETURN TEST RESULT');
-
-    // Quick test - just return success for now to see if function is called
-    return {
-      success: true,
-      googleCampaignId: 'test-123',
-      error: undefined
-    };
-
-    /*
-    // Commented out the rest of the function for testing
-    */
-  }
-});
-
-/*
-// Temporarily commented out the rest of the original function for debugging
-*/
-
-/*
-    const userId = await getCurrentUserToken(ctx);
-    console.log('👤 User ID:', userId);
-
-    if (!userId) {
-      throw new Error("User not authenticated");
-    }
-
     try {
-      console.log('📊 Getting campaign data for ID:', args.campaignId);
-      // Get the campaign data from our database
+      // Step 1: Get user authentication
+      const userId = await getCurrentUserToken(ctx);
+      console.log('👤 User ID:', userId);
+
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+
+      // Step 2: Get campaign data
       const campaignData = await ctx.runQuery(api.campaigns.getCampaignById, { campaignId: args.campaignId });
       console.log('📊 Campaign data retrieved:', !!campaignData);
 
@@ -169,8 +149,7 @@ export const createGoogleAdsCampaign = action({
         throw new Error("Campaign not found");
       }
 
-      console.log('🔗 Checking Google Ads connection...');
-      // Check if user has connected Google Ads
+      // Step 3: Check Google Ads connection
       const isConnected = await ctx.runQuery(api.googleAds.isConnected, {});
       console.log('🔗 Google Ads connected:', isConnected, 'DEVELOPMENT_MODE:', DEVELOPMENT_MODE);
 
@@ -178,169 +157,127 @@ export const createGoogleAdsCampaign = action({
         throw new Error("Google Ads account not connected");
       }
 
-      let result;
+      // Step 4: Get access token and customer ID
+      const accessToken = await getGoogleAdsAccessToken(ctx);
+      console.log('🔑 Access token received (first 20 chars):', accessToken?.substring(0, 20) + '...');
 
-      console.log('🌟 DEVELOPMENT_MODE check:', DEVELOPMENT_MODE);
+      console.log('🏠 Environment variable GOOGLE_ADS_MANAGER_ACCOUNT_ID:', process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID);
+      const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
+      console.log('👤 Customer ID after formatting:', customerId);
 
-      if (DEVELOPMENT_MODE) {
-        console.log('🔧 Using mock API in development mode');
-        // Use mock API in development
-        result = await mockGoogleAdsAPI.campaigns.create({
-          campaignName: campaignData.campaignName,
-          dailyBudget: campaignData.dailyBudget * 1000000, // Convert to micros
-          targetLocation: campaignData.targetLocation,
-          adGroups: campaignData.adGroups,
-          status: 'PAUSED', // Always start paused
-        });
+      // First, let's check if this account can create campaigns or if it's a manager account
+      console.log('🔍 Checking account type and available customer accounts...');
+
+      const accountListResponse = await fetch(`https://googleads.googleapis.com/v22/customers:listAccessibleCustomers`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+        }
+      });
+
+      if (accountListResponse.ok) {
+        const accountData = await accountListResponse.json();
+        console.log('📋 Available customer accounts:', JSON.stringify(accountData, null, 2));
       } else {
-        console.log('🚀 Using REAL Google Ads API');
-        console.log('📋 Environment GOOGLE_ADS_MANAGER_ACCOUNT_ID:', process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID);
-
-        // Real Google Ads REST API call
-        const accessToken = await getGoogleAdsAccessToken(ctx);
-        console.log('🔑 Access token received (first 20 chars):', accessToken?.substring(0, 20) + '...');
-        const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
-        console.log('👤 Customer ID after formatting:', customerId);
-
-        // First, let's test if we can access the customer account
-        console.log('🔍 Testing customer access...');
-        const testResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'login-customer-id': process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, ''),
-          },
-        });
-        console.log('🔍 Test response status:', testResponse.status);
-        if (!testResponse.ok) {
-          const testText = await testResponse.text();
-          console.log('🔍 Test response error:', testText.substring(0, 200));
-        }
-
-        // Create campaign budget first via REST API
-        console.log('💰 Creating budget with URL:', `https://googleads.googleapis.com/v17/customers/${customerId}/campaignBudgets:mutate`);
-        const budgetResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/campaignBudgets:mutate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'login-customer-id': process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, ''),
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            operations: [{
-              create: {
-                name: `${campaignData.campaignName} Budget`,
-                amountMicros: campaignData.dailyBudget * 1000000,
-                deliveryMethod: 'STANDARD',
-                type: 'DAILY'
-              }
-            }]
-          })
-        });
-
-        console.log('Budget Response Status:', budgetResponse.status);
-        console.log('Budget Response Headers:', budgetResponse.headers);
-
-        const budgetText = await budgetResponse.text();
-        console.log('Budget Response Text (first 500 chars):', budgetText.substring(0, 500));
-
-        if (!budgetResponse.ok) {
-          throw new Error(`Budget API Error: ${budgetResponse.status} - ${budgetText.substring(0, 200)}`);
-        }
-
-        let budgetData;
-        try {
-          budgetData = JSON.parse(budgetText);
-        } catch (parseError) {
-          throw new Error(`Invalid JSON response from Budget API: ${budgetText.substring(0, 200)}`);
-        }
-
-        if (!budgetData.results?.[0]?.resourceName) {
-          throw new Error(`Failed to create campaign budget: ${JSON.stringify(budgetData)}`);
-        }
-
-        const budgetResourceName = budgetData.results[0].resourceName;
-
-        // Create campaign via REST API
-        const campaignResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/campaigns:mutate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'login-customer-id': process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, ''),
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            operations: [{
-              create: {
-                name: campaignData.campaignName,
-                status: 'PAUSED',
-                advertisingChannelType: 'SEARCH',
-                campaignBudget: budgetResourceName,
-                networkSettings: {
-                  targetGoogleSearch: true,
-                  targetSearchNetwork: true,
-                  targetContentNetwork: false,
-                  targetPartnerSearchNetwork: false,
-                }
-              }
-            }]
-          })
-        });
-
-        const campaignResponseData = await campaignResponse.json();
-        if (!campaignResponseData.results?.[0]?.resourceName) {
-          throw new Error('Failed to create campaign');
-        }
-
-        const campaignResourceName = campaignResponseData.results[0].resourceName;
-        const campaignId = campaignResourceName.split('/').pop();
-
-        result = {
-          success: true,
-          googleCampaignId: campaignId,
-          status: 'PAUSED',
-          resourceName: campaignResourceName,
-          budget: campaignData.dailyBudget,
-        };
+        console.log('⚠️ Could not list accessible customers:', await accountListResponse.text());
       }
 
-      if (result.success) {
-        // Update our campaign record with Google Ads ID
-        await ctx.runMutation(api.campaigns.updateCampaignStatus, {
-          campaignId: args.campaignId,
-          googleCampaignId: result.googleCampaignId,
-          status: 'pushed_to_google_ads',
-        });
+      // Step 5: Create campaign budget first
+      console.log('💰 Creating budget for campaign:', campaignData.campaignName);
 
-        return {
-          success: true,
-          googleCampaignId: result.googleCampaignId,
-          resourceName: result.resourceName,
-          budget: result.budget,
-          status: result.status,
-        };
-      } else {
-        return {
-          success: false,
-          error: 'Failed to create campaign in Google Ads',
-        };
+      const budgetRequestBody = {
+        operations: [{
+          create: {
+            name: `${campaignData.campaignName} Budget ${Date.now()}`,
+            amountMicros: campaignData.dailyBudget * 1000000, // Convert to micros
+            deliveryMethod: 'STANDARD'
+          }
+        }]
+      };
+
+      console.log('💰 Budget request body:', JSON.stringify(budgetRequestBody, null, 2));
+
+      const budgetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignBudgets:mutate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+          'login-customer-id': customerId,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(budgetRequestBody)
+      });
+
+      if (!budgetResponse.ok) {
+        const budgetError = await budgetResponse.text();
+        console.error('❌ Budget creation failed:', budgetError);
+        throw new Error(`Budget creation failed: ${budgetResponse.status} - ${budgetError}`);
       }
+
+      const budgetData = await budgetResponse.json();
+      const budgetResourceName = budgetData.results[0].resourceName;
+      console.log('✅ Budget created:', budgetResourceName);
+
+      // Step 6: Create the campaign
+      console.log('🏗️ Creating campaign in Google Ads');
+
+      const requestBody = {
+        operations: [{
+          create: {
+            name: campaignData.campaignName,
+            status: 'PAUSED',
+            advertisingChannelType: 'SEARCH',
+            campaignBudget: budgetResourceName,
+            manualCpc: {},
+            containsEuPoliticalAdvertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+          }
+        }]
+      };
+
+      console.log('📤 Request body being sent:', JSON.stringify(requestBody, null, 2));
+
+      const campaignResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaigns:mutate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+          'login-customer-id': customerId,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!campaignResponse.ok) {
+        const campaignError = await campaignResponse.text();
+        console.error('❌ Campaign creation failed:', campaignError);
+        throw new Error(`Campaign creation failed: ${campaignResponse.status} - ${campaignError}`);
+      }
+
+      const campaignResponseData = await campaignResponse.json();
+      const campaignResourceName = campaignResponseData.results[0].resourceName;
+      const googleCampaignId = campaignResourceName.split('/').pop();
+
+      console.log('✅ Campaign created successfully:', {
+        googleCampaignId,
+        resourceName: campaignResourceName
+      });
+
+      return {
+        success: true,
+        googleCampaignId,
+        resourceName: campaignResourceName,
+        error: undefined
+      };
 
     } catch (error) {
-      console.error('❌ DETAILED ERROR in createGoogleAdsCampaign:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        fullError: error
-      });
+      console.error('❌ Error in createGoogleAdsCampaign:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  },
+  }
 });
 
 // Update campaign status in Google Ads
@@ -362,14 +299,13 @@ export const updateGoogleAdsCampaignStatus = action({
           args.googleCampaignId,
           { status: args.status }
         );
-
         return result;
       } else {
         // Real Google Ads REST API call
         const accessToken = await getGoogleAdsAccessToken(ctx);
         const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
 
-        const updateResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/campaigns:mutate`, {
+        const updateResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaigns:mutate`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -404,212 +340,3 @@ export const updateGoogleAdsCampaignStatus = action({
     }
   },
 });
-
-// Get campaign performance metrics from Google Ads
-export const getGoogleAdsMetrics = action({
-  args: {
-    googleCampaignId: v.string(),
-    dateRange: v.optional(v.object({
-      startDate: v.string(),
-      endDate: v.string(),
-    })),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getCurrentUserToken(ctx);
-
-    if (!userId) {
-      throw new Error("User not authenticated");
-    }
-
-    try {
-      if (DEVELOPMENT_MODE) {
-        // Return mock metrics
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        return {
-          campaignId: args.googleCampaignId,
-          metrics: {
-            impressions: Math.floor(Math.random() * 5000) + 1000,
-            clicks: Math.floor(Math.random() * 200) + 50,
-            cost: Math.floor(Math.random() * 10000) + 2000, // In pence
-            conversions: Math.floor(Math.random() * 10) + 1,
-            costPerClick: Math.floor(Math.random() * 300) + 50, // In pence
-            clickThroughRate: (Math.random() * 5 + 1).toFixed(2) + '%',
-            conversionRate: (Math.random() * 10 + 2).toFixed(2) + '%',
-          },
-          dateRange: {
-            startDate: args.dateRange?.startDate || '2024-01-01',
-            endDate: args.dateRange?.endDate || '2024-01-31',
-          },
-        };
-      } else {
-        // Real Google Ads REST API call for metrics
-        const accessToken = await getGoogleAdsAccessToken(ctx);
-        const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
-
-        const query = `SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.average_cpc, metrics.ctr, metrics.conversions_from_interactions_rate FROM campaign WHERE campaign.id = ${args.googleCampaignId} AND segments.date DURING LAST_30_DAYS`;
-
-        const reportResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: query
-          })
-        });
-
-        const reportData = await reportResponse.json();
-        if (!reportResponse.ok) {
-          throw new Error(`Failed to get campaign metrics: ${reportData.error?.message || 'Unknown error'}`);
-        }
-
-        const results = reportData.results || [];
-        if (results.length === 0) {
-          throw new Error('Campaign not found');
-        }
-
-        // Aggregate metrics from multiple rows (daily data)
-        let totalImpressions = 0;
-        let totalClicks = 0;
-        let totalCost = 0;
-        let totalConversions = 0;
-        let totalInteractions = 0;
-
-        results.forEach((row: any) => {
-          const metrics = row.metrics || {};
-          totalImpressions += parseInt(metrics.impressions || 0);
-          totalClicks += parseInt(metrics.clicks || 0);
-          totalCost += parseInt(metrics.costMicros || 0);
-          totalConversions += parseFloat(metrics.conversions || 0);
-          totalInteractions += parseInt(metrics.clicks || 0); // For CTR calculation
-        });
-
-        return {
-          campaignId: args.googleCampaignId,
-          metrics: {
-            impressions: totalImpressions,
-            clicks: totalClicks,
-            cost: Math.round(totalCost / 10000), // Convert to pence
-            conversions: totalConversions,
-            costPerClick: totalClicks > 0 ? Math.round(totalCost / totalClicks / 100) : 0, // Convert to pence
-            clickThroughRate: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) + '%' : '0%',
-            conversionRate: totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(2) + '%' : '0%',
-          },
-          dateRange: {
-            startDate: args.dateRange?.startDate || '30 days ago',
-            endDate: args.dateRange?.endDate || 'today',
-          },
-        };
-      }
-    } catch (error) {
-      console.error('Failed to get Google Ads metrics:', error);
-      throw error;
-    }
-  },
-});
-
-// List all campaigns from Google Ads account
-export const listGoogleAdsCampaigns = action({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getCurrentUserToken(ctx);
-
-    if (!userId) {
-      throw new Error("User not authenticated");
-    }
-
-    try {
-      if (DEVELOPMENT_MODE) {
-        // Return mock campaign list
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        return {
-          campaigns: [
-            {
-              id: 'gads_mock_1',
-              name: 'Emergency Plumbing Services',
-              status: 'PAUSED',
-              dailyBudget: 15.00,
-              clicks: 45,
-              impressions: 1250,
-              cost: 67.50,
-            },
-            {
-              id: 'gads_mock_2',
-              name: 'Electrical Installation Services',
-              status: 'ENABLED',
-              dailyBudget: 20.00,
-              clicks: 32,
-              impressions: 980,
-              cost: 58.20,
-            },
-          ],
-        };
-      } else {
-        // Real Google Ads REST API call for listing campaigns
-        const accessToken = await getGoogleAdsAccessToken(ctx);
-        const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
-
-        const query = `SELECT campaign.id, campaign.name, campaign.status, metrics.clicks, metrics.impressions, metrics.cost_micros FROM campaign WHERE segments.date DURING LAST_30_DAYS`;
-
-        const reportResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:searchStream`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: query
-          })
-        });
-
-        const reportData = await reportResponse.json();
-        if (!reportResponse.ok) {
-          throw new Error(`Failed to list campaigns: ${reportData.error?.message || 'Unknown error'}`);
-        }
-
-        const results = reportData.results || [];
-
-        // Group by campaign ID and aggregate metrics
-        const campaignMap = new Map();
-
-        results.forEach((row: any) => {
-          const campaign = row.campaign || {};
-          const metrics = row.metrics || {};
-          const campaignId = campaign.id;
-
-          if (campaignMap.has(campaignId)) {
-            const existing = campaignMap.get(campaignId);
-            existing.clicks += parseInt(metrics.clicks || 0);
-            existing.impressions += parseInt(metrics.impressions || 0);
-            existing.cost += parseInt(metrics.costMicros || 0);
-          } else {
-            campaignMap.set(campaignId, {
-              id: campaignId,
-              name: campaign.name || 'Unknown Campaign',
-              status: campaign.status || 'UNKNOWN',
-              clicks: parseInt(metrics.clicks || 0),
-              impressions: parseInt(metrics.impressions || 0),
-              cost: parseInt(metrics.costMicros || 0),
-              dailyBudget: 0, // Would need separate query
-            });
-          }
-        });
-
-        const campaigns = Array.from(campaignMap.values()).map(campaign => ({
-          ...campaign,
-          cost: parseFloat((campaign.cost / 1000000).toFixed(2)), // Convert to pounds
-        }));
-
-        return { campaigns };
-      }
-    } catch (error) {
-      console.error('Failed to list Google Ads campaigns:', error);
-      throw error;
-    }
-  },
-});*/
