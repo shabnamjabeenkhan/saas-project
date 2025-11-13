@@ -104,7 +104,13 @@ export default defineSchema({
         finalUrl: v.string(),
       }),
     })),
-    callExtensions: v.array(v.string()),
+    callExtensions: v.array(v.union(
+      v.string(),
+      v.object({
+        phoneNumber: v.string(),
+        callHours: v.optional(v.string()),
+      })
+    )),
     complianceNotes: v.array(v.string()),
     status: v.string(), // "ready" | "active" | "paused"
     createdAt: v.number(),

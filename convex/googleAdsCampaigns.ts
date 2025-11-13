@@ -352,15 +352,14 @@ export const createGoogleAdsCampaign = action({
               status: 'ENABLED',
               ad: {
                 type: 'RESPONSIVE_SEARCH_AD',
+                finalUrls: [adGroup.adCopy.finalUrl || 'https://example.com'],
                 responsiveSearchAd: {
                   headlines: headlines.map((headline: string) => ({
-                    text: headline.substring(0, 30), // Ensure max 30 chars
-                    pinnedField: 'HEADLINE_1'
+                    text: headline.substring(0, 30) // Ensure max 30 chars
                   })),
                   descriptions: descriptions.map((description: string) => ({
                     text: description.substring(0, 90) // Ensure max 90 chars
-                  })),
-                  finalUrls: [adGroup.adCopy.finalUrl || 'https://example.com']
+                  }))
                 }
               }
             }
@@ -369,6 +368,8 @@ export const createGoogleAdsCampaign = action({
           const adRequestBody = {
             operations: adOperations
           };
+
+          console.log(`📋 Ad request body for ${adGroup.name}:`, JSON.stringify(adRequestBody, null, 2));
 
           const adResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupAds:mutate`, {
             method: 'POST',
@@ -383,12 +384,26 @@ export const createGoogleAdsCampaign = action({
 
           if (!adResponse.ok) {
             const adError = await adResponse.text();
-            console.error(`❌ Ad creation for ${adGroup.name} failed:`, adError);
-            results.errors.push(`Ad creation for "${adGroup.name}" failed`);
+            console.error(`❌ Ad creation for ${adGroup.name} failed with status ${adResponse.status}:`, adError);
+
+            // Parse and log detailed Google Ads API error
+            try {
+              const errorDetails = JSON.parse(adError);
+              console.error(`🔍 Google Ads API Error Details for ${adGroup.name}:`, {
+                status: adResponse.status,
+                statusText: adResponse.statusText,
+                error: errorDetails.error,
+                details: errorDetails.details || errorDetails.message || errorDetails
+              });
+              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
+            } catch (parseError) {
+              console.error(`🔍 Raw Google Ads API Error for ${adGroup.name}:`, adError);
+              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${adError.substring(0, 100)}`);
+            }
           } else {
             const adData = await adResponse.json();
             results.adsCreated++;
-            console.log(`✅ Created ad for ${adGroup.name}`);
+            console.log(`✅ Created ad for ${adGroup.name}:`, adData.results?.[0]?.resourceName || 'Success');
           }
 
         } catch (adGroupError) {
@@ -398,24 +413,26 @@ export const createGoogleAdsCampaign = action({
       }
 
       // Step 10: Create call extensions
-      if (campaignData.businessInfo?.phone) {
-        console.log('📞 Creating call extensions...');
+      const phoneNumber = campaignData.businessInfo?.phone;
+      if (phoneNumber) {
+        console.log('📞 Creating call extensions with phone:', phoneNumber);
 
         try {
-          const callExtensionRequestBody = {
+          // First create the call asset
+          const callAssetRequestBody = {
             operations: [{
               create: {
-                campaign: campaignResourceName,
-                callFeedItem: {
-                  phoneNumber: campaignData.businessInfo.phone,
+                type: 'CALL',
+                callAsset: {
+                  phoneNumber: phoneNumber,
                   countryCode: 'GB',
-                  isCallOnly: false
+                  callConversionReportingState: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
                 }
               }
             }]
           };
 
-          const extensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/extensionFeedItems:mutate`, {
+          const assetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/assets:mutate`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -423,16 +440,64 @@ export const createGoogleAdsCampaign = action({
               'login-customer-id': customerId,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(callExtensionRequestBody)
+            body: JSON.stringify(callAssetRequestBody)
+          });
+
+          if (!assetResponse.ok) {
+            const assetError = await assetResponse.text();
+            console.error(`❌ Call asset creation failed:`, assetError);
+            results.errors.push(`Call asset creation failed: ${assetError.substring(0, 100)}`);
+            return;
+          }
+
+          const assetData = await assetResponse.json();
+          const assetResourceName = assetData.results[0].resourceName;
+          console.log('✅ Call asset created:', assetResourceName);
+
+          // Then link the asset to the campaign
+          const campaignAssetRequestBody = {
+            operations: [{
+              create: {
+                asset: assetResourceName,
+                campaign: campaignResourceName,
+                fieldType: 'CALL'
+              }
+            }]
+          };
+
+          const extensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignAssets:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(campaignAssetRequestBody)
           });
 
           if (!extensionResponse.ok) {
             const extensionError = await extensionResponse.text();
-            console.error('❌ Call extension creation failed:', extensionError);
-            results.errors.push('Call extension creation failed');
+            console.error(`❌ Campaign asset linking failed with status ${extensionResponse.status}:`, extensionError);
+
+            // Parse and log detailed Google Ads API error
+            try {
+              const errorDetails = JSON.parse(extensionError);
+              console.error(`🔍 Google Ads API Error Details for campaign asset linking:`, {
+                status: extensionResponse.status,
+                statusText: extensionResponse.statusText,
+                error: errorDetails.error,
+                details: errorDetails.details || errorDetails.message || errorDetails
+              });
+              results.errors.push(`Campaign asset linking failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
+            } catch (parseError) {
+              console.error(`🔍 Raw Google Ads API Error for campaign asset linking:`, extensionError);
+              results.errors.push(`Campaign asset linking failed: ${extensionError.substring(0, 100)}`);
+            }
           } else {
+            const extensionData = await extensionResponse.json();
             results.extensionsCreated++;
-            console.log('✅ Call extension created successfully');
+            console.log('✅ Call extension linked to campaign successfully:', extensionData.results?.[0]?.resourceName || 'Success');
           }
 
         } catch (extensionError) {

@@ -29,7 +29,13 @@ const campaignSchema = v.object({
     serviceArea: v.string(),
   }),
   adGroups: v.array(adGroupSchema),
-  callExtensions: v.array(v.string()),
+  callExtensions: v.array(v.union(
+    v.string(),
+    v.object({
+      phoneNumber: v.string(),
+      callHours: v.optional(v.string()),
+    })
+  )),
   complianceNotes: v.array(v.string()),
 });
 
