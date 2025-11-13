@@ -53,7 +53,7 @@ export const generateCampaign = action({
     const canRegenerate = await ctx.runQuery(api.campaigns.checkRegenerationLimits, { userId });
 
     if (!canRegenerate.allowed) {
-      throw new Error(canRegenerate.reason);
+      throw new Error((canRegenerate as any).reason || 'Regeneration not allowed');
     }
 
     // Get user's onboarding data
@@ -138,12 +138,21 @@ export const generateCampaign = action({
   },
 });
 
-// Check regeneration limits
+// Check regeneration limits (DISABLED FOR TESTING)
 export const checkRegenerationLimits = query({
   args: {
     userId: v.string(),
   },
   handler: async (ctx, args) => {
+    // TESTING MODE: Always allow regeneration
+    return {
+      allowed: true,
+      remaining: 999, // Show high number for testing
+      testing: true
+    };
+
+    // Original logic commented out for testing:
+    /*
     const campaign = await ctx.db
       .query("campaigns")
       .withIndex("userId", (q) => q.eq("userId", args.userId))
@@ -186,6 +195,7 @@ export const checkRegenerationLimits = query({
       allowed: true,
       remaining: 10 - currentMonthlyCount
     };
+    */
   },
 });
 
@@ -372,6 +382,12 @@ export const pushToGoogleAds = action({
     resourceName: string;
     budget: number;
     status: string;
+    details?: string;
+    createdResources?: {
+      adGroups: number;
+      ads: number;
+      extensions: number;
+    };
   }> => {
     const userId = await getCurrentUserToken(ctx);
 
@@ -447,16 +463,31 @@ export const pushToGoogleAds = action({
           status: pushOptions.createAsDraft ? "pushed_draft" : "pushed_live",
         });
 
+        const detailMessage = `Campaign: ✅ | Ad Groups: ${result.adGroupsCreated || 0} | Ads: ${result.adsCreated || 0} | Extensions: ${result.extensionsCreated || 0}`;
+
         return {
           success: true,
           message: `Campaign ${pushOptions.createAsDraft ? 'drafted' : 'launched'} successfully in Google Ads`,
           googleCampaignId: result.googleCampaignId,
           resourceName: result.resourceName || '',
           budget: result.budget || 0,
-          status: result.status,
+          status: result.status || 'PAUSED',
+          details: detailMessage,
+          createdResources: {
+            adGroups: result.adGroupsCreated || 0,
+            ads: result.adsCreated || 0,
+            extensions: result.extensionsCreated || 0
+          }
         };
       } else {
         console.error('❌ Campaign creation failed. Result:', result);
+
+        // Check if it's a partial failure
+        if (result.partialResults) {
+          const partialMessage = `Partial failure: Campaign: ${result.partialResults.campaignCreated ? '✅' : '❌'} | Ad Groups: ${result.partialResults.adGroupsCreated} | Ads: ${result.partialResults.adsCreated} | Extensions: ${result.partialResults.extensionsCreated}`;
+          throw new Error(`${result.error || 'Unknown error'}. ${partialMessage}`);
+        }
+
         throw new Error(`Failed to create campaign in Google Ads: ${result.error || 'Unknown error'}`);
       }
 
