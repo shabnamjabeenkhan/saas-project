@@ -72,6 +72,19 @@ export function CampaignHeaderControls({
       return;
     }
 
+    // Check for placeholder URLs and warn user
+    const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
+    const hasPlaceholders = campaign.adGroups?.some((adGroup: any) =>
+      !adGroup.adCopy?.finalUrl || placeholderUrls.includes(adGroup.adCopy.finalUrl)
+    );
+
+    if (hasPlaceholders) {
+      toast.warning("⚠️ No website URL detected", {
+        description: "Your ads will show 'example.com' which may waste your budget. Consider adding a website URL in your profile or using call-only ads.",
+        duration: 10000,
+      });
+    }
+
     console.log('🎯 Starting campaign push process...', {
       campaignId: campaign._id,
       campaignName: campaign.campaignName,
@@ -103,6 +116,10 @@ export function CampaignHeaderControls({
           description: description,
           duration: 8000,
         });
+
+        // 🔄 Convex real-time queries will automatically update the UI
+        // No manual refresh needed - data syncs automatically
+        console.log('✅ Campaign push complete - Convex will sync UI automatically');
       } else {
         console.error('❌ Campaign push failed - success=false');
         throw new Error('Failed to create campaign');

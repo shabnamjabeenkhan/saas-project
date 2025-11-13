@@ -153,6 +153,7 @@ export const createGoogleAdsCampaign = action({
       const campaignData = await ctx.runQuery(api.campaigns.getCampaignById, { campaignId: args.campaignId });
       console.log('📊 Campaign data retrieved:', !!campaignData);
       console.log('📊 Ad groups in campaign:', campaignData?.adGroups?.length || 0);
+      console.log('📞 Phone number in campaign data:', campaignData?.businessInfo?.phone || 'NOT FOUND');
 
       if (!campaignData) {
         throw new Error("Campaign not found");
@@ -413,7 +414,32 @@ export const createGoogleAdsCampaign = action({
       }
 
       // Step 10: Create call extensions
-      const phoneNumber = campaignData.businessInfo?.phone;
+      // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+      const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      const phoneNumber = freshOnboardingData?.phone || campaignData.businessInfo?.phone;
+      console.log('📞 Attempting call extension creation...');
+      console.log('📞 Fresh onboarding phone:', freshOnboardingData?.phone || 'NOT FOUND');
+      console.log('📞 Fallback campaign phone:', campaignData.businessInfo?.phone || 'NOT FOUND');
+      console.log('📞 Using phone number:', phoneNumber || 'UNDEFINED/NULL');
+
+      // 🔍 ENHANCED PHONE TRACKING: Log phone consistency across all ad groups
+      console.log('🔍 PHONE CONSISTENCY CHECK:');
+      if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
+        campaignData.adGroups.forEach((adGroup: any, index: number) => {
+          console.log(`  Ad Group ${index + 1} (${adGroup.name}): Using campaign phone ${phoneNumber}`);
+          console.log(`  Final URL: ${adGroup.adCopy?.finalUrl || 'MISSING'}`);
+        });
+      }
+      console.log('🔍 Call extensions will use phone:', phoneNumber);
+
+      // 🔍 VALIDATION: Confirm we're using the correct phone number
+      if (freshOnboardingData?.phone && campaignData.businessInfo?.phone &&
+          freshOnboardingData.phone !== campaignData.businessInfo.phone) {
+        console.warn('⚠️ Phone mismatch detected - using fresh onboarding data');
+        console.warn('  Onboarding phone (using):', freshOnboardingData.phone);
+        console.warn('  Campaign phone (stale):', campaignData.businessInfo.phone);
+      }
+
       if (phoneNumber) {
         console.log('📞 Creating call extensions with phone:', phoneNumber);
 
