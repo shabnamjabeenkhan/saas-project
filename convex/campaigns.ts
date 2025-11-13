@@ -20,6 +20,7 @@ const adGroupSchema = v.object({
 });
 
 const campaignSchema = v.object({
+
   campaignName: v.string(),
   dailyBudget: v.number(),
   targetLocation: v.string(),
@@ -150,22 +151,22 @@ export const checkRegenerationLimits = query({
       .first();
 
     if (!campaign) {
-      return { allowed: true, remaining: 10 };
+      return { allowed: true, remaining: 10, reason: "" };
     }
 
     const now = Date.now();
     const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
     const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
-    // Check cooldown period (30 minutes)
-    if (campaign.lastRegeneration && (now - campaign.lastRegeneration) < thirtyMinutes) {
-      const remainingCooldown = Math.ceil((thirtyMinutes - (now - campaign.lastRegeneration)) / 60000);
-      return {
-        allowed: false,
-        reason: `Please wait ${remainingCooldown} minutes before regenerating again.`,
-        remaining: Math.max(0, 10 - (campaign.monthlyRegenCount || 0))
-      };
-    }
+    // Check cooldown period (30 minutes) - DISABLED FOR TESTING
+    // if (campaign.lastRegeneration && (now - campaign.lastRegeneration) < thirtyMinutes) {
+    //   const remainingCooldown = Math.ceil((thirtyMinutes - (now - campaign.lastRegeneration)) / 60000);
+    //   return {
+    //     allowed: false,
+    //     reason: `Please wait ${remainingCooldown} minutes before regenerating again.`,
+    //     remaining: Math.max(0, 10 - (campaign.monthlyRegenCount || 0))
+    //   };
+    // }
 
     // Reset monthly count if it's a new month
     const shouldResetMonthly = !campaign.monthlyRegenResetDate ||
@@ -173,18 +174,19 @@ export const checkRegenerationLimits = query({
 
     const currentMonthlyCount = shouldResetMonthly ? 0 : (campaign.monthlyRegenCount || 0);
 
-    // Check monthly limit (10 per month)
-    if (currentMonthlyCount >= 10) {
-      return {
-        allowed: false,
-        reason: "Monthly regeneration limit reached (10/month). Try again next month.",
-        remaining: 0
-      };
-    }
+    // Check monthly limit (10 per month) - DISABLED FOR TESTING
+    // if (currentMonthlyCount >= 10) {
+    //   return {
+    //     allowed: false,
+    //     reason: "Monthly regeneration limit reached (10/month). Try again next month.",
+    //     remaining: 0
+    //   };
+    // }
 
     return {
       allowed: true,
-      remaining: 10 - currentMonthlyCount
+      remaining: 999, // Unlimited for testing
+      reason: ""
     };
   },
 });
@@ -571,7 +573,7 @@ function buildCampaignPrompt(onboardingData: any, isRegeneration: boolean = fals
   const businessName = onboardingData.businessName;
   const serviceArea = onboardingData.serviceArea;
   const serviceOfferings = onboardingData.serviceOfferings || [];
-  const phone = onboardingData.phone;
+  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
   const availability = onboardingData.availability;
   const acquisitionGoals = onboardingData.acquisitionGoals;
 
@@ -712,7 +714,7 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
 function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
   const serviceArea = onboardingData.serviceArea;
   const businessName = onboardingData.businessName;
-  const phone = onboardingData.phone;
+  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
 
   return {
     campaignName: data.campaignName || `${businessName} - ${onboardingData.tradeType} Services`,
@@ -737,7 +739,7 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
 function createFallbackCampaignData(aiResponse: string, onboardingData: any): any {
   const serviceArea = onboardingData.serviceArea;
   const businessName = onboardingData.businessName;
-  const phone = onboardingData.phone;
+  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
   const tradeType = onboardingData.tradeType;
 
   return {

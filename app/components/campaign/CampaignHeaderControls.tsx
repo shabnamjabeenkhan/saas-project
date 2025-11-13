@@ -75,7 +75,7 @@ export function CampaignHeaderControls({
         campaignId: campaign._id,
         pushOptions: {
           createAsDraft: true,
-          testMode: true,
+          testMode: false, // FORCE REAL API USAGE
         },
       });
 
