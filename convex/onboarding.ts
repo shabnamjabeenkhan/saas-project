@@ -15,6 +15,7 @@ export const saveOnboardingData = mutation({
     contactName: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
     serviceArea: v.optional(v.object({
       city: v.string(),
       postcode: v.optional(v.string()),

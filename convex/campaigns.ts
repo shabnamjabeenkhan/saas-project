@@ -755,6 +755,13 @@ ${variationInstructions}
 - Current Season: ${season}
 - Seasonal Focus: ${getSeasonalFocus(season)}
 
+**🚨 CRITICAL PHONE NUMBER RULES:**
+- NEVER include ANY phone numbers in headlines or descriptions
+- If you need to reference calling, use phrases like "Call Now", "Call Today", "Phone Us"
+- Do NOT use {PHONE}, ${phone}, or any phone number variables in ad text
+- Phone numbers will be handled separately via call extensions
+- Violating this rule wastes advertising budget and confuses customers
+
 **CAMPAIGN REQUIREMENTS:**
 1. Create exactly 4 targeted ad groups with distinct themes (emergency, installation, maintenance, repair, etc.)
 2. Generate 8-10 high-intent keywords per ad group including local variations for ${city}
@@ -762,7 +769,7 @@ ${variationInstructions}
 4. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
 5. Include location-specific keywords: "${city} {service}", "{service} near me", "local {service}"
 6. Add emergency/urgency keywords if applicable: "24/7", "emergency", "urgent"
-7. Include call extensions with phone number
+7. Use "Call Now", "Call Today", "Phone Us" instead of actual phone numbers in ad text
 8. Add compliance notes for UK regulatory requirements
 9. Suggest optimization tips and seasonal recommendations
 10. Calculate daily budget: £${Math.round((acquisitionGoals?.monthlyBudget || 300) / 30)}
@@ -773,6 +780,17 @@ ${variationInstructions}
 - No misleading claims ("cheapest", "guaranteed", etc.)
 - Price transparency required ("free quotes", "no hidden charges")
 - Professional credentials must be highlighted
+
+**EXAMPLES OF CORRECT AD TEXT (NO PHONE NUMBERS):**
+✅ "Emergency Plumber Ready" (NOT "Call 077-XXX-XXXX")
+✅ "24/7 Gas Safe Service" (NOT "Ring 07564897550")
+✅ "Call Now - Free Quote" (NOT "Call 077 684 7429")
+✅ "Urgent Repairs London" (NOT any phone number)
+
+**FORBIDDEN PHONE NUMBER PATTERNS:**
+❌ Do NOT include: 077, 078, 020, 01XX, +44, any 11-digit numbers
+❌ Do NOT include: "Call 077...", "Ring 020...", "Phone 078..."
+❌ Do NOT include: formatted numbers like "077 684 7429" or "07564897550"
 
 **OUTPUT FORMAT:**
 Return ONLY a valid JSON object with this exact structure:
@@ -813,7 +831,8 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      return validateAndEnhanceCampaignData(parsed, onboardingData);
+      const cleanedData = sanitizePhoneNumbers(parsed);
+      return validateAndEnhanceCampaignData(cleanedData, onboardingData);
     }
 
     // If not JSON, create structured data from text
@@ -822,6 +841,43 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
     console.error('Failed to parse AI response:', error);
     return createFallbackCampaignData(aiResponse, onboardingData);
   }
+}
+
+// Sanitize any phone numbers that AI might have hallucinated in ad text
+function sanitizePhoneNumbers(campaignData: any): any {
+  const phoneRegex = /(0[1-9]\d{8,9}|(\+44\s?)?[1-9]\d{8,9}|07\d{9}|077\s?\d{3}\s?\d{4})/g;
+
+  // Clean ad groups
+  if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
+    campaignData.adGroups = campaignData.adGroups.map((adGroup: any) => {
+      if (adGroup.adCopy) {
+        // Clean headlines
+        if (adGroup.adCopy.headlines && Array.isArray(adGroup.adCopy.headlines)) {
+          adGroup.adCopy.headlines = adGroup.adCopy.headlines.map((headline: string) => {
+            const cleaned = headline.replace(phoneRegex, 'Call Now');
+            if (cleaned !== headline) {
+              console.warn(`🧹 Removed phone number from headline: "${headline}" → "${cleaned}"`);
+            }
+            return cleaned;
+          });
+        }
+
+        // Clean descriptions
+        if (adGroup.adCopy.descriptions && Array.isArray(adGroup.adCopy.descriptions)) {
+          adGroup.adCopy.descriptions = adGroup.adCopy.descriptions.map((description: string) => {
+            const cleaned = description.replace(phoneRegex, 'Call now for service');
+            if (cleaned !== description) {
+              console.warn(`🧹 Removed phone number from description: "${description}" → "${cleaned}"`);
+            }
+            return cleaned;
+          });
+        }
+      }
+      return adGroup;
+    });
+  }
+
+  return campaignData;
 }
 
 // Validate campaign data integrity
@@ -897,7 +953,7 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
 }
 
 // Create fallback campaign data if parsing fails
-function createFallbackCampaignData(aiResponse: string, onboardingData: any): any {
+function createFallbackCampaignData(_aiResponse: string, onboardingData: any): any {
   const serviceArea = onboardingData.serviceArea;
   const businessName = onboardingData.businessName;
   const phone = onboardingData.phone;
@@ -927,8 +983,8 @@ function createFallbackCampaignData(aiResponse: string, onboardingData: any): an
         name: `Emergency ${tradeType}`,
         keywords: [`emergency ${tradeType}`, `24/7 ${tradeType}`, `urgent ${tradeType}`],
         adCopy: {
-          headlines: [`Fast Emergency ${tradeType}`, "Available 24/7", "No Call Out Fee"],
-          descriptions: [`Professional ${tradeType} services in ${serviceArea?.city}`, "Call now for immediate assistance"],
+          headlines: [`Fast Emergency ${tradeType}`, "Available 24/7", "Call Now - No Fees"],
+          descriptions: [`Professional ${tradeType} services in ${serviceArea?.city}`, "Call today for immediate assistance"],
           finalUrl: websiteUrl,
         },
       },
