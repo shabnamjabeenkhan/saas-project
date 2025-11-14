@@ -2,12 +2,14 @@ import { Button } from "~/components/ui/button";
 import { Link } from "react-router";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { UserMenu } from "~/components/ui/user-menu";
 
 interface LovableHeaderProps {
   isSignedIn?: boolean;
+  user?: any;
 }
 
-export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
+export const LovableHeader = ({ isSignedIn = false, user }: LovableHeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -41,7 +43,7 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
           </nav>
 
           {/* Desktop CTA */}
-          <div className="hidden xl:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-3">
             {!isSignedIn ? (
               <>
                 <Button asChild variant="ghost" size="sm" className="text-sm">
@@ -52,9 +54,12 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
                 </Button>
               </>
             ) : (
-              <Button asChild variant="default" size="sm">
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
+              <>
+                <Button asChild variant="default" size="sm" className="text-sm whitespace-nowrap">
+                  <Link to="/dashboard">Dashboard</Link>
+                </Button>
+                <UserMenu user={user} />
+              </>
             )}
           </div>
 
@@ -134,9 +139,14 @@ export const LovableHeader = ({ isSignedIn = false }: LovableHeaderProps) => {
                     </Button>
                   </>
                 ) : (
-                  <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 text-lg py-6 h-auto font-medium">
-                    <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
-                  </Button>
+                  <>
+                    <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 text-lg py-6 h-auto font-medium">
+                      <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
+                    </Button>
+                    <div className="flex justify-center pt-4">
+                      <UserMenu variant="sidebar" user={user} />
+                    </div>
+                  </>
                 )}
               </div>
             </nav>

@@ -10,12 +10,13 @@ import { LovableCTASection } from "./cta-section";
 
 interface LovableLandingProps {
   isSignedIn?: boolean;
+  user?: any;
 }
 
-export const LovableLanding = ({ isSignedIn = false }: LovableLandingProps) => {
+export const LovableLanding = ({ isSignedIn = false, user }: LovableLandingProps) => {
   return (
     <div className="min-h-screen">
-      <LovableHeader isSignedIn={isSignedIn} />
+      <LovableHeader isSignedIn={isSignedIn} user={user} />
       <main>
         <LovableHero isSignedIn={isSignedIn} />
         <DashboardPreview />

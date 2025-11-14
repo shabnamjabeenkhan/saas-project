@@ -54,6 +54,7 @@ export const generateCampaign = action({
     const canRegenerate = await ctx.runQuery(api.campaigns.checkRegenerationLimits, { userId });
 
     if (!canRegenerate.allowed) {
+      
       throw new Error(canRegenerate.reason);
     }
 

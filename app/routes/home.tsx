@@ -54,11 +54,25 @@ export async function loader(args: Route.LoaderArgs) {
   const convexEnabled = isFeatureEnabled("convex") && isServiceEnabled("convex");
   const paymentsEnabled = isFeatureEnabled("payments") && isServiceEnabled("polar");
 
-  // 1. Auth: get userId if auth enabled, else null
+  // 1. Auth: get userId and user data if auth enabled, else null
   let userId: string | null = null;
+  let user: any = null;
   if (authEnabled) {
     const { getAuth } = await import("@clerk/react-router/ssr.server");
+    const { createClerkClient } = await import("@clerk/react-router/api.server");
+
     ({ userId } = await getAuth(args));
+
+    // Fetch user details if authenticated
+    if (userId) {
+      try {
+        user = await createClerkClient({
+          secretKey: process.env.CLERK_SECRET_KEY as string,
+        }).users.getUser(userId);
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      }
+    }
   }
 
   // 2. Fetch subscription status & plans only if Convex enabled
@@ -91,6 +105,7 @@ export async function loader(args: Route.LoaderArgs) {
 
   return {
     isSignedIn: !!userId,
+    user,
     hasActiveSubscription: subscriptionData?.hasActiveSubscription || false,
     plans,
   };
@@ -99,7 +114,7 @@ export async function loader(args: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <>
-      <LovableLanding isSignedIn={loaderData.isSignedIn} />
+      <LovableLanding isSignedIn={loaderData.isSignedIn} user={loaderData.user} />
       <Suspense fallback={<div className="h-32 bg-muted" />}>
         <Footer />
       </Suspense>

@@ -123,7 +123,7 @@ export const hasCompletedOnboarding = query({
     const userId = await getCurrentUserToken(ctx);
 
     if (!userId) {
-      return false;
+      return { isComplete: false, loading: false };
     }
 
     const data = await ctx.db
@@ -131,7 +131,11 @@ export const hasCompletedOnboarding = query({
       .withIndex("userId", (q) => q.eq("userId", userId))
       .first();
 
-    return data?.isComplete ?? false;
+    return {
+      isComplete: data?.isComplete ?? false,
+      loading: false,
+      hasData: !!data
+    };
   },
 });
 
