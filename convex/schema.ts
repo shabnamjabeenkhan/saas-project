@@ -55,6 +55,7 @@ export default defineSchema({
     contactName: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()), // Optional website URL
     serviceArea: v.optional(v.object({
       city: v.string(),
       postcode: v.optional(v.string()),
@@ -104,7 +105,13 @@ export default defineSchema({
         finalUrl: v.string(),
       }),
     })),
-    callExtensions: v.array(v.string()),
+    callExtensions: v.array(v.union(
+      v.string(),
+      v.object({
+        phoneNumber: v.string(),
+        callHours: v.optional(v.string()),
+      })
+    )),
     complianceNotes: v.array(v.string()),
     status: v.string(), // "ready" | "active" | "paused"
     createdAt: v.number(),

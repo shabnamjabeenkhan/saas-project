@@ -30,6 +30,7 @@ const step2Schema = z.object({
   contactName: z.string().min(1, "Contact name is required"),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(10, "Valid phone number is required"),
+  websiteUrl: z.string().url("Valid website URL is required").optional().or(z.literal("")),
 });
 
 const step3Schema = z.object({
@@ -161,6 +162,7 @@ export default function OnboardingWizard() {
           contactName: existingData.contactName || "",
           email: existingData.email || "",
           phone: existingData.phone || "",
+          websiteUrl: existingData.websiteUrl || "",
         };
       }
 
@@ -257,6 +259,7 @@ export default function OnboardingWizard() {
       convexData.contactName = allData.step2.contactName;
       convexData.email = allData.step2.email;
       convexData.phone = allData.step2.phone;
+      convexData.websiteUrl = allData.step2.websiteUrl || "";
     }
 
     if (allData.step3) {
@@ -524,6 +527,23 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
             <p className="text-sm text-red-500">{form.formState.errors.phone.message}</p>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="websiteUrl" className="text-white">Website URL (Optional)</Label>
+        <Input
+          id="websiteUrl"
+          type="url"
+          {...form.register("websiteUrl")}
+          placeholder="https://yourcompany.co.uk"
+          className="bg-[#0A0A0A] border-gray-700"
+        />
+        <p className="text-xs text-muted-foreground">
+          Not required for UK trade businesses. If provided, will be used in your ads.
+        </p>
+        {form.formState.errors.websiteUrl && (
+          <p className="text-sm text-red-500">{form.formState.errors.websiteUrl.message}</p>
+        )}
       </div>
 
       <div className="flex justify-between pt-6">
@@ -1090,6 +1110,12 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
                 <span className="text-muted-foreground">Phone:</span>
                 <p className="text-white">{formData.step2.phone}</p>
               </div>
+              {formData.step2.websiteUrl && (
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Website:</span>
+                  <p className="text-white">{formData.step2.websiteUrl}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

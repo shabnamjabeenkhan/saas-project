@@ -58,18 +58,43 @@ export function CampaignHeaderControls({
   };
 
   const handlePushToGoogleAds = async () => {
+    console.log('🚀 Push to Google Ads button clicked');
+
     if (!campaign) {
+      console.error('❌ No campaign available to push');
       toast.error("No campaign to push");
       return;
     }
 
     if (!isGoogleAdsConnected) {
+      console.error('❌ Google Ads not connected');
       toast.error("Please connect your Google Ads account first");
       return;
     }
 
+    // Check for placeholder URLs and warn user
+    const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
+    const hasPlaceholders = campaign.adGroups?.some((adGroup: any) =>
+      !adGroup.adCopy?.finalUrl || placeholderUrls.includes(adGroup.adCopy.finalUrl)
+    );
+
+    if (hasPlaceholders) {
+      toast.warning("⚠️ No website URL detected", {
+        description: "Your ads will show 'example.com' which may waste your budget. Consider adding a website URL in your profile or using call-only ads.",
+        duration: 10000,
+      });
+    }
+
+    console.log('🎯 Starting campaign push process...', {
+      campaignId: campaign._id,
+      campaignName: campaign.campaignName,
+      adGroups: campaign.adGroups?.length || 0
+    });
+
     setIsProcessing(true);
     try {
+      console.log('📤 Calling pushToGoogleAds action...');
+
       // Use Convex action to push campaign to Google Ads
       const result = await pushToGoogleAds({
         campaignId: campaign._id,
@@ -79,21 +104,37 @@ export function CampaignHeaderControls({
         },
       });
 
+      console.log('📥 Received result from pushToGoogleAds:', result);
+
       if (result.success) {
+        console.log('✅ Campaign push successful!', result);
+
+        const description = result.details ||
+          `Campaign ID: ${result.googleCampaignId} | Budget: £${result.budget}/day | Status: ${result.status}`;
+
         toast.success(`🎯 ${result.message}`, {
-          description: `Campaign ID: ${result.googleCampaignId} | Budget: £${result.budget}/day | Status: ${result.status}`,
+          description: description,
           duration: 8000,
         });
+
+        // 🔄 Convex real-time queries will automatically update the UI
+        // No manual refresh needed - data syncs automatically
+        console.log('✅ Campaign push complete - Convex will sync UI automatically');
       } else {
+        console.error('❌ Campaign push failed - success=false');
         throw new Error('Failed to create campaign');
       }
     } catch (error) {
-      console.error('Campaign push error:', error);
+      console.error('❌ Campaign push error occurred:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+
       toast.error(`❌ Failed to push to Google Ads`, {
         description: error instanceof Error ? error.message : 'Check API connection and try again',
         duration: 8000,
       });
     } finally {
+      console.log('🔄 Campaign push process completed, resetting UI state');
       setIsProcessing(false);
     }
   };
@@ -200,12 +241,14 @@ export function CampaignHeaderControls({
         {/* Regeneration limit indicator */}
         {regenerationLimits && campaign && (
           <div className="text-xs text-gray-400 text-right mb-1">
-            {regenerationLimits.allowed ? (
+            {regenerationLimits.testing ? (
+              <span className="text-green-400">Testing mode - unlimited regenerations</span>
+            ) : regenerationLimits.allowed ? (
               <span>{regenerationLimits.remaining}/10 regenerations remaining this month</span>
             ) : (
               <span className="text-orange-400 flex items-center justify-end gap-1">
                 <Clock className="w-3 h-3" />
-                {regenerationLimits.reason}
+                {(regenerationLimits as any).reason || 'Regeneration not allowed'}
               </span>
             )}
           </div>

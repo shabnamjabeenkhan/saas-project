@@ -30,7 +30,13 @@ const campaignSchema = v.object({
     serviceArea: v.string(),
   }),
   adGroups: v.array(adGroupSchema),
-  callExtensions: v.array(v.string()),
+  callExtensions: v.array(v.union(
+    v.string(),
+    v.object({
+      phoneNumber: v.string(),
+      callHours: v.optional(v.string()),
+    })
+  )),
   complianceNotes: v.array(v.string()),
 });
 
@@ -54,8 +60,7 @@ export const generateCampaign = action({
     const canRegenerate = await ctx.runQuery(api.campaigns.checkRegenerationLimits, { userId });
 
     if (!canRegenerate.allowed) {
-      
-      throw new Error(canRegenerate.reason);
+      throw new Error((canRegenerate as any).reason || 'Regeneration not allowed');
     }
 
     // Get user's onboarding data
@@ -118,6 +123,15 @@ export const generateCampaign = action({
       // Parse AI response into structured campaign data
       const campaignData = parseAIResponse(aiResponse, onboardingData);
 
+      // 🔍 CAMPAIGN DATA VALIDATION: Log final data before saving
+      console.log('🔍 FINAL CAMPAIGN DATA VALIDATION:');
+      console.log('📱 Phone in businessInfo:', campaignData?.businessInfo?.phone);
+      console.log('📱 Phone in callExtensions:', campaignData?.callExtensions?.[0]);
+      console.log('🌐 Website URLs in ad groups:', campaignData?.adGroups?.map((ag: any) => ag.adCopy?.finalUrl));
+
+      // Validate data integrity before saving
+      validateCampaignDataIntegrity(campaignData, onboardingData);
+
       // Save generated campaign to database
       const campaignId: string = await ctx.runMutation(api.campaigns.saveCampaign, {
         userId,
@@ -140,12 +154,21 @@ export const generateCampaign = action({
   },
 });
 
-// Check regeneration limits
+// Check regeneration limits (DISABLED FOR TESTING)
 export const checkRegenerationLimits = query({
   args: {
     userId: v.string(),
   },
   handler: async (ctx, args) => {
+    // TESTING MODE: Always allow regeneration
+    return {
+      allowed: true,
+      remaining: 999, // Show high number for testing
+      testing: true
+    };
+
+    // Original logic commented out for testing:
+    /*
     const campaign = await ctx.db
       .query("campaigns")
       .withIndex("userId", (q) => q.eq("userId", args.userId))
@@ -189,6 +212,7 @@ export const checkRegenerationLimits = query({
       remaining: 999, // Unlimited for testing
       reason: ""
     };
+    */
   },
 });
 
@@ -248,7 +272,19 @@ export const saveCampaign = mutation({
     };
 
     if (existingCampaign) {
-      // Update existing campaign (preserve regeneration tracking)
+      // 🔒 FULL DATA REFRESH: Completely rebuild campaign with fresh onboarding data
+      // Get fresh onboarding data to ensure consistency
+      const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      if (!onboardingData) {
+        throw new Error('Cannot refresh campaign: onboarding data not found');
+      }
+
+      // Log the refresh operation for debugging
+      console.log('🔄 FULL REFRESH: Rebuilding campaign with fresh onboarding data');
+      console.log('🔄 Fresh phone number:', onboardingData.phone);
+      console.log('🔄 Previous phone in campaign:', existingCampaign.businessInfo?.phone);
+
+      // Update existing campaign with completely fresh data
       await ctx.db.patch(existingCampaign._id, {
         ...saveData,
         updatedAt: Date.now(),
@@ -258,6 +294,8 @@ export const saveCampaign = mutation({
         monthlyRegenCount: existingCampaign.monthlyRegenCount,
         monthlyRegenResetDate: existingCampaign.monthlyRegenResetDate,
       });
+
+      console.log('✅ REFRESH COMPLETE: Campaign updated with fresh data');
       return existingCampaign._id;
     } else {
       // Create new campaign
@@ -375,6 +413,12 @@ export const pushToGoogleAds = action({
     resourceName: string;
     budget: number;
     status: string;
+    details?: string;
+    createdResources?: {
+      adGroups: number;
+      ads: number;
+      extensions: number;
+    };
   }> => {
     const userId = await getCurrentUserToken(ctx);
 
@@ -395,6 +439,60 @@ export const pushToGoogleAds = action({
       if (campaign.userId !== userId) {
         throw new Error("Unauthorized");
       }
+
+      // 🔍 PRE-PUSH VALIDATION: Verify data consistency
+      const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      if (!onboardingData) {
+        throw new Error("Cannot push campaign: onboarding data not found");
+      }
+
+      // Validate phone number consistency
+      const onboardingPhone = onboardingData.phone;
+      const campaignPhone = campaign.businessInfo?.phone;
+
+      console.log('🔍 PRE-PUSH VALIDATION:');
+      console.log('📱 Onboarding phone:', onboardingPhone);
+      console.log('📱 Campaign phone:', campaignPhone);
+
+      if (!onboardingPhone) {
+        throw new Error("Missing phone number in onboarding data");
+      }
+
+      if (onboardingPhone !== campaignPhone) {
+        console.error('❌ PHONE MISMATCH DETECTED - BLOCKING PUSH:');
+        console.error('  Expected (from onboarding):', onboardingPhone);
+        console.error('  Found (in campaign):', campaignPhone);
+        console.error('  This would cause inconsistent phone numbers in Google Ads');
+        throw new Error(`Phone number mismatch detected. Campaign has '${campaignPhone}' but onboarding shows '${onboardingPhone}'. Please regenerate the campaign to sync data.`);
+      }
+
+      console.log('✅ Phone validation passed - numbers match:', onboardingPhone);
+
+      // Validate ad groups don't use placeholder URLs that waste ad spend
+      const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
+      let hasPlaceholderUrls = false;
+
+      for (let i = 0; i < campaign.adGroups.length; i++) {
+        const adGroup = campaign.adGroups[i];
+        const finalUrl = adGroup.adCopy?.finalUrl;
+
+        if (!finalUrl || placeholderUrls.includes(finalUrl)) {
+          hasPlaceholderUrls = true;
+          console.warn(`⚠️ Ad group "${adGroup.name}" has placeholder URL: ${finalUrl}`);
+        }
+      }
+
+      // For UK trades without websites, warn but allow campaign push
+      if (hasPlaceholderUrls) {
+        console.warn('🚨 WARNING: Placeholder URLs detected - this will waste your advertising budget!');
+        console.warn('💡 Customers will be sent to generic pages instead of your business');
+        console.warn('📞 Consider alternatives: call-only ads, simple landing page, or Google My Business URL');
+
+        // Log warning but don't block campaign push - let user decide
+        console.warn('⚠️ Continuing with campaign push despite placeholder URLs...');
+      }
+
+      console.log('✅ PRE-PUSH VALIDATION PASSED: Data is consistent');
 
       // Check if user has connected Google Ads account
       const googleAdsTokens = await ctx.runQuery(api.googleAds.getTokens);
@@ -450,16 +548,31 @@ export const pushToGoogleAds = action({
           status: pushOptions.createAsDraft ? "pushed_draft" : "pushed_live",
         });
 
+        const detailMessage = `Campaign: ✅ | Ad Groups: ${result.adGroupsCreated || 0} | Ads: ${result.adsCreated || 0} | Extensions: ${result.extensionsCreated || 0}`;
+
         return {
           success: true,
           message: `Campaign ${pushOptions.createAsDraft ? 'drafted' : 'launched'} successfully in Google Ads`,
           googleCampaignId: result.googleCampaignId,
           resourceName: result.resourceName || '',
           budget: result.budget || 0,
-          status: result.status,
+          status: result.status || 'PAUSED',
+          details: detailMessage,
+          createdResources: {
+            adGroups: result.adGroupsCreated || 0,
+            ads: result.adsCreated || 0,
+            extensions: result.extensionsCreated || 0
+          }
         };
       } else {
         console.error('❌ Campaign creation failed. Result:', result);
+
+        // Check if it's a partial failure
+        if (result.partialResults) {
+          const partialMessage = `Partial failure: Campaign: ${result.partialResults.campaignCreated ? '✅' : '❌'} | Ad Groups: ${result.partialResults.adGroupsCreated} | Ads: ${result.partialResults.adsCreated} | Extensions: ${result.partialResults.extensionsCreated}`;
+          throw new Error(`${result.error || 'Unknown error'}. ${partialMessage}`);
+        }
+
         throw new Error(`Failed to create campaign in Google Ads: ${result.error || 'Unknown error'}`);
       }
 
@@ -574,7 +687,7 @@ function buildCampaignPrompt(onboardingData: any, isRegeneration: boolean = fals
   const businessName = onboardingData.businessName;
   const serviceArea = onboardingData.serviceArea;
   const serviceOfferings = onboardingData.serviceOfferings || [];
-  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
+  const phone = onboardingData.phone;
   const availability = onboardingData.availability;
   const acquisitionGoals = onboardingData.acquisitionGoals;
 
@@ -711,11 +824,52 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
   }
 }
 
+// Validate campaign data integrity
+function validateCampaignDataIntegrity(campaignData: any, onboardingData: any): void {
+  const onboardingPhone = onboardingData.phone;
+  const campaignPhone = campaignData?.businessInfo?.phone;
+
+  if (onboardingPhone !== campaignPhone) {
+    console.error('💥 DATA INTEGRITY VIOLATION:');
+    console.error('  Onboarding phone:', onboardingPhone);
+    console.error('  Campaign phone:', campaignPhone);
+    throw new Error(`Data integrity violation: Phone mismatch between onboarding (${onboardingPhone}) and campaign (${campaignPhone})`);
+  }
+
+  // Validate all ad groups have proper finalUrl (not placeholder)
+  const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
+  if (campaignData?.adGroups) {
+    campaignData.adGroups.forEach((adGroup: any, index: number) => {
+      const finalUrl = adGroup?.adCopy?.finalUrl;
+      if (!finalUrl || placeholderUrls.includes(finalUrl)) {
+        console.warn(`⚠️ Ad group ${index + 1} "${adGroup.name}" has placeholder URL: ${finalUrl}`);
+        console.warn(`💡 This will waste advertising budget - customers will be sent to generic pages`);
+      }
+    });
+  }
+
+  console.log('✅ Campaign data integrity validation passed');
+}
+
 // Validate and enhance the parsed campaign data
 function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
   const serviceArea = onboardingData.serviceArea;
   const businessName = onboardingData.businessName;
-  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
+  const phone = onboardingData.phone;
+  const websiteUrl = onboardingData.websiteUrl || "https://example.com";
+
+  // 🔍 DEBUG: Log phone numbers during validation
+  console.log('🔍 VALIDATION DEBUG: Phone from onboarding:', phone);
+  console.log('🔍 VALIDATION DEBUG: Phone from AI data:', data?.businessInfo?.phone || 'NOT IN AI DATA');
+  console.log('🔍 VALIDATION DEBUG: Website URL from onboarding:', websiteUrl);
+
+  // 🔒 VALIDATION: Ensure we have required data from onboarding
+  if (!phone) {
+    throw new Error('Missing phone number from onboarding data');
+  }
+  if (!businessName) {
+    throw new Error('Missing business name from onboarding data');
+  }
 
   return {
     campaignName: data.campaignName || `${businessName} - ${onboardingData.tradeType} Services`,
@@ -726,7 +880,13 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       phone: phone,
       serviceArea: `${serviceArea?.city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
     },
-    adGroups: data.adGroups || [],
+    adGroups: (data.adGroups || []).map((adGroup: any) => ({
+      ...adGroup,
+      adCopy: {
+        ...adGroup.adCopy,
+        finalUrl: websiteUrl // Use onboarding website URL or fallback to example.com
+      }
+    })),
     callExtensions: data.callExtensions || [phone],
     complianceNotes: data.complianceNotes || [
       "All ads comply with UK advertising standards",
@@ -740,8 +900,18 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
 function createFallbackCampaignData(aiResponse: string, onboardingData: any): any {
   const serviceArea = onboardingData.serviceArea;
   const businessName = onboardingData.businessName;
-  const phone = typeof onboardingData.phone === 'string' ? onboardingData.phone : onboardingData.phone?.phone || '';
+  const phone = onboardingData.phone;
   const tradeType = onboardingData.tradeType;
+  const websiteUrl = onboardingData.websiteUrl || "https://example.com";
+
+  // 🔍 DEBUG: Log phone number in fallback
+  console.log('🔍 FALLBACK DEBUG: Using phone from onboarding:', phone);
+  console.log('🔍 FALLBACK DEBUG: Using website URL from onboarding:', websiteUrl);
+
+  // 🔒 VALIDATION: Ensure we have required data from onboarding
+  if (!phone) {
+    throw new Error('Missing phone number from onboarding data in fallback');
+  }
 
   return {
     campaignName: `${businessName} - ${tradeType} Services`,
@@ -759,7 +929,7 @@ function createFallbackCampaignData(aiResponse: string, onboardingData: any): an
         adCopy: {
           headlines: [`Fast Emergency ${tradeType}`, "Available 24/7", "No Call Out Fee"],
           descriptions: [`Professional ${tradeType} services in ${serviceArea?.city}`, "Call now for immediate assistance"],
-          finalUrl: "https://yoursite.com",
+          finalUrl: websiteUrl,
         },
       },
     ],

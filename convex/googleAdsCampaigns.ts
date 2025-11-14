@@ -134,6 +134,14 @@ export const createGoogleAdsCampaign = action({
     console.log('🔥🔥🔥 Arguments received:', JSON.stringify(args));
     console.log('🔥🔥🔥 Context exists:', !!ctx);
 
+    const results = {
+      campaignCreated: false,
+      adGroupsCreated: 0,
+      adsCreated: 0,
+      extensionsCreated: 0,
+      errors: [] as string[]
+    };
+
     try {
       console.log('🚨🚨🚨 TRY BLOCK ENTERED - Function execution started');
       console.log('🚨🚨🚨 This log MUST appear if function is executing');
@@ -149,32 +157,9 @@ export const createGoogleAdsCampaign = action({
       // Step 2: Get campaign data
       console.log('🚀 DEBUG: Fetching campaign data from database...');
       const campaignData = await ctx.runQuery(api.campaigns.getCampaignById, { campaignId: args.campaignId });
-
-      // CRITICAL DEBUGGING - Complete data inspection
-      console.log('🔍 DEBUG: Campaign data exists:', !!campaignData);
-      console.log('🔍 DEBUG: Campaign keys:', campaignData ? Object.keys(campaignData) : 'NO DATA');
-      console.log('🔍 DEBUG: Campaign name:', campaignData?.campaignName || 'NO NAME');
-      console.log('🔍 DEBUG: Has adGroups property:', !!campaignData?.adGroups);
-      console.log('🔍 DEBUG: AdGroups length:', campaignData?.adGroups?.length || 0);
-      console.log('🔍 DEBUG: AdGroups type:', typeof campaignData?.adGroups);
-
-      if (campaignData?.adGroups && campaignData.adGroups.length > 0) {
-        console.log('🔍 DEBUG: First ad group structure:', {
-          name: campaignData.adGroups[0]?.name,
-          hasKeywords: !!campaignData.adGroups[0]?.keywords,
-          keywordsCount: campaignData.adGroups[0]?.keywords?.length || 0,
-          hasAdCopy: !!campaignData.adGroups[0]?.adCopy,
-          hasHeadlines: !!campaignData.adGroups[0]?.adCopy?.headlines,
-          headlinesCount: campaignData.adGroups[0]?.adCopy?.headlines?.length || 0,
-          hasDescriptions: !!campaignData.adGroups[0]?.adCopy?.descriptions,
-          descriptionsCount: campaignData.adGroups[0]?.adCopy?.descriptions?.length || 0,
-          finalUrl: campaignData.adGroups[0]?.adCopy?.finalUrl || 'NO URL'
-        });
-        console.log('🔍 DEBUG: Sample headlines:', campaignData.adGroups[0]?.adCopy?.headlines?.slice(0, 3) || 'NO HEADLINES');
-        console.log('🔍 DEBUG: Sample descriptions:', campaignData.adGroups[0]?.adCopy?.descriptions?.slice(0, 2) || 'NO DESCRIPTIONS');
-      } else {
-        console.log('🚨 DEBUG: NO AD GROUPS FOUND - This is the root cause!');
-      }
+      console.log('📊 Campaign data retrieved:', !!campaignData);
+      console.log('📊 Ad groups in campaign:', campaignData?.adGroups?.length || 0);
+      console.log('📞 Phone number in campaign data:', campaignData?.businessInfo?.phone || 'NOT FOUND');
 
       if (!campaignData) {
         throw new Error("Campaign not found");
@@ -195,24 +180,6 @@ export const createGoogleAdsCampaign = action({
       console.log('🏠 Environment variable GOOGLE_ADS_MANAGER_ACCOUNT_ID:', process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID);
       const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
       console.log('👤 Customer ID after formatting:', customerId);
-
-      // First, let's check if this account can create campaigns or if it's a manager account
-      console.log('🔍 Checking account type and available customer accounts...');
-
-      const accountListResponse = await fetch(`https://googleads.googleapis.com/v22/customers:listAccessibleCustomers`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-        }
-      });
-
-      if (accountListResponse.ok) {
-        const accountData = await accountListResponse.json();
-        console.log('📋 Available customer accounts:', JSON.stringify(accountData, null, 2));
-      } else {
-        console.log('⚠️ Could not list accessible customers:', await accountListResponse.text());
-      }
 
       // Step 5: Create campaign budget first
       console.log('💰 Creating budget for campaign:', campaignData.campaignName);
@@ -293,6 +260,299 @@ export const createGoogleAdsCampaign = action({
         googleCampaignId,
         resourceName: campaignResourceName
       });
+      results.campaignCreated = true;
+
+      // Step 7: Create Ad Groups
+      console.log('🎯 Creating ad groups...');
+      const adGroupResourceNames: string[] = [];
+
+      for (let i = 0; i < campaignData.adGroups.length; i++) {
+        const adGroup = campaignData.adGroups[i];
+        console.log(`🎯 Creating ad group ${i + 1}/${campaignData.adGroups.length}: ${adGroup.name}`);
+
+        try {
+          const adGroupRequestBody = {
+            operations: [{
+              create: {
+                name: adGroup.name,
+                campaign: campaignResourceName,
+                status: 'ENABLED',
+                type: 'SEARCH_STANDARD',
+                cpcBidMicros: 1000000 // £1.00 default bid in micros
+              }
+            }]
+          };
+
+          const adGroupResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroups:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(adGroupRequestBody)
+          });
+
+          if (!adGroupResponse.ok) {
+            const adGroupError = await adGroupResponse.text();
+            console.error(`❌ Ad group ${adGroup.name} creation failed:`, adGroupError);
+            results.errors.push(`Ad group "${adGroup.name}" creation failed`);
+            continue;
+          }
+
+          const adGroupData = await adGroupResponse.json();
+          const adGroupResourceName = adGroupData.results[0].resourceName;
+          adGroupResourceNames.push(adGroupResourceName);
+          results.adGroupsCreated++;
+
+          console.log(`✅ Ad group created: ${adGroup.name} -> ${adGroupResourceName}`);
+
+          // Step 8: Add keywords to the ad group
+          console.log(`🔑 Adding ${adGroup.keywords.length} keywords to ${adGroup.name}...`);
+
+          const keywordOperations = adGroup.keywords.map((keyword: string) => ({
+            create: {
+              adGroup: adGroupResourceName,
+              status: 'ENABLED',
+              keyword: {
+                text: keyword,
+                matchType: 'BROAD'
+              },
+              cpcBidMicros: 1000000 // £1.00 default bid
+            }
+          }));
+
+          const keywordRequestBody = {
+            operations: keywordOperations
+          };
+
+          const keywordResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupCriteria:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(keywordRequestBody)
+          });
+
+          if (!keywordResponse.ok) {
+            const keywordError = await keywordResponse.text();
+            console.error(`❌ Keywords for ${adGroup.name} failed:`, keywordError);
+            results.errors.push(`Keywords for "${adGroup.name}" creation failed`);
+          } else {
+            console.log(`✅ Added ${adGroup.keywords.length} keywords to ${adGroup.name}`);
+          }
+
+          // Step 9: Create ads in the ad group
+          console.log(`📝 Creating ads for ${adGroup.name}...`);
+
+          const adOperations = [];
+          const headlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
+          const descriptions = adGroup.adCopy.descriptions.slice(0, 2); // Max 2 descriptions
+
+          adOperations.push({
+            create: {
+              adGroup: adGroupResourceName,
+              status: 'ENABLED',
+              ad: {
+                type: 'RESPONSIVE_SEARCH_AD',
+                finalUrls: [adGroup.adCopy.finalUrl || 'https://example.com'],
+                responsiveSearchAd: {
+                  headlines: headlines.map((headline: string) => ({
+                    text: headline.substring(0, 30) // Ensure max 30 chars
+                  })),
+                  descriptions: descriptions.map((description: string) => ({
+                    text: description.substring(0, 90) // Ensure max 90 chars
+                  }))
+                }
+              }
+            }
+          });
+
+          const adRequestBody = {
+            operations: adOperations
+          };
+
+          console.log(`📋 Ad request body for ${adGroup.name}:`, JSON.stringify(adRequestBody, null, 2));
+
+          const adResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupAds:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(adRequestBody)
+          });
+
+          if (!adResponse.ok) {
+            const adError = await adResponse.text();
+            console.error(`❌ Ad creation for ${adGroup.name} failed with status ${adResponse.status}:`, adError);
+
+            // Parse and log detailed Google Ads API error
+            try {
+              const errorDetails = JSON.parse(adError);
+              console.error(`🔍 Google Ads API Error Details for ${adGroup.name}:`, {
+                status: adResponse.status,
+                statusText: adResponse.statusText,
+                error: errorDetails.error,
+                details: errorDetails.details || errorDetails.message || errorDetails
+              });
+              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
+            } catch (parseError) {
+              console.error(`🔍 Raw Google Ads API Error for ${adGroup.name}:`, adError);
+              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${adError.substring(0, 100)}`);
+            }
+          } else {
+            const adData = await adResponse.json();
+            results.adsCreated++;
+            console.log(`✅ Created ad for ${adGroup.name}:`, adData.results?.[0]?.resourceName || 'Success');
+          }
+
+        } catch (adGroupError) {
+          console.error(`❌ Error processing ad group ${adGroup.name}:`, adGroupError);
+          results.errors.push(`Ad group "${adGroup.name}" processing failed: ${adGroupError}`);
+        }
+      }
+
+      // Step 10: Create call extensions
+      // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+      const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      const phoneNumber = freshOnboardingData?.phone || campaignData.businessInfo?.phone;
+      console.log('📞 Attempting call extension creation...');
+      console.log('📞 Fresh onboarding phone:', freshOnboardingData?.phone || 'NOT FOUND');
+      console.log('📞 Fallback campaign phone:', campaignData.businessInfo?.phone || 'NOT FOUND');
+      console.log('📞 Using phone number:', phoneNumber || 'UNDEFINED/NULL');
+
+      // 🔍 ENHANCED PHONE TRACKING: Log phone consistency across all ad groups
+      console.log('🔍 PHONE CONSISTENCY CHECK:');
+      if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
+        campaignData.adGroups.forEach((adGroup: any, index: number) => {
+          console.log(`  Ad Group ${index + 1} (${adGroup.name}): Using campaign phone ${phoneNumber}`);
+          console.log(`  Final URL: ${adGroup.adCopy?.finalUrl || 'MISSING'}`);
+        });
+      }
+      console.log('🔍 Call extensions will use phone:', phoneNumber);
+
+      // 🔍 VALIDATION: Confirm we're using the correct phone number
+      if (freshOnboardingData?.phone && campaignData.businessInfo?.phone &&
+          freshOnboardingData.phone !== campaignData.businessInfo.phone) {
+        console.warn('⚠️ Phone mismatch detected - using fresh onboarding data');
+        console.warn('  Onboarding phone (using):', freshOnboardingData.phone);
+        console.warn('  Campaign phone (stale):', campaignData.businessInfo.phone);
+      }
+
+      if (phoneNumber) {
+        console.log('📞 Creating call extensions with phone:', phoneNumber);
+
+        try {
+          // First create the call asset
+          const callAssetRequestBody = {
+            operations: [{
+              create: {
+                type: 'CALL',
+                callAsset: {
+                  phoneNumber: phoneNumber,
+                  countryCode: 'GB',
+                  callConversionReportingState: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
+                }
+              }
+            }]
+          };
+
+          const assetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/assets:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callAssetRequestBody)
+          });
+
+          if (!assetResponse.ok) {
+            const assetError = await assetResponse.text();
+            console.error(`❌ Call asset creation failed:`, assetError);
+            results.errors.push(`Call asset creation failed: ${assetError.substring(0, 100)}`);
+            return;
+          }
+
+          const assetData = await assetResponse.json();
+          const assetResourceName = assetData.results[0].resourceName;
+          console.log('✅ Call asset created:', assetResourceName);
+
+          // Then link the asset to the campaign
+          const campaignAssetRequestBody = {
+            operations: [{
+              create: {
+                asset: assetResourceName,
+                campaign: campaignResourceName,
+                fieldType: 'CALL'
+              }
+            }]
+          };
+
+          const extensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignAssets:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(campaignAssetRequestBody)
+          });
+
+          if (!extensionResponse.ok) {
+            const extensionError = await extensionResponse.text();
+            console.error(`❌ Campaign asset linking failed with status ${extensionResponse.status}:`, extensionError);
+
+            // Parse and log detailed Google Ads API error
+            try {
+              const errorDetails = JSON.parse(extensionError);
+              console.error(`🔍 Google Ads API Error Details for campaign asset linking:`, {
+                status: extensionResponse.status,
+                statusText: extensionResponse.statusText,
+                error: errorDetails.error,
+                details: errorDetails.details || errorDetails.message || errorDetails
+              });
+              results.errors.push(`Campaign asset linking failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
+            } catch (parseError) {
+              console.error(`🔍 Raw Google Ads API Error for campaign asset linking:`, extensionError);
+              results.errors.push(`Campaign asset linking failed: ${extensionError.substring(0, 100)}`);
+            }
+          } else {
+            const extensionData = await extensionResponse.json();
+            results.extensionsCreated++;
+            console.log('✅ Call extension linked to campaign successfully:', extensionData.results?.[0]?.resourceName || 'Success');
+          }
+
+        } catch (extensionError) {
+          console.error('❌ Error creating call extension:', extensionError);
+          results.errors.push(`Call extension error: ${extensionError}`);
+        }
+      }
+
+      // Final validation
+      const success = results.campaignCreated && results.adGroupsCreated > 0 && results.adsCreated > 0;
+
+      console.log('📊 Campaign creation summary:', {
+        success,
+        campaignCreated: results.campaignCreated,
+        adGroupsCreated: results.adGroupsCreated,
+        adsCreated: results.adsCreated,
+        extensionsCreated: results.extensionsCreated,
+        errors: results.errors
+      });
+
+      if (!success) {
+        throw new Error(`Incomplete campaign creation: ${results.errors.join(', ')}`);
+      }
 
       console.log('🔄 Campaign creation completed, now proceeding to ad groups...');
 
@@ -372,16 +632,20 @@ export const createGoogleAdsCampaign = action({
         success: true,
         googleCampaignId,
         resourceName: campaignResourceName,
+        adGroupsCreated: results.adGroupsCreated,
+        adsCreated: results.adsCreated,
+        extensionsCreated: results.extensionsCreated,
         error: undefined
       };
 
     } catch (error) {
       console.error('❌ Error in createGoogleAdsCampaign:', error);
-      console.error('❌ Full error details:', JSON.stringify(error, null, 2));
-      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('📊 Partial results:', results);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        partialResults: results
       };
     }
   }

@@ -62,17 +62,16 @@ Context:
 - Call `mcp_convex_run` to test functions with specific arguments
 
 Example queries:
-- "Show me the users table" ’ reads table data
-- "Check the last 10 log entries from production" ’ inspects logs
-- "Run the sendEmail mutation with these params" ’ tests function
-- "What environment variables are set in dev?" ’ checks env config
+- "Show me the users table" â€” reads table data
+- "Check the last 10 log entries from production" â€” inspects logs
+- "Run the sendEmail mutation with these params" â€” tests function
+- "What environment variables are set in dev?" â€” checks env config
 
 **Note:** For custom component tables (e.g., betterAuth, resend) that the MCP server can't access, use the CLI fallback:
 - Dev: `bunx convex data --component <componentName> <tableName>`
 - Production: `bunx convex data --component <componentName> <tableName> --prod`
   - Example: `bunx convex data --component betterAuth user` to view the user table in the betterAuth component
 
-```
 Analyse the problem thoroughly and reflect on 5-7 different potential
 root causes. From those, distill it down to the 1-2 most likely sources.
 Propose a simple and clean solution that fixes the bug without introducing
