@@ -10,6 +10,263 @@ async function getCurrentUserToken(ctx: any) {
   return identity?.subject || null;
 }
 
+// Helper function to validate URL accessibility
+async function validateUrl(url: string): Promise<{
+  isValid: boolean;
+  error?: string;
+  dnsError?: string;
+}> {
+  // Check for placeholder URLs
+  const placeholderUrls = [
+    'https://example.com',
+    'https://www.example.com',
+    'http://example.com',
+    'https://yoursite.com',
+    'https://www.yoursite.com',
+    'https://yourwebsite.com',
+    'https://www.yourwebsite.com'
+  ];
+  
+  const normalizedUrl = url.toLowerCase().trim();
+  if (placeholderUrls.some(placeholder => normalizedUrl.includes(placeholder.replace('https://', '').replace('http://', '')))) {
+    return {
+      isValid: false,
+      error: 'Placeholder URL detected',
+      dnsError: 'PLACEHOLDER_URL'
+    };
+  }
+  
+  try {
+    // Extract hostname from URL
+    let hostname: string;
+    try {
+      const urlObj = new URL(url);
+      hostname = urlObj.hostname;
+    } catch (urlError) {
+      return {
+        isValid: false,
+        error: 'Invalid URL format',
+        dnsError: 'INVALID_FORMAT'
+      };
+    }
+    
+    // Try to resolve DNS using a HEAD request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',
+        signal: controller.signal,
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; URL-Validator/1.0)'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Check if response is successful (2xx or 3xx)
+      if (response.status >= 200 && response.status < 400) {
+        return { isValid: true };
+      } else {
+        return {
+          isValid: false,
+          error: `URL returned status ${response.status}`,
+          dnsError: 'HTTP_ERROR'
+        };
+      }
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      // Log full error details for debugging
+      console.error('🔍 URL validation fetch error details:', {
+        name: fetchError.name,
+        message: fetchError.message,
+        code: fetchError.code,
+        cause: fetchError.cause,
+        stack: fetchError.stack?.substring(0, 200)
+      });
+      
+      // Check for DNS errors
+      if (fetchError.name === 'AbortError') {
+        return {
+          isValid: false,
+          error: 'URL validation timeout - URL may not be accessible',
+          dnsError: 'TIMEOUT'
+        };
+      }
+      
+      // Check for DNS resolution errors
+      const errorMessage = fetchError.message?.toLowerCase() || '';
+      const errorCode = fetchError.code?.toLowerCase() || '';
+      
+      if (errorMessage.includes('getaddrinfo') || 
+          errorMessage.includes('enotfound') ||
+          errorMessage.includes('hostname not found') ||
+          errorMessage.includes('dns') ||
+          errorCode === 'enotfound' ||
+          errorMessage.includes('name resolution') ||
+          errorMessage.includes('failed to resolve')) {
+        return {
+          isValid: false,
+          error: 'DNS resolution failed - domain not found',
+          dnsError: 'HOSTNAME_NOT_FOUND'
+        };
+      }
+      
+      // Check for connection errors
+      if (errorMessage.includes('econnrefused') ||
+          errorCode === 'econnrefused' ||
+          errorMessage.includes('connection refused')) {
+        return {
+          isValid: false,
+          error: 'Connection refused - URL may not be accessible',
+          dnsError: 'CONNECTION_REFUSED'
+        };
+      }
+      
+      // Check for network errors
+      if (errorMessage.includes('network') ||
+          errorMessage.includes('fetch failed') ||
+          errorMessage.includes('econnreset') ||
+          errorCode === 'econnreset') {
+        // In Convex, network restrictions might cause fetch to fail
+        // For now, we'll allow the URL through but log a warning
+        // Google Ads will catch invalid URLs anyway
+        console.warn(`⚠️ URL validation fetch failed (network issue?), allowing URL through: ${url}`);
+        console.warn(`   Error: ${fetchError.message || 'Unknown network error'}`);
+        return {
+          isValid: true, // Allow through - Google Ads will validate
+          error: undefined,
+          dnsError: undefined
+        };
+      }
+      
+      // For other errors, log but allow through (Google Ads will catch invalid URLs)
+      console.warn(`⚠️ URL validation encountered error, allowing URL through: ${url}`);
+      console.warn(`   Error: ${fetchError.message || 'Unknown error'}`);
+      return {
+        isValid: true, // Allow through - Google Ads will validate
+        error: undefined,
+        dnsError: undefined
+      };
+    }
+  } catch (error: any) {
+    return {
+      isValid: false,
+      error: `URL validation error: ${error.message || 'Unknown error'}`,
+      dnsError: 'VALIDATION_ERROR'
+    };
+  }
+}
+
+// Helper function to parse Google Ads API errors and extract policy violation details
+function parseGoogleAdsError(errorText: string): {
+  message: string;
+  isPolicyViolation: boolean;
+  policyDetails?: {
+    topic: string;
+    type: string;
+    reason: string;
+    url?: string;
+  }[];
+} {
+  try {
+    const errorDetails = JSON.parse(errorText);
+    const error = errorDetails.error || errorDetails;
+    
+    // Check if this is a policy violation
+    const details = error.details || [];
+    const policyViolations: {
+      topic: string;
+      type: string;
+      reason: string;
+      url?: string;
+    }[] = [];
+    
+    for (const detail of details) {
+      if (detail['@type'] === 'type.googleapis.com/google.ads.googleads.v22.errors.GoogleAdsFailure') {
+        const errors = detail.errors || [];
+        
+        for (const err of errors) {
+          // Check for policy finding errors
+          if (err.errorCode?.policyFindingError === 'POLICY_FINDING') {
+            const policyDetails = err.details?.policyFindingDetails;
+            
+            if (policyDetails?.policyTopicEntries) {
+              for (const entry of policyDetails.policyTopicEntries) {
+                const topic = entry.topic || 'UNKNOWN_POLICY_VIOLATION';
+                const type = entry.type || 'UNKNOWN';
+                
+                // Extract specific violation reason
+                let reason = '';
+                let url = '';
+                
+                if (entry.evidences && entry.evidences.length > 0) {
+                  const evidence = entry.evidences[0];
+                  
+                  // Check for destination not working
+                  if (evidence.destinationNotWorking) {
+                    const destError = evidence.destinationNotWorking;
+                    reason = `Destination URL not working: ${destError.dnsErrorType || 'DNS_ERROR'}`;
+                    url = destError.expandedUrl || '';
+                  }
+                  // Check for other policy violations
+                  else if (evidence.textList) {
+                    reason = `Policy violation: ${evidence.textList.texts?.join(', ') || 'See policy details'}`;
+                  }
+                  else {
+                    reason = `Policy violation: ${topic}`;
+                  }
+                } else {
+                  reason = `Policy violation: ${topic}`;
+                }
+                
+                policyViolations.push({
+                  topic,
+                  type,
+                  reason,
+                  url: url || undefined
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // If we found policy violations, return detailed message
+    if (policyViolations.length > 0) {
+      const violationMessages = policyViolations.map(v => {
+        if (v.url) {
+          return `${v.reason} (URL: ${v.url})`;
+        }
+        return v.reason;
+      });
+      
+      return {
+        message: `Policy violation: ${violationMessages.join('; ')}`,
+        isPolicyViolation: true,
+        policyDetails: policyViolations
+      };
+    }
+    
+    // Otherwise return generic error message
+    return {
+      message: error.message || errorDetails.message || 'Unknown API error',
+      isPolicyViolation: false
+    };
+    
+  } catch (parseError) {
+    // If parsing fails, return raw error text
+    return {
+      message: errorText.substring(0, 200),
+      isPolicyViolation: false
+    };
+  }
+}
+
 // Development mode flag
 // const DEVELOPMENT_MODE = process.env.NODE_ENV === 'development';
 const DEVELOPMENT_MODE = false;
@@ -361,21 +618,72 @@ export const createGoogleAdsCampaign = action({
           }
 
           const adOperations = [];
-          const rawHeadlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
-          const rawDescriptions = adGroup.adCopy.descriptions.slice(0, 2); // Max 2 descriptions
+          const rawHeadlines = adGroup.adCopy.headlines?.slice(0, 15) || ['Your Business Name']; // Max 15 headlines
+          const rawDescriptions = adGroup.adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust']; // Max 4 descriptions
 
           // Sanitize all ad content
-          const headlines = rawHeadlines.map(sanitizePhoneNumbers);
-          const descriptions = rawDescriptions.map(sanitizePhoneNumbers);
+          const sanitizedHeadlines = rawHeadlines.map(sanitizePhoneNumbers);
+          const sanitizedDescriptions = rawDescriptions.map(sanitizePhoneNumbers);
+
+          // Filter out empty/null content and ensure minimum requirements
+          const headlines = sanitizedHeadlines
+            .filter((h: string) => h && h.trim().length > 0)
+            .slice(0, 15);
+          
+          // Ensure minimum 3 headlines (Google Ads requirement)
+          if (headlines.length < 3) {
+            headlines.push(...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - headlines.length));
+          }
+
+          const descriptions = sanitizedDescriptions
+            .filter((d: string) => d && d.trim().length > 0)
+            .slice(0, 4);
+          
+          // Ensure minimum 2 descriptions (Google Ads requirement)
+          if (descriptions.length < 2) {
+            descriptions.push(...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - descriptions.length));
+          }
+
+          // Validate final URL
+          const finalUrl = adGroup.adCopy.finalUrl || 'https://example.com';
+          if (!finalUrl || finalUrl.trim().length === 0) {
+            throw new Error(`Invalid finalUrl for ad group ${adGroup.name}: cannot be empty`);
+          }
+          
+          // Validate URL accessibility before creating ad (non-blocking for testing)
+          console.log(`🔍 Validating URL for ${adGroup.name}: ${finalUrl}`);
+          const urlValidation = await validateUrl(finalUrl);
+          
+          if (!urlValidation.isValid && urlValidation.dnsError) {
+            // Log warning but don't block - let Google Ads validate (better error messages)
+            if (urlValidation.dnsError === 'PLACEHOLDER_URL') {
+              console.warn(`⚠️ Placeholder URL detected for "${adGroup.name}": ${finalUrl}`);
+              console.warn(`   Google Ads will reject this. Consider using a real URL or call-only ads.`);
+            } else if (urlValidation.dnsError === 'HOSTNAME_NOT_FOUND') {
+              console.warn(`⚠️ URL may not be accessible for "${adGroup.name}": ${finalUrl}`);
+              console.warn(`   Domain may not exist. Google Ads will validate and reject if invalid.`);
+            } else {
+              console.warn(`⚠️ URL validation issue for "${adGroup.name}": ${urlValidation.error}`);
+              console.warn(`   Allowing ad creation - Google Ads will validate the URL.`);
+            }
+          }
+          
+          if (urlValidation.isValid) {
+            console.log(`✅ URL validation passed for ${adGroup.name}: ${finalUrl}`);
+          } else {
+            console.log(`⚠️ URL validation had issues for ${adGroup.name}, but allowing ad creation (Google Ads will validate): ${finalUrl}`);
+          }
 
           // Log sanitization results
           console.log(`🔒 Sanitized headlines for ${adGroup.name}:`, {
             before: rawHeadlines,
-            after: headlines
+            after: headlines,
+            count: headlines.length
           });
           console.log(`🔒 Sanitized descriptions for ${adGroup.name}:`, {
             before: rawDescriptions,
-            after: descriptions
+            after: descriptions,
+            count: descriptions.length
           });
 
           adOperations.push({
@@ -384,13 +692,13 @@ export const createGoogleAdsCampaign = action({
               status: 'ENABLED',
               ad: {
                 type: 'RESPONSIVE_SEARCH_AD',
-                finalUrls: [adGroup.adCopy.finalUrl || 'https://example.com'],
+                finalUrls: [finalUrl],
                 responsiveSearchAd: {
                   headlines: headlines.map((headline: string) => ({
-                    text: headline.substring(0, 30) // Ensure max 30 chars
+                    text: headline.substring(0, 30) // Ensure max 30 chars per headline
                   })),
                   descriptions: descriptions.map((description: string) => ({
-                    text: description.substring(0, 90) // Ensure max 90 chars
+                    text: description.substring(0, 90) // Ensure max 90 chars per description
                   }))
                 }
               }
@@ -418,20 +726,36 @@ export const createGoogleAdsCampaign = action({
             const adError = await adResponse.text();
             console.error(`❌ Ad creation for ${adGroup.name} failed with status ${adResponse.status}:`, adError);
 
-            // Parse and log detailed Google Ads API error
-            try {
-              const errorDetails = JSON.parse(adError);
-              console.error(`🔍 Google Ads API Error Details for ${adGroup.name}:`, {
-                status: adResponse.status,
-                statusText: adResponse.statusText,
-                error: errorDetails.error,
-                details: errorDetails.details || errorDetails.message || errorDetails
+            // Parse error and extract policy violation details
+            const parsedError = parseGoogleAdsError(adError);
+            
+            // Log detailed error information
+            console.error(`🔍 Google Ads API Error Details for ${adGroup.name}:`, {
+              status: adResponse.status,
+              statusText: adResponse.statusText,
+              isPolicyViolation: parsedError.isPolicyViolation,
+              message: parsedError.message,
+              policyDetails: parsedError.policyDetails
+            });
+            
+            // Create user-friendly error message
+            let errorMessage = `Ad creation for "${adGroup.name}" failed`;
+            
+            if (parsedError.isPolicyViolation && parsedError.policyDetails) {
+              // Extract specific policy violation reasons
+              const violations = parsedError.policyDetails.map(v => {
+                if (v.topic === 'DESTINATION_NOT_WORKING' && v.url) {
+                  return `URL ${v.url} is not accessible (DNS error: ${v.reason.includes('HOSTNAME_NOT_FOUND') ? 'domain not found' : 'connection failed'})`;
+                }
+                return v.reason;
               });
-              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
-            } catch (parseError) {
-              console.error(`🔍 Raw Google Ads API Error for ${adGroup.name}:`, adError);
-              results.errors.push(`Ad creation for "${adGroup.name}" failed: ${adError.substring(0, 100)}`);
+              
+              errorMessage += `: ${violations.join('; ')}`;
+            } else {
+              errorMessage += `: ${parsedError.message}`;
             }
+            
+            results.errors.push(errorMessage);
           } else {
             const adData = await adResponse.json();
             results.adsCreated++;
@@ -783,7 +1107,18 @@ async function createAdGroupsWithAdsAndKeywords(
 
       // Create Responsive Search Ad for this ad group
       if (adGroup.adCopy) {
-        await createResponsiveSearchAd(adGroup.adCopy, customerId, accessToken, adGroupResourceName);
+        try {
+          const adResult = await createResponsiveSearchAd(adGroup.adCopy, customerId, accessToken, adGroupResourceName);
+          if (adResult?.success) {
+            console.log(`✅ Ad created successfully for ${adGroup.name}`);
+          }
+        } catch (adError) {
+          console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
+            error: adError instanceof Error ? adError.message : String(adError),
+            adGroupName: adGroup.name
+          });
+          // Continue processing other ad groups even if one fails
+        }
       }
 
     } catch (error) {
@@ -868,8 +1203,84 @@ async function createResponsiveSearchAd(
     finalUrl: adCopy?.finalUrl
   });
 
-  const headlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name']; // Max 15 headlines
-  const descriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust']; // Max 4 descriptions
+  // Validate and prepare headlines (minimum 3, maximum 15)
+  const rawHeadlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name'];
+  const headlines = rawHeadlines.filter((h: string) => h && h.trim().length > 0).slice(0, 15);
+  if (headlines.length < 3) {
+    headlines.push(...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - headlines.length));
+  }
+
+  // Validate and prepare descriptions (minimum 2, maximum 4)
+  const rawDescriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust'];
+  const descriptions = rawDescriptions.filter((d: string) => d && d.trim().length > 0).slice(0, 4);
+  if (descriptions.length < 2) {
+    descriptions.push(...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - descriptions.length));
+  }
+
+  // Validate final URL
+  const finalUrl = adCopy.finalUrl || 'https://example.com';
+  if (!finalUrl || finalUrl.trim().length === 0) {
+    throw new Error('Invalid finalUrl: cannot be empty');
+  }
+  
+  // Validate URL accessibility before creating ad (non-blocking for testing)
+  console.log(`🔍 Validating URL: ${finalUrl}`);
+  const urlValidation = await validateUrl(finalUrl);
+  
+  if (!urlValidation.isValid && urlValidation.dnsError) {
+    // Log warning but don't block - let Google Ads validate (better error messages)
+    if (urlValidation.dnsError === 'PLACEHOLDER_URL') {
+      console.warn(`⚠️ Placeholder URL detected: ${finalUrl}`);
+      console.warn(`   Google Ads will reject this. Consider using a real URL or call-only ads.`);
+    } else if (urlValidation.dnsError === 'HOSTNAME_NOT_FOUND') {
+      console.warn(`⚠️ URL may not be accessible: ${finalUrl}`);
+      console.warn(`   Domain may not exist. Google Ads will validate and reject if invalid.`);
+    } else if (urlValidation.dnsError === 'INVALID_FORMAT') {
+      // Still block invalid format - that's a code issue, not a testing issue
+      throw new Error(`Invalid URL format: ${finalUrl}`);
+    } else {
+      console.warn(`⚠️ URL validation issue: ${urlValidation.error}`);
+      console.warn(`   Allowing ad creation - Google Ads will validate the URL.`);
+    }
+  }
+  
+  if (urlValidation.isValid) {
+    console.log(`✅ URL validation passed: ${finalUrl}`);
+  } else {
+    console.log(`⚠️ URL validation had issues, but allowing ad creation (Google Ads will validate): ${finalUrl}`);
+  }
+
+  console.log('📝 Final ad content validation:', {
+    headlines: headlines.length,
+    descriptions: descriptions.length,
+    finalUrl: finalUrl
+  });
+
+  // 🔧 FIX: Correct Google Ads API v22 structure
+  // - Add 'type' field at ad level (required)
+  // - Move finalUrls to ad level (not inside responsiveSearchAd)
+  const requestBody = {
+    operations: [{
+      create: {
+        adGroup: adGroupResourceName,
+        status: 'ENABLED',
+        ad: {
+          type: 'RESPONSIVE_SEARCH_AD',
+          finalUrls: [finalUrl],
+          responsiveSearchAd: {
+            headlines: headlines.map((headline: string) => ({
+              text: headline.substring(0, 30) // Max 30 chars per headline
+            })),
+            descriptions: descriptions.map((description: string) => ({
+              text: description.substring(0, 90) // Max 90 chars per description
+            }))
+          }
+        }
+      }
+    }]
+  };
+
+  console.log('📋 Ad request body:', JSON.stringify(requestBody, null, 2));
 
   const adResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupAds:mutate`, {
     method: 'POST',
@@ -879,25 +1290,7 @@ async function createResponsiveSearchAd(
       'login-customer-id': customerId,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      operations: [{
-        create: {
-          adGroup: adGroupResourceName,
-          status: 'ENABLED',
-          ad: {
-            responsiveSearchAd: {
-              headlines: headlines.map((headline: string) => ({
-                text: headline.substring(0, 30) // Max 30 chars per headline
-              })),
-              descriptions: descriptions.map((description: string) => ({
-                text: description.substring(0, 90) // Max 90 chars per description
-              })),
-              finalUrls: [adCopy.finalUrl || 'https://example.com']
-            }
-          }
-        }
-      }]
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (adResponse.ok) {
@@ -906,19 +1299,47 @@ async function createResponsiveSearchAd(
       adGroupResourceName,
       responseData: JSON.stringify(adData, null, 2)
     });
+    return { success: true, resourceName: adData.results?.[0]?.resourceName };
   } else {
-    const error = await adResponse.text();
+    const errorText = await adResponse.text();
     console.error('❌ Ad creation failed:', {
       status: adResponse.status,
       statusText: adResponse.statusText,
-      error: error,
+      error: errorText,
       adGroupResourceName,
-      requestBody: {
-        headlines: headlines.map((h: string) => h.substring(0, 30)),
-        descriptions: descriptions.map((d: string) => d.substring(0, 90)),
-        finalUrl: adCopy?.finalUrl || 'https://example.com'
-      }
+      requestBody: JSON.stringify(requestBody, null, 2)
     });
+
+    // Parse error and extract policy violation details
+    const parsedError = parseGoogleAdsError(errorText);
+    
+    // Log detailed error information
+    console.error('🔍 Google Ads API Error Details:', {
+      status: adResponse.status,
+      statusText: adResponse.statusText,
+      isPolicyViolation: parsedError.isPolicyViolation,
+      message: parsedError.message,
+      policyDetails: parsedError.policyDetails
+    });
+    
+    // Create user-friendly error message
+    let errorMessage = 'Ad creation failed';
+    
+    if (parsedError.isPolicyViolation && parsedError.policyDetails) {
+      // Extract specific policy violation reasons
+      const violations = parsedError.policyDetails.map(v => {
+        if (v.topic === 'DESTINATION_NOT_WORKING' && v.url) {
+          return `URL ${v.url} is not accessible (DNS error: ${v.reason.includes('HOSTNAME_NOT_FOUND') ? 'domain not found' : 'connection failed'})`;
+        }
+        return v.reason;
+      });
+      
+      errorMessage += `: ${violations.join('; ')}`;
+    } else {
+      errorMessage += `: ${parsedError.message}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 }
 

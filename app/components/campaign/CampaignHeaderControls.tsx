@@ -42,7 +42,7 @@ export function CampaignHeaderControls({
 
     // Check regeneration limits
     if (regenerationLimits && !regenerationLimits.allowed) {
-      toast.error(regenerationLimits.reason);
+      toast.error((regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed');
       return;
     }
 
@@ -248,7 +248,7 @@ export function CampaignHeaderControls({
             ) : (
               <span className="text-orange-400 flex items-center justify-end gap-1">
                 <Clock className="w-3 h-3" />
-                {(regenerationLimits as any).reason || 'Regeneration not allowed'}
+                {(regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed'}
               </span>
             )}
           </div>
