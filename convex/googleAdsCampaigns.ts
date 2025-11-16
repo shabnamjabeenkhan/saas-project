@@ -360,37 +360,86 @@ export const createGoogleAdsCampaign = action({
               .trim();
           };
 
+          // Helper function to sanitize and validate text content
+          const sanitizeText = (text: string, maxLength: number): string | null => {
+            if (!text || typeof text !== 'string') {
+              return null;
+            }
+            // First remove phone numbers, then trim and validate
+            const phoneSanitized = sanitizePhoneNumbers(text);
+            // Trim whitespace and remove invalid characters
+            const sanitized = phoneSanitized
+              .trim()
+              .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+              .substring(0, maxLength)
+              .trim();
+            // Return null if empty after sanitization
+            return sanitized.length > 0 ? sanitized : null;
+          };
+
+          // Validate and sanitize headlines (min 3 required, max 30 chars each)
+          const rawHeadlines = adGroup.adCopy.headlines || [];
+          const headlines = rawHeadlines
+            .map((h: string) => sanitizeText(h, 30))
+            .filter((h: string | null): h is string => h !== null)
+            .slice(0, 15); // Google Ads allows up to 15 headlines, we'll use first 15 valid ones
+
+          // Validate and sanitize descriptions (min 2 required, max 90 chars each)
+          const rawDescriptions = adGroup.adCopy.descriptions || [];
+          const descriptions = rawDescriptions
+            .map((d: string) => sanitizeText(d, 90))
+            .filter((d: string | null): d is string => d !== null)
+            .slice(0, 4); // Google Ads allows up to 4 descriptions, we'll use first 4 valid ones
+
+          // Log validation results for debugging
+          console.log(`📋 Ad content validation for ${adGroup.name}:`, {
+            rawHeadlinesCount: rawHeadlines.length,
+            validHeadlinesCount: headlines.length,
+            rawDescriptionsCount: rawDescriptions.length,
+            validDescriptionsCount: descriptions.length,
+            headlines: headlines.map((h: string) => ({ text: h, length: h.length })),
+            descriptions: descriptions.map((d: string) => ({ text: d, length: d.length })),
+            finalUrl: adGroup.adCopy.finalUrl || 'https://example.com'
+          });
+
+          // Google Ads requires minimum 3 headlines and 2 descriptions for Responsive Search Ads
+          if (headlines.length < 3) {
+            const errorMsg = `Insufficient valid headlines for "${adGroup.name}": ${headlines.length}/3 required. Raw headlines: ${JSON.stringify(rawHeadlines)}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
+          }
+
+          if (descriptions.length < 2) {
+            const errorMsg = `Insufficient valid descriptions for "${adGroup.name}": ${descriptions.length}/2 required. Raw descriptions: ${JSON.stringify(rawDescriptions)}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
+          }
+
+          // Validate final URL
+          const finalUrl = adGroup.adCopy.finalUrl?.trim() || 'https://example.com';
+          if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+            const errorMsg = `Invalid final URL for "${adGroup.name}": ${finalUrl}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
+          }
+
           const adOperations = [];
-          const rawHeadlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
-          const rawDescriptions = adGroup.adCopy.descriptions.slice(0, 2); // Max 2 descriptions
-
-          // Sanitize all ad content
-          const headlines = rawHeadlines.map(sanitizePhoneNumbers);
-          const descriptions = rawDescriptions.map(sanitizePhoneNumbers);
-
-          // Log sanitization results
-          console.log(`🔒 Sanitized headlines for ${adGroup.name}:`, {
-            before: rawHeadlines,
-            after: headlines
-          });
-          console.log(`🔒 Sanitized descriptions for ${adGroup.name}:`, {
-            before: rawDescriptions,
-            after: descriptions
-          });
-
           adOperations.push({
             create: {
               adGroup: adGroupResourceName,
               status: 'ENABLED',
               ad: {
                 type: 'RESPONSIVE_SEARCH_AD',
-                finalUrls: [adGroup.adCopy.finalUrl || 'https://example.com'],
+                finalUrls: [finalUrl],
                 responsiveSearchAd: {
                   headlines: headlines.map((headline: string) => ({
-                    text: headline.substring(0, 30) // Ensure max 30 chars
+                    text: headline
                   })),
                   descriptions: descriptions.map((description: string) => ({
-                    text: description.substring(0, 90) // Ensure max 90 chars
+                    text: description
                   }))
                 }
               }
