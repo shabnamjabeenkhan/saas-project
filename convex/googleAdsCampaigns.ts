@@ -349,9 +349,34 @@ export const createGoogleAdsCampaign = action({
           // Step 9: Create ads in the ad group
           console.log(`📝 Creating ads for ${adGroup.name}...`);
 
+          // 🔒 SECURITY: Sanitize ad content to remove any hallucinated phone numbers
+          function sanitizePhoneNumbers(text: string): string {
+            // Remove UK phone numbers in various formats
+            return text
+              .replace(/(\+44\s?|0)7\d{9}/g, '') // Remove 11-digit mobile numbers
+              .replace(/(\+44\s?|0)\d{10}/g, '') // Remove 10-digit landline numbers
+              .replace(/(\+44\s?|0)\d{3}\s?\d{3}\s?\d{4}/g, '') // Remove formatted numbers
+              .replace(/\s+/g, ' ') // Clean up extra spaces
+              .trim();
+          }
+
           const adOperations = [];
-          const headlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
-          const descriptions = adGroup.adCopy.descriptions.slice(0, 2); // Max 2 descriptions
+          const rawHeadlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
+          const rawDescriptions = adGroup.adCopy.descriptions.slice(0, 2); // Max 2 descriptions
+
+          // Sanitize all ad content
+          const headlines = rawHeadlines.map(sanitizePhoneNumbers);
+          const descriptions = rawDescriptions.map(sanitizePhoneNumbers);
+
+          // Log sanitization results
+          console.log(`🔒 Sanitized headlines for ${adGroup.name}:`, {
+            before: rawHeadlines,
+            after: headlines
+          });
+          console.log(`🔒 Sanitized descriptions for ${adGroup.name}:`, {
+            before: rawDescriptions,
+            after: descriptions
+          });
 
           adOperations.push({
             create: {
@@ -422,7 +447,11 @@ export const createGoogleAdsCampaign = action({
       // Step 10: Create call extensions
       // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
       const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
-      const phoneNumber = freshOnboardingData?.phone || campaignData.businessInfo?.phone;
+      const phoneNumber = freshOnboardingData?.phone;
+
+      if (!phoneNumber) {
+        throw new Error("Missing phone number from onboarding data");
+      }
       console.log('📞 Attempting call extension creation...');
       console.log('📞 Fresh onboarding phone:', freshOnboardingData?.phone || 'NOT FOUND');
       console.log('📞 Fallback campaign phone:', campaignData.businessInfo?.phone || 'NOT FOUND');
@@ -485,6 +514,7 @@ export const createGoogleAdsCampaign = action({
           const assetData = await assetResponse.json();
           const assetResourceName = assetData.results[0].resourceName;
           console.log('✅ Call asset created:', assetResourceName);
+          console.log('🔍 CALL EXTENSION DEBUG: Phone used in API call:', phoneNumber);
 
           // Then link the asset to the campaign
           const campaignAssetRequestBody = {
@@ -621,7 +651,7 @@ export const createGoogleAdsCampaign = action({
       // Step 8: Create Ad Extensions
       try {
         console.log('📱 Creating ad extensions...');
-        await createAdExtensions(campaignData, customerId, accessToken, campaignResourceName);
+        await createAdExtensions(campaignData, customerId, accessToken, campaignResourceName, ctx);
         console.log('✅ Ad extensions completed');
       } catch (error) {
         console.error('❌ Ad extensions failed:', error instanceof Error ? error.message : String(error));
@@ -897,12 +927,17 @@ async function createAdExtensions(
   campaignData: any,
   customerId: string,
   accessToken: string,
-  campaignResourceName: string
+  campaignResourceName: string,
+  ctx: any
 ) {
   try {
     // Create Call Extension (Phone Number)
-    if (campaignData.businessInfo?.phone) {
-      await createCallExtension(campaignData.businessInfo.phone, customerId, accessToken, campaignResourceName);
+    // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+    const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+    const phoneNumber = freshOnboardingData?.phone;
+
+    if (phoneNumber) {
+      await createCallExtension(phoneNumber, customerId, accessToken, campaignResourceName);
     }
 
     // Create Sitelink Extensions (if available)
@@ -922,6 +957,7 @@ async function createCallExtension(
   accessToken: string,
   campaignResourceName: string
 ) {
+  console.log('🔍 CALL EXTENSION DEBUG: Phone used in createCallExtension:', phoneNumber);
   const callExtensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignExtensionSettings:mutate`, {
     method: 'POST',
     headers: {
@@ -950,7 +986,8 @@ async function createCallExtension(
   });
 
   if (callExtensionResponse.ok) {
-    console.log('✅ Call extension created:', phoneNumber);
+    console.log('✅ LEGACY Call extension created with phone:', phoneNumber);
+    console.log('🔍 LEGACY METHOD EXECUTED - This is creating call extensions');
   } else {
     const error = await callExtensionResponse.text();
     console.error('❌ Call extension creation failed:', error);

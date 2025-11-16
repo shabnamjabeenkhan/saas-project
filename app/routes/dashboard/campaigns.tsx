@@ -271,7 +271,9 @@ export default function Campaigns() {
             <TabsContent value="creatives" className="space-y-6">
               <AdGroupsPanel
                 adGroups={campaign.adGroups}
-                callExtensions={campaign.callExtensions}
+                callExtensions={campaign.callExtensions?.map((ext) => 
+                  typeof ext === 'string' ? ext : ext.phoneNumber
+                ) || []}
               />
             </TabsContent>
 

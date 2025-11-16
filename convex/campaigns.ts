@@ -257,7 +257,7 @@ export const saveCampaign = mutation({
     userId: v.string(),
     campaignData: campaignSchema,
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     // Check if campaign already exists
     const existingCampaign = await ctx.db
       .query("campaigns")
@@ -275,37 +275,81 @@ export const saveCampaign = mutation({
       // 🔒 FULL DATA REFRESH: Completely rebuild campaign with fresh onboarding data
       // Get fresh onboarding data to ensure consistency
       const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
-      if (!onboardingData) {
-        throw new Error('Cannot refresh campaign: onboarding data not found');
+      if (!onboardingData || !onboardingData.phone) {
+        throw new Error('Cannot refresh campaign: onboarding data or phone number not found');
       }
 
       // Log the refresh operation for debugging
       console.log('🔄 FULL REFRESH: Rebuilding campaign with fresh onboarding data');
       console.log('🔄 Fresh phone number:', onboardingData.phone);
       console.log('🔄 Previous phone in campaign:', existingCampaign.businessInfo?.phone);
+      console.log('🔄 Phone in incoming saveData:', saveData.businessInfo?.phone);
 
-      // Update existing campaign with completely fresh data
-      await ctx.db.patch(existingCampaign._id, {
+      // 🔒 CRITICAL FIX: Force phone override even if saveData has contaminated phone
+      const refreshedSaveData = {
         ...saveData,
+        businessInfo: {
+          ...saveData.businessInfo,
+          phone: onboardingData.phone, // 🔒 ALWAYS use fresh onboarding phone (guaranteed non-undefined)
+        },
+        callExtensions: [onboardingData.phone], // 🔒 ALWAYS use fresh onboarding phone
         updatedAt: Date.now(),
         // Preserve regeneration tracking fields
         regenerationCount: existingCampaign.regenerationCount,
         lastRegeneration: existingCampaign.lastRegeneration,
         monthlyRegenCount: existingCampaign.monthlyRegenCount,
         monthlyRegenResetDate: existingCampaign.monthlyRegenResetDate,
-      });
+      };
+
+      // 🔒 VALIDATION: Ensure phone was correctly overridden
+      if (refreshedSaveData.businessInfo.phone !== onboardingData.phone) {
+        console.error('🚨 PHONE OVERRIDE FAILED in saveCampaign!');
+        console.error('  Expected:', onboardingData.phone);
+        console.error('  Got:', refreshedSaveData.businessInfo.phone);
+        throw new Error(`Phone override failed: Expected ${onboardingData.phone} but got ${refreshedSaveData.businessInfo.phone}`);
+      }
+
+      // Update existing campaign with completely fresh data
+      await ctx.db.patch(existingCampaign._id, refreshedSaveData);
 
       console.log('✅ REFRESH COMPLETE: Campaign updated with fresh data');
+      console.log('✅ Final phone in saved campaign:', refreshedSaveData.businessInfo.phone);
       return existingCampaign._id;
     } else {
-      // Create new campaign
-      const newCampaign = {
+      // 🔒 CRITICAL FIX: For new campaigns, also ensure phone comes from onboarding
+      const onboardingData: any = await ctx.runQuery(api.onboarding.getOnboardingData);
+      if (!onboardingData || !onboardingData.phone) {
+        throw new Error('Cannot create campaign: onboarding data or phone number not found');
+      }
+
+      // Force phone override for new campaigns too
+      const validatedSaveData: any = {
         ...saveData,
+        businessInfo: {
+          ...saveData.businessInfo,
+          phone: onboardingData.phone, // 🔒 ALWAYS use onboarding phone (guaranteed non-undefined)
+        },
+        callExtensions: [onboardingData.phone], // 🔒 ALWAYS use onboarding phone
+      };
+
+      // 🔒 VALIDATION: Ensure phone was correctly set
+      if (validatedSaveData.businessInfo.phone !== onboardingData.phone) {
+        console.error('🚨 PHONE VALIDATION FAILED for new campaign!');
+        console.error('  Expected:', onboardingData.phone);
+        console.error('  Got:', validatedSaveData.businessInfo.phone);
+        throw new Error(`Phone validation failed for new campaign: Expected ${onboardingData.phone} but got ${validatedSaveData.businessInfo.phone}`);
+      }
+
+      // Create new campaign
+      const newCampaign: any = {
+        ...validatedSaveData,
         regenerationCount: 0,
         lastRegeneration: undefined,
         monthlyRegenCount: 0,
         monthlyRegenResetDate: Date.now(),
       };
+      
+      console.log('✅ New campaign created with validated phone:', newCampaign.businessInfo.phone);
       return await ctx.db.insert("campaigns", newCampaign);
     }
   },
@@ -458,12 +502,34 @@ export const pushToGoogleAds = action({
         throw new Error("Missing phone number in onboarding data");
       }
 
+      // 🔒 CRITICAL: Block the specific contaminated phone number
+      const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
+      if (campaignPhone && contaminatedPhoneRegex.test(campaignPhone)) {
+        console.error('🚨 CONTAMINATED PHONE NUMBER DETECTED - BLOCKING PUSH:');
+        console.error('  Found contaminated number:', campaignPhone);
+        console.error('  Expected correct number:', onboardingPhone);
+        throw new Error(`Contaminated phone number detected in campaign. Found '${campaignPhone}' but expected '${onboardingPhone}'. Please regenerate the campaign.`);
+      }
+
+      // Check for any phone number mismatch
       if (onboardingPhone !== campaignPhone) {
         console.error('❌ PHONE MISMATCH DETECTED - BLOCKING PUSH:');
         console.error('  Expected (from onboarding):', onboardingPhone);
         console.error('  Found (in campaign):', campaignPhone);
         console.error('  This would cause inconsistent phone numbers in Google Ads');
         throw new Error(`Phone number mismatch detected. Campaign has '${campaignPhone}' but onboarding shows '${onboardingPhone}'. Please regenerate the campaign to sync data.`);
+      }
+
+      // Validate callExtensions don't contain contaminated numbers
+      if (campaign.callExtensions && Array.isArray(campaign.callExtensions)) {
+        for (const ext of campaign.callExtensions) {
+          const extPhone = typeof ext === 'string' ? ext : ext?.phoneNumber;
+          if (extPhone && contaminatedPhoneRegex.test(extPhone)) {
+            console.error('🚨 CONTAMINATED PHONE IN CALL EXTENSIONS - BLOCKING PUSH:');
+            console.error('  Found contaminated number:', extPhone);
+            throw new Error(`Contaminated phone number detected in call extensions: '${extPhone}'. Please regenerate the campaign.`);
+          }
+        }
       }
 
       console.log('✅ Phone validation passed - numbers match:', onboardingPhone);
@@ -493,6 +559,39 @@ export const pushToGoogleAds = action({
       }
 
       console.log('✅ PRE-PUSH VALIDATION PASSED: Data is consistent');
+
+      // 🔒 FINAL SANITIZATION: One last pass to ensure no contaminated numbers
+      const finalContaminationCheckRegex = /077\s?684\s?7429|0776847429/i;
+      
+      // Deep check all nested structures for contaminated numbers
+      const deepCheckForContamination = (obj: any, path: string = 'root'): void => {
+        if (obj === null || obj === undefined) return;
+        
+        if (Array.isArray(obj)) {
+          obj.forEach((item, index) => deepCheckForContamination(item, `${path}[${index}]`));
+          return;
+        }
+        
+        if (typeof obj === 'object') {
+          for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+              deepCheckForContamination(obj[key], `${path}.${key}`);
+            }
+          }
+          return;
+        }
+        
+        if (typeof obj === 'string') {
+          if (finalContaminationCheckRegex.test(obj)) {
+            console.error(`🚨 FINAL CHECK: Contaminated phone found at ${path}: "${obj}"`);
+            throw new Error(`Contaminated phone number detected at ${path}: "${obj}". Please regenerate the campaign.`);
+          }
+        }
+      };
+      
+      console.log('🔍 Running final deep contamination check...');
+      deepCheckForContamination(campaign);
+      console.log('✅ Final contamination check passed - no contaminated numbers found');
 
       // Check if user has connected Google Ads account
       const googleAdsTokens = await ctx.runQuery(api.googleAds.getTokens);
@@ -757,10 +856,12 @@ ${variationInstructions}
 
 **🚨 CRITICAL PHONE NUMBER RULES:**
 - NEVER include ANY phone numbers in headlines or descriptions
+- NEVER include ANY phone number patterns, digits, or formats in ad text
+- NEVER include ANY placeholders like {PHONE}, [NUMBER], or variables like ${phone} in ad text
 - If you need to reference calling, use phrases like "Call Now", "Call Today", "Phone Us"
-- Do NOT use {PHONE}, ${phone}, or any phone number variables in ad text
-- Phone numbers will be handled separately via call extensions
+- Phone numbers will be handled separately via call extensions using the correct number from onboarding
 - Violating this rule wastes advertising budget and confuses customers
+- The phone number in businessInfo.phone and callExtensions MUST match the exact number from onboarding: ${phone}
 
 **CAMPAIGN REQUIREMENTS:**
 1. Create exactly 4 targeted ad groups with distinct themes (emergency, installation, maintenance, repair, etc.)
@@ -782,15 +883,17 @@ ${variationInstructions}
 - Professional credentials must be highlighted
 
 **EXAMPLES OF CORRECT AD TEXT (NO PHONE NUMBERS):**
-✅ "Emergency Plumber Ready" (NOT "Call 077-XXX-XXXX")
-✅ "24/7 Gas Safe Service" (NOT "Ring 07564897550")
-✅ "Call Now - Free Quote" (NOT "Call 077 684 7429")
+✅ "Emergency Plumber Ready" (NOT "Call [any digits]")
+✅ "24/7 Gas Safe Service" (NOT "Ring [phone variable]")
+✅ "Call Now - Free Quote" (NOT "Call [number placeholder]")
 ✅ "Urgent Repairs London" (NOT any phone number)
 
 **FORBIDDEN PHONE NUMBER PATTERNS:**
-❌ Do NOT include: 077, 078, 020, 01XX, +44, any 11-digit numbers
-❌ Do NOT include: "Call 077...", "Ring 020...", "Phone 078..."
-❌ Do NOT include: formatted numbers like "077 684 7429" or "07564897550"
+❌ Do NOT include: ANY digits that could represent phone numbers
+❌ Do NOT include: ANY phone number patterns, formats, or placeholders
+❌ Do NOT include: ANY references to calling specific numbers
+❌ Do NOT include: ANY formatted numbers or actual phone digits
+❌ Do NOT include: ANY variables, placeholders, or examples containing phone digits
 
 **OUTPUT FORMAT:**
 Return ONLY a valid JSON object with this exact structure:
@@ -843,41 +946,75 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
   }
 }
 
-// Sanitize any phone numbers that AI might have hallucinated in ad text
-function sanitizePhoneNumbers(campaignData: any): any {
-  const phoneRegex = /(0[1-9]\d{8,9}|(\+44\s?)?[1-9]\d{8,9}|07\d{9}|077\s?\d{3}\s?\d{4})/g;
-
-  // Clean ad groups
-  if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
-    campaignData.adGroups = campaignData.adGroups.map((adGroup: any) => {
-      if (adGroup.adCopy) {
-        // Clean headlines
-        if (adGroup.adCopy.headlines && Array.isArray(adGroup.adCopy.headlines)) {
-          adGroup.adCopy.headlines = adGroup.adCopy.headlines.map((headline: string) => {
-            const cleaned = headline.replace(phoneRegex, 'Call Now');
-            if (cleaned !== headline) {
-              console.warn(`🧹 Removed phone number from headline: "${headline}" → "${cleaned}"`);
-            }
-            return cleaned;
-          });
-        }
-
-        // Clean descriptions
-        if (adGroup.adCopy.descriptions && Array.isArray(adGroup.adCopy.descriptions)) {
-          adGroup.adCopy.descriptions = adGroup.adCopy.descriptions.map((description: string) => {
-            const cleaned = description.replace(phoneRegex, 'Call now for service');
-            if (cleaned !== description) {
-              console.warn(`🧹 Removed phone number from description: "${description}" → "${cleaned}"`);
-            }
-            return cleaned;
-          });
+// Recursively sanitize phone numbers from any nested structure
+function sanitizePhoneNumbersRecursive(obj: any, path: string = 'root'): any {
+  if (obj === null || obj === undefined) return obj;
+  
+  // Create regex factory to avoid global flag state bug
+  const createPhoneRegex = () => /(0[1-9]\d{8,9}|(\+44\s?)?[1-9]\d{8,9}|07\d{9}|077\s?\d{3}\s?\d{4}|077\s?\d{3}\s?\d{3}\s?\d{4})/i;
+  const createContaminatedRegex = () => /077\s?684\s?7429|0776847429/i;
+  
+  const containsPhoneNumber = (text: string): boolean => {
+    if (!text || typeof text !== 'string') return false;
+    const phoneRegex = createPhoneRegex();
+    const contaminatedRegex = createContaminatedRegex();
+    return phoneRegex.test(text) || contaminatedRegex.test(text);
+  };
+  
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map((item, index) => sanitizePhoneNumbersRecursive(item, `${path}[${index}]`));
+  }
+  
+  // Handle objects
+  if (typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = obj[key];
+        const newPath = `${path}.${key}`;
+        
+        // Special handling for known phone fields
+        if (key === 'phone' || key === 'phoneNumber') {
+          if (typeof value === 'string' && containsPhoneNumber(value)) {
+            console.warn(`🧹 Removed contaminated phone from ${newPath}: "${value}"`);
+            sanitized[key] = ''; // Will be replaced by validateAndEnhanceCampaignData
+          } else {
+            sanitized[key] = value;
+          }
+        } else {
+          sanitized[key] = sanitizePhoneNumbersRecursive(value, newPath);
         }
       }
-      return adGroup;
-    });
+    }
+    return sanitized;
   }
+  
+  // Handle strings - clean phone numbers from ad text
+  if (typeof obj === 'string') {
+    const phoneRegex = createPhoneRegex();
+    const contaminatedRegex = createContaminatedRegex();
+    let cleaned = obj.replace(phoneRegex, 'Call Now');
+    cleaned = cleaned.replace(contaminatedRegex, 'Call Now');
+    if (cleaned !== obj) {
+      console.warn(`🧹 Removed phone number from ${path}: "${obj.substring(0, 50)}..." → "${cleaned.substring(0, 50)}..."`);
+    }
+    return cleaned;
+  }
+  
+  return obj;
+}
 
-  return campaignData;
+// Sanitize any phone numbers that AI might have hallucinated in ad text
+function sanitizePhoneNumbers(campaignData: any): any {
+  console.log('🧹 Starting comprehensive phone number sanitization...');
+  
+  // Use recursive sanitization to catch ALL nested phone references
+  const sanitized = sanitizePhoneNumbersRecursive(campaignData);
+  
+  console.log('✅ Sanitization complete - all phone numbers removed from ad text and contaminated fields cleared');
+  
+  return sanitized;
 }
 
 // Validate campaign data integrity
@@ -914,10 +1051,17 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
   const phone = onboardingData.phone;
   const websiteUrl = onboardingData.websiteUrl || "https://example.com";
 
-  // 🔍 DEBUG: Log phone numbers during validation
+  // 🔍 COMPREHENSIVE LOGGING: Track phone number transformations
   console.log('🔍 VALIDATION DEBUG: Phone from onboarding:', phone);
   console.log('🔍 VALIDATION DEBUG: Phone from AI data:', data?.businessInfo?.phone || 'NOT IN AI DATA');
+  console.log('🔍 VALIDATION DEBUG: CallExtensions from AI data:', JSON.stringify(data?.callExtensions || []));
   console.log('🔍 VALIDATION DEBUG: Website URL from onboarding:', websiteUrl);
+  
+  // Log if AI data contains any phone numbers
+  if (data?.businessInfo?.phone) {
+    console.log('📱 AI generated phone number detected:', data.businessInfo.phone);
+    console.log('📱 Will be replaced with onboarding phone:', phone);
+  }
 
   // 🔒 VALIDATION: Ensure we have required data from onboarding
   if (!phone) {
@@ -927,13 +1071,30 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
     throw new Error('Missing business name from onboarding data');
   }
 
-  return {
+  // 🔒 CRITICAL FIX: Detect and log contaminated phone numbers before overwriting
+  const contaminatedPhoneRegex = /(077\s?684\s?7429|0776847429)/i;
+  if (data?.businessInfo?.phone && contaminatedPhoneRegex.test(data.businessInfo.phone)) {
+    console.error('🚨 CONTAMINATED PHONE DETECTED in businessInfo.phone:', data.businessInfo.phone);
+    console.error('🚨 Replacing with correct onboarding phone:', phone);
+  }
+  if (data?.callExtensions && Array.isArray(data.callExtensions)) {
+    data.callExtensions.forEach((ext: any, index: number) => {
+      const extPhone = typeof ext === 'string' ? ext : ext?.phoneNumber;
+      if (extPhone && contaminatedPhoneRegex.test(extPhone)) {
+        console.error(`🚨 CONTAMINATED PHONE DETECTED in callExtensions[${index}]:`, extPhone);
+        console.error('🚨 Replacing with correct onboarding phone:', phone);
+      }
+    });
+  }
+
+  // 🔒 FORCE PHONE OVERRIDE: Always use onboarding phone, never trust AI-generated phone
+  const validatedData = {
     campaignName: data.campaignName || `${businessName} - ${onboardingData.tradeType} Services`,
     dailyBudget: data.dailyBudget || Math.round((onboardingData.acquisitionGoals?.monthlyBudget || 300) / 30),
     targetLocation: data.targetLocation || `${serviceArea?.city}, UK`,
     businessInfo: {
       businessName: businessName,
-      phone: phone,
+      phone: phone, // 🔒 ALWAYS use onboarding phone, never AI-generated
       serviceArea: `${serviceArea?.city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
     },
     adGroups: (data.adGroups || []).map((adGroup: any) => ({
@@ -943,13 +1104,30 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
         finalUrl: websiteUrl // Use onboarding website URL or fallback to example.com
       }
     })),
-    callExtensions: data.callExtensions || [phone],
+    callExtensions: [phone], // 🔒 ALWAYS use onboarding phone, never AI-generated
     complianceNotes: data.complianceNotes || [
       "All ads comply with UK advertising standards",
       "Emergency services claims must be substantiated",
       "Pricing should be transparent and include VAT where applicable",
     ],
   };
+
+  // 🔒 FINAL VALIDATION: Ensure no contaminated numbers slipped through
+  if (validatedData.businessInfo.phone !== phone) {
+    console.error('🚨 VALIDATION FAILED: businessInfo.phone does not match onboarding phone!');
+    console.error('  Expected:', phone);
+    console.error('  Got:', validatedData.businessInfo.phone);
+    throw new Error(`Phone validation failed: Expected ${phone} but got ${validatedData.businessInfo.phone}`);
+  }
+  if (!validatedData.callExtensions.includes(phone)) {
+    console.error('🚨 VALIDATION FAILED: callExtensions does not contain onboarding phone!');
+    console.error('  Expected:', phone);
+    console.error('  Got:', validatedData.callExtensions);
+    throw new Error(`Call extensions validation failed: Expected ${phone} but got ${validatedData.callExtensions.join(', ')}`);
+  }
+
+  console.log('✅ Phone validation passed - all phone numbers match onboarding:', phone);
+  return validatedData;
 }
 
 // Create fallback campaign data if parsing fails
