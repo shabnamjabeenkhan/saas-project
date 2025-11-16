@@ -1,453 +1,963 @@
-# Bug Context: Wrong Phone Number in Google Ads
+# Bug Context: Wrong Phone Number in Google Ads Preview
 
-## Error Description
+## 1. Error Description
 
-### What's Happening
-Despite fixing the AI prompt contamination and Google Ads API code, and regenerating a new campaign in the project app, the wrong phone number (`077 684 7429`) is still appearing in Google Ads previews instead of the correct number. The incorrect number `077 684 7429` is shown in Google Ads instead of the one from the onboarding form (`07563826777`).
+When pushing a campaign from the Campaigns page after clicking the "Push to Google Ads" button, the incorrect phone number is displayed in Google Ads preview. When clicking on an ad from any of the 4 ad groups:
 
-### The Contamination Source
-AI prompts previously included hardcoded examples in the prompt instructions:
+- **First click**: Shows incorrect phone number
+- **Second click**: Shows correct phone number from onboarding
+- **Third click**: Shows incorrect phone number again
 
+This alternating behavior applies to all 4 ad groups consistently.
+
+**Expected Behavior**: The correct phone number from onboarding should always be displayed in Google Ads preview.
+
+**Actual Behavior**: Phone number alternates between correct and incorrect values when viewing ads in Google Ads preview.
+
+---
+
+## 2. User Journey
+
+1. User completes onboarding and adds the phone number
+2. Campaign from onboarding is created, and the correct number appears in ad groups in the TradeBoost AI website
+3. User connects their Google Ads account to the website
+4. User clicks on the "Connect to Google Ads" button (or "Push to Google Ads" button)
+5. Campaign is pushed to Google Ads and user can view the preview where the phone number is displayed
+6. User regenerates the campaign which creates a varied version of the previous campaign
+7. User pushes that regenerated campaign and can view that campaign in Google Ads
+
+---
+
+## 3. Jam.dev Replay
+
+**Link**: https://jam.dev/c/5f2beb30-0021-4f1a-9002-78aab222d374
+
+---
+
+## 4. Screenshots
+
+*[Screenshots would be inserted here - user provided 5 screenshots showing the issue]*
+
+---
+
+## 5. Client-side Logs
+
+*[Client-side logs would be inserted here - user provided 5 log screenshots]*
+
+---
+
+## 6. Network Tab
+
+### Failed Requests
+*[Failed request details would be inserted here]*
+
+### Response Payloads
+*[Response payloads showing phone numbers would be inserted here]*
+
+### Status Codes
+*[Status codes from network requests would be inserted here]*
+
+---
+
+## 7. Code Snippets
+
+### 7.1 Primary Issue - Modern Call Asset Creation (No Cleanup)
+
+**File**: `convex/googleAdsCampaigns.ts:447-569`
+
+```447:569:convex/googleAdsCampaigns.ts
+      // Step 10: Create call extensions
+      // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+      const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      const phoneNumber = freshOnboardingData?.phone;
+
+      if (!phoneNumber) {
+        throw new Error("Missing phone number from onboarding data");
+      }
+      console.log('📞 Attempting call extension creation...');
+      console.log('📞 Fresh onboarding phone:', freshOnboardingData?.phone || 'NOT FOUND');
+      console.log('📞 Fallback campaign phone:', campaignData.businessInfo?.phone || 'NOT FOUND');
+      console.log('📞 Using phone number:', phoneNumber || 'UNDEFINED/NULL');
+
+      // 🔍 ENHANCED PHONE TRACKING: Log phone consistency across all ad groups
+      console.log('🔍 PHONE CONSISTENCY CHECK:');
+      if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
+        campaignData.adGroups.forEach((adGroup: any, index: number) => {
+          console.log(`  Ad Group ${index + 1} (${adGroup.name}): Using campaign phone ${phoneNumber}`);
+          console.log(`  Final URL: ${adGroup.adCopy?.finalUrl || 'MISSING'}`);
+        });
+      }
+      console.log('🔍 Call extensions will use phone:', phoneNumber);
+
+      // 🔍 VALIDATION: Confirm we're using the correct phone number
+      if (freshOnboardingData?.phone && campaignData.businessInfo?.phone &&
+          freshOnboardingData.phone !== campaignData.businessInfo.phone) {
+        console.warn('⚠️ Phone mismatch detected - using fresh onboarding data');
+        console.warn('  Onboarding phone (using):', freshOnboardingData.phone);
+        console.warn('  Campaign phone (stale):', campaignData.businessInfo.phone);
+      }
+
+      if (phoneNumber) {
+        console.log('📞 Creating call extensions with phone:', phoneNumber);
+
+        try {
+          // First create the call asset
+          const callAssetRequestBody = {
+            operations: [{
+              create: {
+                type: 'CALL',
+                callAsset: {
+                  phoneNumber: phoneNumber,
+                  countryCode: 'GB',
+                  callConversionReportingState: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
+                }
+              }
+            }]
+          };
+
+          // ❌ PROBLEM: Creates new call asset every time without checking existing ones
+          const assetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/assets:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callAssetRequestBody)
+          });
+
+          if (!assetResponse.ok) {
+            const assetError = await assetResponse.text();
+            console.error(`❌ Call asset creation failed:`, assetError);
+            results.errors.push(`Call asset creation failed: ${assetError.substring(0, 100)}`);
+            return;
+          }
+
+          const assetData = await assetResponse.json();
+          const assetResourceName = assetData.results[0].resourceName;
+          console.log('✅ Call asset created:', assetResourceName);
+          console.log('🔍 CALL EXTENSION DEBUG: Phone used in API call:', phoneNumber);
+
+          // Then link the asset to the campaign
+          const campaignAssetRequestBody = {
+            operations: [{
+              create: {
+                asset: assetResourceName,
+                campaign: campaignResourceName,
+                fieldType: 'CALL'
+              }
+            }]
+          };
+
+          // ❌ PROBLEM: Links new asset to campaign without removing old ones
+          const extensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignAssets:mutate`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+              'login-customer-id': customerId,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(campaignAssetRequestBody)
+          });
+
+          if (!extensionResponse.ok) {
+            const extensionError = await extensionResponse.text();
+            console.error(`❌ Campaign asset linking failed with status ${extensionResponse.status}:`, extensionError);
+
+            // Parse and log detailed Google Ads API error
+            try {
+              const errorDetails = JSON.parse(extensionError);
+              console.error(`🔍 Google Ads API Error Details for campaign asset linking:`, {
+                status: extensionResponse.status,
+                statusText: extensionResponse.statusText,
+                error: errorDetails.error,
+                details: errorDetails.details || errorDetails.message || errorDetails
+              });
+              results.errors.push(`Campaign asset linking failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
+            } catch (parseError) {
+              console.error(`🔍 Raw Google Ads API Error for campaign asset linking:`, extensionError);
+              results.errors.push(`Campaign asset linking failed: ${extensionError.substring(0, 100)}`);
+            }
+          } else {
+            const extensionData = await extensionResponse.json();
+            results.extensionsCreated++;
+            console.log('✅ Call extension linked to campaign successfully:', extensionData.results?.[0]?.resourceName || 'Success');
+          }
+
+        } catch (extensionError) {
+          console.error('❌ Error creating call extension:', extensionError);
+          results.errors.push(`Call extension error: ${extensionError}`);
+        }
+      }
 ```
-**EXAMPLES OF CORRECT AD TEXT (NO PHONE NUMBERS):**
-✅ "Emergency Plumber Ready" (NOT "Call 07X-XXX-XXXX")
-✅ "24/7 Gas Safe Service" (NOT "Ring [PHONE]")
-✅ "Call Now - Free Quote" (NOT "Call [NUMBER]")
-✅ "Urgent Repairs London" (NOT any phone number)
 
-**FORBIDDEN PHONE NUMBER PATTERNS:**
-❌ Do NOT include: 077, 078, 020, 01XX, +44, any 11-digit numbers
-❌ Do NOT include: "Call 07X...", "Ring 02X...", "Phone 07X..."
-❌ Do NOT include: any formatted numbers or actual phone digits
+**Analysis**: 
+- Creates modern call assets using `assets:mutate` API
+- Links assets to campaign using `campaignAssets:mutate` API
+- **Problem**: No cleanup of existing call extensions/assets before creating new ones
+- **Problem**: Creates new call asset every time without checking if one already exists
+
+---
+
+### 7.2 Secondary Issue - Legacy Call Extension Creation Method
+
+**File**: `convex/googleAdsCampaigns.ts:926-995`
+
+```926:995:convex/googleAdsCampaigns.ts
+// Helper function to create ad extensions
+async function createAdExtensions(
+  campaignData: any,
+  customerId: string,
+  accessToken: string,
+  campaignResourceName: string,
+  ctx: any
+) {
+  try {
+    // Create Call Extension (Phone Number)
+    // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+    const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+    const phoneNumber = freshOnboardingData?.phone;
+
+    if (phoneNumber) {
+      // ❌ PROBLEM: Calls createCallExtension which creates LEGACY call extensions
+      await createCallExtension(phoneNumber, customerId, accessToken, campaignResourceName);
+    }
+
+    // Create Sitelink Extensions (if available)
+    if (campaignData.sitelinkExtensions && campaignData.sitelinkExtensions.length > 0) {
+      await createSitelinkExtensions(campaignData.sitelinkExtensions, customerId, accessToken, campaignResourceName);
+    }
+
+  } catch (error) {
+    console.error('❌ Error creating ad extensions:', error);
+  }
+}
+
+// Helper function to create call extension
+async function createCallExtension(
+  phoneNumber: string,
+  customerId: string,
+  accessToken: string,
+  campaignResourceName: string
+) {
+  console.log('🔍 CALL EXTENSION DEBUG: Phone used in createCallExtension:', phoneNumber);
+  // ❌ PROBLEM: Creates LEGACY call extension format (different from call assets above)
+  const callExtensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignExtensionSettings:mutate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+      'login-customer-id': customerId,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      operations: [{
+        create: {
+          campaign: campaignResourceName,
+          extensionType: 'CALL',
+          extensionSetting: {
+            extensions: [{
+              callExtension: {
+                phoneNumber: phoneNumber,
+                countryCode: 'GB',
+                callOnly: false
+              }
+            }]
+          }
+        }
+      }]
+    })
+  });
+
+  if (callExtensionResponse.ok) {
+    console.log('✅ LEGACY Call extension created with phone:', phoneNumber);
+    console.log('🔍 LEGACY METHOD EXECUTED - This is creating call extensions');
+  } else {
+    const error = await callExtensionResponse.text();
+    console.error('❌ Call extension creation failed:', error);
+  }
+}
 ```
 
-This contaminated phone number (`077 684 7429`) occasionally gets incorporated into AI-generated campaign data instead of using the user's actual onboarding number.
-
-### Expected vs Actual
-- **Expected**: Call extensions show `07563826777` (user's real number from onboarding)
-- **Actual**: Call extensions show `077 684 7429` (AI hallucinated number)
-
----
-
-## User Journey
-
-### Step 1: Initial Setup
-- User completes onboarding with correct phone number: `07563826777`
-- Data stored correctly in database
-
-### Step 2: Campaign Generation (First Time)
-- User clicks "Generate Campaign"
-- AI uses contaminated prompt with hardcoded example: `077 684 7429`
-- AI occasionally uses the prompt example instead of real user data
-- Campaign saved to database with wrong phone number
-
-### Step 3: User Pushes to Google Ads
-- User clicks "Push to Google Ads"
-- System uses existing campaign data (which has wrong number)
-- Google Ads shows wrong number: `077 684 7429`
-- User sees error in Google Ads preview
+**Analysis**:
+- Creates legacy call extensions using `campaignExtensionSettings:mutate` API
+- Uses different API endpoint and format than modern call assets
+- **Problem**: This creates ANOTHER call extension using fresh onboarding data
+- **Problem**: Creates LEGACY call extension format (different from call assets above)
 
 ---
 
-## Jam.dev Replay
-- URL: https://jam.dev/c/03902966-475f-4522-8f0d-d30143ba94f8
+### 7.3 The Core Problem - Two Different Call Extension Methods Called
+
+**File**: `convex/googleAdsCampaigns.ts:447-656`
+
+```447:656:convex/googleAdsCampaigns.ts
+      // Step 10: Create call extensions
+      // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
+      const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      const phoneNumber = freshOnboardingData?.phone;
+      // ... creates call asset + campaign asset (MODERN METHOD)
+
+      // ... (ad group creation code) ...
+
+      // Step 8: Create Ad Extensions
+      try {
+        console.log('📱 Creating ad extensions...');
+        // ❌ PROBLEM: Both methods are called in sequence, creating duplicate call extensions
+        await createAdExtensions(campaignData, customerId, accessToken, campaignResourceName, ctx);
+        // ... calls createCallExtension which creates LEGACY extension
+        console.log('✅ Ad extensions completed');
+      } catch (error) {
+        console.error('❌ Ad extensions failed:', error instanceof Error ? error.message : String(error));
+        // Continue - extensions are not critical
+      }
+```
+
+**Analysis**: 
+- **Method 1 (Modern)**: Lines 447-569 create call assets using `assets:mutate` + `campaignAssets:mutate`
+- **Method 2 (Legacy)**: Lines 652-656 call `createAdExtensions()` which creates legacy call extensions using `campaignExtensionSettings:mutate`
+- **Result**: Both methods execute in sequence, creating duplicate call extensions
 
 ---
 
-## Screenshots
-*Note: Screenshots were mentioned but not provided. Add screenshots showing:*
-- Google Ads preview with wrong phone number
-- Campaign dashboard showing correct phone
-- Console logs showing validation
+### 7.4 Frontend: Push to Google Ads Button Handler
 
----
+**File**: `app/components/campaign/CampaignHeaderControls.tsx`
 
-## Client-side Logs
-*Note: Client-side logs were mentioned but not provided. Add logs showing:*
-- Phone validation messages
-- Campaign generation logs
-- Google Ads push logs
+```60:140:app/components/campaign/CampaignHeaderControls.tsx
+  const handlePushToGoogleAds = async () => {
+    console.log('🚀 Push to Google Ads button clicked');
 
----
+    if (!campaign) {
+      console.error('❌ No campaign available to push');
+      toast.error("No campaign to push");
+      return;
+    }
 
-## Network Tab
-*Note: Network tab information was mentioned but not provided. Add:*
-- Failed requests (if any)
-- Response payloads showing phone numbers
-- Status codes
+    if (!isGoogleAdsConnected) {
+      console.error('❌ Google Ads not connected');
+      toast.error("Please connect your Google Ads account first");
+      return;
+    }
 
----
+    // Check for placeholder URLs and warn user
+    const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
+    const hasPlaceholders = campaign.adGroups?.some((adGroup: any) =>
+      !adGroup.adCopy?.finalUrl || placeholderUrls.includes(adGroup.adCopy.finalUrl)
+    );
 
-## Code Analysis
-
-### Issue 1: Campaign Data Persistence Problem
-**File**: `convex/campaigns.ts:255-311`
-
-```typescript
-// The problem: When campaign exists, it updates with fresh data but 
-// businessInfo.phone might still come from contaminated campaignData
-export const saveCampaign = mutation({
-  handler: async (ctx, args) => {
-    const existingCampaign = await ctx.db
-      .query("campaigns")
-      .withIndex("userId", (q) => q.eq("userId", args.userId))
-      .first();
-
-    if (existingCampaign) {
-      // Updates existing campaign but doesn't guarantee phone number refresh
-      await ctx.db.patch(existingCampaign._id, {
-        ...saveData,  // ← This saveData might contain old phone number
-        updatedAt: Date.now(),
+    if (hasPlaceholders) {
+      toast.warning("⚠️ No website URL detected", {
+        description: "Your ads will show 'example.com' which may waste your budget. Consider adding a website URL in your profile or using call-only ads.",
+        duration: 10000,
       });
     }
-  }
-});
-```
 
-**Problem**: When a campaign exists, the update uses `saveData` which may still contain the contaminated phone number from earlier AI generation. No forced refresh of phone data from onboarding.
-
----
-
-### Issue 2: Campaign Data Validation Not Blocking Wrong Data
-**File**: `convex/campaigns.ts:930-952`
-
-```typescript
-// This validates structure but contaminated data passes validation
-function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
-  return {
-    businessInfo: {
-      businessName: businessName,
-      phone: phone,  // ← Uses onboarding phone (correct)
-    },
-    callExtensions: [phone], // ← Uses onboarding phone (correct)
-    // BUT AI-generated data.callExtensions might still have wrong numbers
-  };
-}
-```
-
-**Problem**: Validates structure but contaminated data from AI passes through. Nested phone references in AI response aren't caught.
-
----
-
-### Issue 3: AI Response Parsing Issue
-**File**: `convex/campaigns.ts:827-843`
-
-```typescript
-// Problem: AI response might contain contaminated phone numbers in nested data
-function parseAIResponse(aiResponse: string, onboardingData: any): any {
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    const cleanedData = sanitizePhoneNumbers(parsed);  // ← Sanitization might miss some
-    return validateAndEnhanceCampaignData(cleanedData, onboardingData);
-  }
-}
-```
-
-**Problem**: AI response might contain contaminated phone numbers in nested data that sanitization doesn't catch.
-
----
-
-### Issue 4: Phone Number Sanitization Gaps
-**File**: `convex/campaigns.ts:846-881`
-
-```typescript
-// Sanitizes ad text but might miss callExtensions or other nested data
-function sanitizePhoneNumbers(campaignData: any): any {
-  const phoneRegex = /(0[1-9]\d{8,9}|(\+44\s?)?[1-9]\d{8,9}|07\d{9}|077\s?\d{3}\s?\d{4})/g;
-
-  // Only cleans adGroups.adCopy but might miss other places
-  if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
-    // Cleans headlines and descriptions only
-  }
-
-  // ❌ MISSING: Doesn't clean campaignData.callExtensions or businessInfo.phone
-  return campaignData;
-}
-```
-
-**Critical Gaps**:
-- ❌ Doesn't sanitize `campaignData.callExtensions`
-- ❌ Doesn't sanitize `businessInfo.phone`
-- ❌ Doesn't sanitize other nested phone references
-- ✅ Only cleans ad copy headlines and descriptions
-
----
-
-### Issue 5: Google Ads Push Using Stale Campaign Data
-**File**: `convex/campaigns.ts:504-516`
-
-```typescript
-// The push action gets campaign data that might be contaminated
-export const pushToGoogleAds = action({
-  handler: async (ctx, args) => {
-    const campaign: any = await ctx.runQuery(api.campaigns.getCampaignById, {
-      campaignId: args.campaignId  // ← Gets existing campaign with potential wrong phone
+    console.log('🎯 Starting campaign push process...', {
+      campaignId: campaign._id,
+      campaignName: campaign.campaignName,
+      adGroups: campaign.adGroups?.length || 0
     });
 
-    // Validation checks onboarding vs campaign phone
-    if (onboardingPhone !== campaignPhone) {
-      // ❌ This should catch mismatch but logs show it's passing
+    setIsProcessing(true);
+    try {
+      console.log('📤 Calling pushToGoogleAds action...');
+
+      // Use Convex action to push campaign to Google Ads
+      const result = await pushToGoogleAds({
+        campaignId: campaign._id,
+        pushOptions: {
+          createAsDraft: true,
+          testMode: false, // FORCE REAL API USAGE
+        },
+      });
+
+      console.log('📥 Received result from pushToGoogleAds:', result);
+
+      if (result.success) {
+        console.log('✅ Campaign push successful!', result);
+
+        const description = result.details ||
+          `Campaign ID: ${result.googleCampaignId} | Budget: £${result.budget}/day | Status: ${result.status}`;
+
+        toast.success(`🎯 ${result.message}`, {
+          description: description,
+          duration: 8000,
+        });
+
+        // 🔄 Convex real-time queries will automatically update the UI
+        // No manual refresh needed - data syncs automatically
+        console.log('✅ Campaign push complete - Convex will sync UI automatically');
+      } else {
+        console.error('❌ Campaign push failed - success=false');
+        throw new Error('Failed to create campaign');
+      }
+    } catch (error) {
+      console.error('❌ Campaign push error occurred:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+
+      toast.error(`❌ Failed to push to Google Ads`, {
+        description: error instanceof Error ? error.message : 'Check API connection and try again',
+        duration: 8000,
+      });
+    } finally {
+      console.log('🔄 Campaign push process completed, resetting UI state');
+      setIsProcessing(false);
     }
-  }
-});
+  };
 ```
 
-**Problem**: Gets campaign data that might be contaminated. Validation logic isn't catching the mismatch properly.
+**Analysis**: Frontend handler calls `pushToGoogleAds` action with campaign ID. No phone number validation happens here.
 
 ---
 
-### Issue 6: Mixed Data Sources in Google Ads Integration
-**File**: `convex/googleAdsCampaigns.ts:158-162`
+### 7.5 Backend: Push to Google Ads Action (Pre-validation)
 
-```typescript
-// Gets campaign data that might have contaminated phone numbers
-const campaignData = await ctx.runQuery(api.campaigns.getCampaignById, {
-  campaignId: args.campaignId
-});
+**File**: `convex/campaigns.ts`
 
-// Even though we get fresh onboarding data later, some parts might use campaignData
+```444:535:convex/campaigns.ts
+// Push campaign to Google Ads
+export const pushToGoogleAds = action({
+  args: {
+    campaignId: v.string(),
+    pushOptions: v.optional(v.object({
+      createAsDraft: v.boolean(),
+      testMode: v.boolean(),
+    })),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    message: string;
+    googleCampaignId: string;
+    resourceName: string;
+    budget: number;
+    status: string;
+    details?: string;
+    createdResources?: {
+      adGroups: number;
+      ads: number;
+      extensions: number;
+    };
+  }> => {
+    const userId = await getCurrentUserToken(ctx);
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    try {
+      // Get the campaign data using a query
+      const campaign: any = await ctx.runQuery(api.campaigns.getCampaignById, {
+        campaignId: args.campaignId
+      });
+
+      if (!campaign) {
+        throw new Error("Campaign not found");
+      }
+
+      if (campaign.userId !== userId) {
+        throw new Error("Unauthorized");
+      }
+
+      // 🔍 PRE-PUSH VALIDATION: Verify data consistency
+      const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+      if (!onboardingData) {
+        throw new Error("Cannot push campaign: onboarding data not found");
+      }
+
+      // Validate phone number consistency
+      const onboardingPhone = onboardingData.phone;
+      const campaignPhone = campaign.businessInfo?.phone;
+
+      console.log('🔍 PRE-PUSH VALIDATION:');
+      console.log('📱 Onboarding phone:', onboardingPhone);
+      console.log('📱 Campaign phone:', campaignPhone);
+
+      if (!onboardingPhone) {
+        throw new Error("Missing phone number in onboarding data");
+      }
+
+      // 🔒 CRITICAL: Block the specific contaminated phone number
+      const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
+      if (campaignPhone && contaminatedPhoneRegex.test(campaignPhone)) {
+        console.error('🚨 CONTAMINATED PHONE NUMBER DETECTED - BLOCKING PUSH:');
+        console.error('  Found contaminated number:', campaignPhone);
+        console.error('  Expected correct number:', onboardingPhone);
+        throw new Error(`Contaminated phone number detected in campaign. Found '${campaignPhone}' but expected '${onboardingPhone}'. Please regenerate the campaign.`);
+      }
+
+      // Check for any phone number mismatch
+      if (onboardingPhone !== campaignPhone) {
+        console.error('❌ PHONE MISMATCH DETECTED - BLOCKING PUSH:');
+        console.error('  Expected (from onboarding):', onboardingPhone);
+        console.error('  Found (in campaign):', campaignPhone);
+        console.error('  This would cause inconsistent phone numbers in Google Ads');
+        throw new Error(`Phone number mismatch detected. Campaign has '${campaignPhone}' but onboarding shows '${onboardingPhone}'. Please regenerate the campaign to sync data.`);
+      }
+
+      // Validate callExtensions don't contain contaminated numbers
+      if (campaign.callExtensions && Array.isArray(campaign.callExtensions)) {
+        for (const ext of campaign.callExtensions) {
+          const extPhone = typeof ext === 'string' ? ext : ext?.phoneNumber;
+          if (extPhone && contaminatedPhoneRegex.test(extPhone)) {
+            console.error('🚨 CONTAMINATED PHONE IN CALL EXTENSIONS - BLOCKING PUSH:');
+            console.error('  Found contaminated number:', extPhone);
+            throw new Error(`Contaminated phone number detected in call extensions: '${extPhone}'. Please regenerate the campaign.`);
+          }
+        }
+      }
+
+      console.log('✅ Phone validation passed - numbers match:', onboardingPhone);
 ```
 
-**Problem**: Campaign data pulled from database may have contaminated phone numbers. Fresh onboarding data not consistently applied to all fields.
+**Analysis**: Pre-push validation checks phone number consistency between onboarding and campaign data. If mismatch detected, push is blocked.
 
 ---
 
-## Core Root Cause
+### 7.6 Database Schema
 
-### The Main Problem: Incomplete Sanitization + Data Persistence
+**File**: `convex/schema.ts`
 
-The `sanitizePhoneNumbers` function only cleans ad copy text but **fails to sanitize campaign-level structured data**:
-
+```89:127:convex/schema.ts
+  campaigns: defineTable({
+    userId: v.string(),
+    campaignName: v.string(),
+    dailyBudget: v.number(),
+    targetLocation: v.string(),
+    businessInfo: v.object({
+      businessName: v.string(),
+      phone: v.string(),
+      serviceArea: v.string(),
+    }),
+    adGroups: v.array(v.object({
+      name: v.string(),
+      keywords: v.array(v.string()),
+      adCopy: v.object({
+        headlines: v.array(v.string()),
+        descriptions: v.array(v.string()),
+        finalUrl: v.string(),
+      }),
+    })),
+    callExtensions: v.array(v.union(
+      v.string(),
+      v.object({
+        phoneNumber: v.string(),
+        callHours: v.optional(v.string()),
+      })
+    )),
+    complianceNotes: v.array(v.string()),
+    status: v.string(), // "ready" | "active" | "paused"
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    // Regeneration tracking fields
+    regenerationCount: v.optional(v.number()),
+    lastRegeneration: v.optional(v.number()),
+    monthlyRegenCount: v.optional(v.number()),
+    monthlyRegenResetDate: v.optional(v.number()),
+    // Google Ads integration
+    googleCampaignId: v.optional(v.string()),
+  })
+    .index("userId", ["userId"]),
 ```
-CURRENT BEHAVIOR:
-┌─ AI Response
-├─ parseAIResponse()
-├─ sanitizePhoneNumbers()  ← Only cleans adGroups.adCopy
-│  └─ callExtensions: ["077 684 7429"] ← NOT SANITIZED ❌
-│  └─ businessInfo.phone: "077 684 7429" ← NOT SANITIZED ❌
-├─ validateAndEnhanceCampaignData()
-└─ saveCampaign()
-   └─ Database stores contaminated data
 
-WHEN PUSHING TO GOOGLE ADS:
-├─ getCampaignById() → returns stale data with "077 684 7429"
-├─ Validation passes (checks against onboarding)
-└─ Google Ads uses contaminated callExtensions
-```
-
-### Key Issue: Missing Phone Sanitization in Campaign Data
-
-The main problem is in the `sanitizePhoneNumbers` function - it only cleans ad text but doesn't clean the campaign-level phone data:
-
-```typescript
-// ❌ CURRENT: Only cleans ad copy
-function sanitizePhoneNumbers(campaignData: any): any {
-  // Cleans headlines/descriptions but NOT:
-  // - campaignData.businessInfo.phone
-  // - campaignData.callExtensions
-  // - Other nested phone references
-}
-```
-
-The contaminated phone number persists in campaign data structure even after sanitization.
+**Analysis**: Campaigns table stores phone number in `businessInfo.phone` and `callExtensions` array. Phone number can become stale if campaign is regenerated but not refreshed from onboarding.
 
 ---
 
-## AI Prompt Function Analysis
+### 7.7 Onboarding Data Schema
 
-### Function: `buildCampaignPrompt()`
-**Location**: `convex/campaigns.ts` lines 729-869
+**File**: `convex/schema.ts`
 
-### Key Components:
-
-#### 1. Business Context (Lines 782-793)
-```typescript
-- Business: ${businessName}
-- Contact: ${phone}  // ← This includes the correct phone from onboarding
+```51:88:convex/schema.ts
+  onboardingData: defineTable({
+    userId: v.string(),
+    tradeType: v.optional(v.string()), // "plumbing" | "electrical" | "both"
+    businessName: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()), // Optional website URL
+    serviceArea: v.optional(v.object({
+      city: v.string(),
+      postcode: v.optional(v.string()),
+      radius: v.number(), // in miles
+    })),
+    serviceOfferings: v.optional(v.array(v.string())),
+    availability: v.optional(v.object({
+      workingHours: v.string(),
+      emergencyCallouts: v.boolean(),
+      weekendWork: v.boolean(),
+    })),
+    acquisitionGoals: v.optional(v.object({
+      monthlyLeads: v.number(),
+      averageJobValue: v.number(),
+      monthlyBudget: v.number(),
+    })),
+    complianceData: v.optional(v.object({
+      businessRegistration: v.boolean(),
+      requiredCertifications: v.boolean(),
+      publicLiabilityInsurance: v.boolean(),
+      businessEmail: v.string(),
+      businessNumber: v.string(),
+      termsAccepted: v.boolean(),
+      complianceUnderstood: v.boolean(),
+      certificationWarning: v.boolean(),
+    })),
+    completedAt: v.optional(v.number()),
+    isComplete: v.optional(v.boolean()),
+  })
+    .index("userId", ["userId"]),
 ```
 
-#### 2. Phone Number Rules (Lines 802-807)
-```
-🚨 CRITICAL PHONE NUMBER RULES:
-- NEVER include ANY phone numbers in headlines or descriptions
-- Do NOT use {PHONE}, ${phone}, or any phone number variables in ad text
-- Phone numbers will be handled separately via call extensions
-```
+**Analysis**: Onboarding data stores the source of truth phone number in `phone` field.
 
-#### 3. Examples Section (Lines 828-837) - FIXED
-```
-EXAMPLES OF CORRECT AD TEXT (NO PHONE NUMBERS):
-✅ "Emergency Plumber Ready" (NOT "Call 07X-XXX-XXXX")
-✅ "Call Now - Free Quote" (NOT "Call [NUMBER]")
+---
 
-FORBIDDEN PHONE NUMBER PATTERNS:
-❌ Do NOT include: any formatted numbers or actual phone digits
-```
+## 8. Environment
 
-#### 4. JSON Output Structure (Lines 845-849)
+- **Environment**: Production
+- **Deployment**: Convex Cloud (ownDev deployment)
+- **Convex Dashboard**: https://dashboard.convex.dev/d/gregarious-squirrel-956
+- **Convex URL**: https://gregarious-squirrel-956.convex.cloud
+
+---
+
+## 9. Convex Data
+
+### 9.1 Onboarding Data
+
+**Command**: `bunx convex data --table onboardingData --order desc --limit 1`
+
+**Actual Data**:
 ```json
 {
-  "businessInfo": {
-    "businessName": "string",
-    "phone": "string",        // ← AI should put correct phone here
-    "serviceArea": "string"
-  }
+  "_id": "jh786wh92y5gen01x40nz400vh7vhej2",
+  "_creationTime": 1763252669523.2139,
+  "userId": "user_35XMo1rGQ24z0lqeuVnAp5l2phd",
+  "phone": "07563826777",
+  "businessName": "Plumbing Expert",
+  "contactName": "Adam Khan",
+  "email": "plumbingexpert@gmail.com",
+  "websiteUrl": "https://plumbingexpert.com",
+  "tradeType": "plumbing",
+  "serviceArea": {
+    "city": "London",
+    "postcode": "L1 8RR",
+    "radius": 10
+  },
+  "serviceOfferings": [
+    "Boiler Repair",
+    "Leak Repair",
+    "Central Heating"
+  ],
+  "availability": {
+    "workingHours": "Mon-Fri 10am - 2pm",
+    "emergencyCallouts": false,
+    "weekendWork": false
+  },
+  "acquisitionGoals": {
+    "monthlyLeads": 3,
+    "averageJobValue": 200,
+    "monthlyBudget": 100
+  },
+  "complianceData": {
+    "businessRegistration": true,
+    "requiredCertifications": true,
+    "publicLiabilityInsurance": true,
+    "businessEmail": "info@plumbingexpert.com",
+    "businessNumber": "555",
+    "termsAccepted": true,
+    "complianceUnderstood": true,
+    "certificationWarning": true
+  },
+  "isComplete": true,
+  "completedAt": 1763252826849
 }
 ```
 
-**Analysis**: The prompt correctly includes your real phone number in the business context (`Contact: ${phone}`) and no longer has hardcoded wrong examples. The AI should be generating the correct phone number now. If it's still wrong, run the debug and we'll see exactly what the Google Ads API is receiving.
+**Analysis**: 
+- ✅ **Correct phone number**: `07563826777` (source of truth)
+- ✅ Onboarding is complete
+- ✅ All required data is present
 
 ---
 
-## AI Prompt Rules (For Reference)
+### 9.2 Campaign Data
 
-### Critical Phone Number Rules
+**Command**: `bunx convex data --table campaigns --order desc --limit 1`
+
+**Actual Data**:
+```json
+{
+  "_id": "jn783gn80jcf56e5kbcc4svv857vg61k",
+  "_creationTime": 1763252846014.368,
+  "userId": "user_35XMo1rGQ24z0lqeuVnAp5l2phd",
+  "campaignName": "Plumbing Expert Autumn Campaign",
+  "dailyBudget": 3,
+  "targetLocation": "London, L1 8RR",
+  "businessInfo": {
+    "businessName": "Plumbing Expert",
+    "phone": "07563826777",
+    "serviceArea": "London, L1 8RR"
+  },
+  "callExtensions": ["07563826777"],
+  "adGroups": [
+    {
+      "name": "Emergency Plumbing Services",
+      "keywords": ["emergency plumber London", "24/7 plumber near me", ...],
+      "adCopy": {
+        "headlines": ["Immediate Plumber Assistance", "24/7 Plumbing Support", "Urgent Leak Solutions"],
+        "descriptions": ["Gas Safe Registered plumbers ready to assist. Call Now for rapid response.", ...],
+        "finalUrl": "https://plumbingexpert.com"
+      }
+    },
+    // ... 3 more ad groups
+  ],
+  "complianceNotes": [...],
+  "status": "pushed_draft",
+  "googleCampaignId": "23275324471",
+  "createdAt": 1763318669695,
+  "updatedAt": 1763318685017,
+  "regenerationCount": 21,
+  "lastRegeneration": 1763318669769,
+  "monthlyRegenCount": 21
+}
 ```
-🚨 CRITICAL PHONE NUMBER RULES:
-- NEVER include ANY phone numbers in headlines or descriptions
-- If you need to reference calling, use phrases like "Call Now", "Call Today", "Phone Us"
-- Do NOT use {PHONE}, ${phone}, or any phone number variables in ad text
-- Phone numbers will be handled separately via call extensions
-- Violating this rule wastes advertising budget and confuses customers
+
+**Analysis**:
+- ✅ **Phone number matches onboarding**: `07563826777` ✅
+- ✅ **Call extensions array**: Contains correct phone `["07563826777"]`
+- ✅ **Campaign has been pushed**: `status: "pushed_draft"`, `googleCampaignId: "23275324471"`
+- ✅ **Campaign has 4 ad groups**: As expected
+- ⚠️ **Campaign regenerated 21 times**: May have accumulated duplicate call extensions in Google Ads
+
+---
+
+### 9.3 Google Ads Tokens
+
+**Command**: `bunx convex data --table googleAdsTokens --order desc --limit 1`
+
+**Actual Data**:
+```json
+{
+  "_id": "js77jt2wjkmqzk0zyprp8gv9097vhhw4",
+  "_creationTime": 1763253061328.594,
+  "userId": "user_35XMo1rGQ24z0lqeuVnAp5l2phd",
+  "accessToken": "ya29.a0ATi6K2sftjVkv0Xy7Uc1cVDJX81Ee3flSXZ1XP6pUCmnmGLdfqrApp6pD4j4x910KvXPcbFoVxw6MhGT5x2lJJSv6vCukGPcm5x-lbBaipvjz0IB6r5qy69dgZx9O9xHMKy3gF1VPSayjgQdBkMLvNX3xcvkXYbxzuq6bg8dhBQKnpOh1VjN9FJPNEhXHxTvgx74RXYaCgYKARQSARASFQHGX2Mi5_ad53-zs36P84PBZpgq_Q0206",
+  "refreshToken": "1//055fBIPizyaG5CgYIARAAGAUSNwF-L9Irw9NV8WkH8xbCyJVcbkvl5WEsGnLLT11B8lW7YLIIteG68w2UPyKf2yYcZyoq4p6wcx4",
+  "expiresAt": 1763321515436,
+  "scope": "https://www.googleapis.com/auth/adwords",
+  "isActive": true,
+  "createdAt": 1763317916672
+}
 ```
 
-### Examples of Correct Ad Text (NO PHONE NUMBERS)
+**Analysis**:
+- ✅ **Google Ads is connected**: `isActive: true`
+- ✅ **Access token present**: Valid OAuth token
+- ✅ **Token has required scope**: `https://www.googleapis.com/auth/adwords`
+- ⚠️ **Token expires**: `expiresAt: 1763321515436` (may need refresh if expired)
+
+---
+
+### 9.4 Data Consistency Check
+
+**Phone Number Consistency**:
+- ✅ Onboarding phone: `07563826777`
+- ✅ Campaign `businessInfo.phone`: `07563826777`
+- ✅ Campaign `callExtensions`: `["07563826777"]`
+- ✅ **All phone numbers match** - No data inconsistency in database
+
+**Conclusion**: The database state shows consistent phone numbers. The issue is likely in Google Ads where multiple call extensions have been created due to the duplicate creation methods, causing the alternating behavior in preview.
+
+---
+
+## 10. Reproduction Steps
+
+1. User completes onboarding and adds phone number (e.g., `07563826777`)
+2. Campaign is created from onboarding information
+3. User connects their Google Ads account
+4. User clicks "Push to Google Ads" button on the Campaigns page
+5. Campaign is pushed to Google Ads successfully
+6. User navigates to Google Ads to view the pushed campaign
+7. User clicks on preview ad from any of the 4 ad groups
+8. **First click**: Incorrect phone number is displayed (e.g., `077 684 7429`)
+9. **Second click**: Correct phone number is displayed (e.g., `07563826777`)
+10. **Third click**: Incorrect phone number is displayed again
+11. This alternating behavior occurs consistently across all 4 ad groups
+
+---
+
+## 11. Root Cause Analysis
+
+### 🚨 CRITICAL ROOT CAUSE: Duplicate Call Extension Creation
+
+The code creates **TWO different types of call extensions** in sequence, resulting in multiple call extensions per campaign:
+
+1. **Modern Call Assets** (Lines 447-569):
+   - Creates call assets using `assets:mutate` API
+   - Links assets to campaign using `campaignAssets:mutate` API
+   - Creates new call asset every time without checking existing ones
+   - Links new asset without removing old ones
+
+2. **Legacy Call Extensions** (Lines 652-656 → 926-995):
+   - Calls `createAdExtensions()` function
+   - Creates legacy call extensions using `campaignExtensionSettings:mutate` API
+   - Uses different API endpoint and format than modern call assets
+   - Also creates new extension without checking existing ones
+
+### Why This Causes Alternating Phone Numbers
+
+1. **First push**: Creates 2 call extensions (modern + legacy)
+2. **Second push**: Creates 2 MORE call extensions (4 total)
+3. **Third push**: Creates 2 MORE call extensions (6 total)
+4. **Google Ads Preview**: Randomly cycles through multiple call extensions
+5. **Result**: Phone numbers alternate between correct (fresh onboarding) and incorrect (stale campaign data or previous versions)
+
+### Key Code Flow
+
+1. `pushToGoogleAds` validates phone number consistency ✅
+2. `createGoogleAdsCampaign` creates modern call asset with fresh onboarding phone ✅
+3. Modern call asset is linked to campaign ✅
+4. **Then**: `createAdExtensions()` is called, creating legacy call extension ❌
+5. **Missing**: No cleanup of existing call extensions/assets before creating new ones ❌
+6. **Missing**: No check for existing call extensions with different phone numbers ❌
+7. **Missing**: Both modern and legacy methods execute, creating duplicates ❌
+
+### The Exact Issue
+
+- **Lines 447-569**: Create modern call assets
+- **Lines 652-656**: Call `createAdExtensions()` which creates additional legacy call extensions
+- **Result**: Multiple phone numbers per campaign due to duplicate extension creation
+
+---
+
+## 12. Potential Solutions
+
+### Solution 1: Remove Legacy Call Extension Method (RECOMMENDED)
+
+Remove the call to `createAdExtensions()` or remove the call extension creation from within `createAdExtensions()`. Keep only the modern call asset method.
+
+**Implementation**:
+- Comment out or remove line 654: `await createAdExtensions(...)`
+- OR modify `createAdExtensions()` to skip call extension creation
+- Keep only the modern call asset creation (lines 447-569)
+
+### Solution 2: Clean Up Existing Call Extensions Before Creating New Ones
+
+Before creating a new call extension, query Google Ads API for existing call extensions on the campaign and remove them.
+
+**Implementation**:
+- Query `campaignAssets` for existing CALL fieldType extensions
+- Query `campaignExtensionSettings` for existing CALL extensions
+- Remove all existing call extensions before creating new ones
+
+### Solution 3: Check for Existing Call Assets Before Creating
+
+Before creating a new call asset, check if a call asset with the correct phone number already exists and reuse it instead of creating a new one.
+
+**Implementation**:
+- Query `assets` for existing CALL type assets with matching phone number
+- If found, reuse the existing asset resource name
+- If not found, create new asset
+
+### Solution 4: Update Existing Call Extensions Instead of Creating New Ones
+
+If a call extension already exists on the campaign, update it with the new phone number instead of creating a duplicate.
+
+**Implementation**:
+- Check for existing call extensions on the campaign
+- If exists, use `UPDATE` operation instead of `CREATE`
+- If not exists, create new extension
+
+### Solution 5: Add Phone Number to Campaign Metadata
+
+Store the phone number used in Google Ads in the campaign's metadata to track which phone number was pushed.
+
+**Implementation**:
+- Add `googleAdsPhoneNumber` field to campaigns schema
+- Store phone number when pushing to Google Ads
+- Use this to validate consistency on subsequent pushes
+
+---
+
+## 13. Debugging Commands
+
+### Check Convex Logs
+
+```bash
+bunx convex logs --limit 100
 ```
-✅ "Emergency Plumber Ready" (NOT "Call 07X-XXX-XXXX")
-✅ "24/7 Gas Safe Service" (NOT "Ring [PHONE]")
-✅ "Call Now - Free Quote" (NOT "Call [NUMBER]")
-✅ "Urgent Repairs London" (NOT any phone number)
+
+Look for:
+- `📞 Fresh onboarding phone:` logs
+- `🔍 CALL EXTENSION DEBUG:` logs
+- `✅ Call extension linked to campaign successfully:` logs
+- `✅ LEGACY Call extension created with phone:` logs (indicates duplicate creation)
+
+### Check Google Ads API Responses
+
+In Convex logs, check the response from:
+- `assets:mutate` (modern call asset creation)
+- `campaignAssets:mutate` (modern call extension linking)
+- `campaignExtensionSettings:mutate` (legacy call extension creation)
+
+### Query Google Ads for Existing Call Extensions
+
+Use Google Ads API to query existing call extensions on the campaign:
+
+```bash
+# Query campaign assets (modern method)
+GET https://googleads.googleapis.com/v22/customers/{customerId}/campaignAssets
+# Filter: fieldType = 'CALL'
+
+# Query campaign extension settings (legacy method)
+GET https://googleads.googleapis.com/v22/customers/{customerId}/campaignExtensionSettings
+# Filter: extensionType = 'CALL'
 ```
 
-### Forbidden Phone Number Patterns
+### Count Call Extensions
+
+```bash
+# Count how many call extensions exist on a campaign
+# This will show if duplicates are accumulating
 ```
-❌ Do NOT include: 077, 078, 020, 01XX, +44, any 11-digit numbers
-❌ Do NOT include: "Call 07X...", "Ring 02X...", "Phone 07X..."
-❌ Do NOT include: any formatted numbers or actual phone digits
-```
-
-### Campaign Requirements
-1. Create exactly 4 targeted ad groups with distinct themes (emergency, installation, maintenance, repair, etc.)
-2. Generate 8-10 high-intent keywords per ad group including local variations for `${city}`
-3. Write 3 compelling headlines (max 30 chars) and 2 descriptions (max 90 chars) per ad group
-4. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
-5. Include location-specific keywords: `"${city} {service}"`, `"{service} near me"`, `"local {service}"`
-6. Add emergency/urgency keywords if applicable: "24/7", "emergency", "urgent"
-7. Use "Call Now", "Call Today", "Phone Us" instead of actual phone numbers in ad text
-8. Add compliance notes for UK regulatory requirements
-9. Suggest optimization tips and seasonal recommendations
-10. Calculate daily budget: £`${Math.round((acquisitionGoals?.monthlyBudget || 300) / 30)}`
-
-### Critical Compliance Points
-- Gas work MUST mention "Gas Safe Registered" if offering gas/heating services
-- Electrical work MUST reference "Part P compliant" for notifiable work
-- No misleading claims ("cheapest", "guaranteed", etc.)
-- Price transparency required ("free quotes", "no hidden charges")
-- Professional credentials must be highlighted
 
 ---
 
-## Environment
-- **Mode**: Development
-- **Database**: Convex
-- **API**: Google Ads API
+## 14. Next Steps
+
+1. **Immediate**: Check Convex logs for both modern and legacy call extension creation logs
+2. **Investigate**: Query Google Ads API to see if multiple call extensions exist on the campaign
+3. **Fix**: Remove legacy call extension creation method (Solution 1)
+4. **Enhance**: Add cleanup of existing call extensions before creating new ones (Solution 2)
+5. **Test**: Push a campaign and verify only one call extension with correct phone number exists
+6. **Verify**: Check Google Ads preview to confirm phone number is consistent
 
 ---
 
-## Reproduction Steps
+## 15. Related Files
 
-### Step 1: Generate Initial Campaign
-1. Navigate to `/dashboard/campaigns`
-2. Click "Generate Campaign" button
-3. Wait for campaign generation to complete
-4. Campaign data gets saved to database (may contain contaminated phone number)
-
-### Step 2: Push to Google Ads (First Attempt)
-1. Click "Push to Google Ads" button
-2. Wait for push to complete successfully
-3. Check console logs - will show:
-   - ✅ Phone validation passed - numbers match: `07563826777`
-   - ✅ Campaign drafted successfully in Google Ads
-
-### Step 3: View Google Ads Preview
-1. Go to Google Ads interface/preview
-2. Navigate to created campaign
-3. Look at call extensions section
-4. **ERROR**: Shows wrong phone number `077 684 7429` instead of `07563826777`
-
-### Step 4: Reproduce Error Again (After Fixes)
-1. Return to campaign dashboard
-2. Click "Push to Google Ads" again (without regenerating)
-3. Console shows success again
-4. Google Ads still shows wrong number
-
-### Why Error Persists
-- Console validation passes because it checks onboarding vs campaign phone match
-- But campaign data in database still has contaminated phone from previous AI generation
-- Google Ads gets mixed data - some from fresh onboarding, some from stale campaign data
-
-### Expected vs Actual
-- **Expected**: Call extensions show `07563826777` (user's real number)
-- **Actual**: Call extensions show `077 684 7429` (AI hallucinated number)
+- `convex/campaigns.ts` - Campaign generation and push logic
+- `convex/googleAdsCampaigns.ts` - Google Ads API integration (contains both modern and legacy methods)
+- `convex/onboarding.ts` - Onboarding data management
+- `app/components/campaign/CampaignHeaderControls.tsx` - Frontend push button
+- `convex/schema.ts` - Database schema definitions
 
 ---
 
-## Fix Strategy
+## 16. Notes
 
-### Required Changes
+- The alternating behavior suggests Google Ads is cycling through multiple call extensions/assets
+- **Root cause identified**: Two different call extension creation methods execute in sequence
+- Modern method (call assets) and legacy method (campaign extension settings) both create extensions
+- Each push creates 2 call extensions (one modern, one legacy)
+- Multiple pushes result in accumulating duplicate extensions
+- The code correctly uses fresh onboarding data for both methods, but doesn't prevent duplicates
+- Pre-push validation prevents pushing campaigns with mismatched phone numbers, but doesn't prevent multiple extensions from accumulating over time
+- This issue occurs when campaigns are pushed multiple times (e.g., after regeneration)
+- **Recommended fix**: Remove legacy call extension creation method and add cleanup of existing extensions
 
-1. **Extend Sanitization to All Nested Data**
-   - File: `convex/campaigns.ts` (`sanitizePhoneNumbers` function)
-   - Sanitize: `callExtensions`, `businessInfo.phone`, all nested phone references
-
-2. **Force Phone Data Refresh on Campaign Update**
-   - File: `convex/campaigns.ts` (`saveCampaign` mutation)
-   - Always apply fresh onboarding phone to all phone fields
-
-3. **Add Validation for Structured Data**
-   - File: `convex/campaigns.ts` (`validateAndEnhanceCampaignData` function)
-   - Check for contaminated numbers in `callExtensions` before validation passes
-
-4. **Clean Campaign Data Before Google Ads Push**
-   - File: `convex/googleAdsCampaigns.ts` (`pushToGoogleAds` action)
-   - Apply final sanitization + phone override before sending to Google Ads API
-
-5. **Audit Prompt Contamination**
-   - Remove all hardcoded phone number examples from AI prompts
-   - Ensure only pattern examples, not actual numbers, are used
-
----
-
-## Testing Checklist
-
-- [ ] Generate campaign and verify database contains correct phone number
-- [ ] Push to Google Ads and verify call extensions show correct number
-- [ ] Re-push same campaign without regenerating - verify phone doesn't revert
-- [ ] Check Google Ads preview shows correct number
-- [ ] Verify logs show "Phone validation passed" for correct numbers
-- [ ] Audit database directly for any `077 684 7429` entries
-
----
-
-## Status
-
-### Fixes Implemented ✅
-- ✅ Extended `sanitizePhoneNumbers()` to sanitize `callExtensions` and `businessInfo.phone`
-- ✅ Force phone refresh from onboarding data in `validateAndEnhanceCampaignData()`
-- ✅ Added validation to catch contaminated numbers before save
-- ✅ Ensure `saveCampaign()` always uses fresh onboarding phone
-- ✅ Added contamination detection and logging
-- ✅ Added final validation checks
-
-### Protection Layers
-1. **Sanitization Layer**: Removes contaminated phones from AI response
-2. **Validation Layer**: Overwrites with onboarding phone + validates
-3. **Save Layer**: Forces fresh onboarding phone even if contaminated data reaches save
-4. **Final Validation**: Throws errors if anything slips through
-
----
-
-## Related Files
-- `convex/campaigns.ts` - Campaign generation, sanitization, and data management
-- `convex/googleAdsCampaigns.ts` - Google Ads integration and campaign extension creation
-- `convex/onboarding.ts` - Onboarding data storage

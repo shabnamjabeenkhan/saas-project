@@ -350,7 +350,7 @@ export const createGoogleAdsCampaign = action({
           console.log(`📝 Creating ads for ${adGroup.name}...`);
 
           // 🔒 SECURITY: Sanitize ad content to remove any hallucinated phone numbers
-          function sanitizePhoneNumbers(text: string): string {
+          const sanitizePhoneNumbers = (text: string): string => {
             // Remove UK phone numbers in various formats
             return text
               .replace(/(\+44\s?|0)7\d{9}/g, '') // Remove 11-digit mobile numbers
@@ -358,7 +358,7 @@ export const createGoogleAdsCampaign = action({
               .replace(/(\+44\s?|0)\d{3}\s?\d{3}\s?\d{4}/g, '') // Remove formatted numbers
               .replace(/\s+/g, ' ') // Clean up extra spaces
               .trim();
-          }
+          };
 
           const adOperations = [];
           const rawHeadlines = adGroup.adCopy.headlines.slice(0, 3); // Max 3 headlines
@@ -921,6 +921,7 @@ async function createResponsiveSearchAd(
     });
   }
 }
+
 
 // Helper function to create ad extensions
 async function createAdExtensions(

@@ -42,7 +42,7 @@ export function CampaignHeaderControls({
 
     // Check regeneration limits
     if (regenerationLimits && !regenerationLimits.allowed) {
-      toast.error(regenerationLimits.reason);
+      toast.error((regenerationLimits as any).reason || 'Regeneration not allowed');
       return;
     }
 
