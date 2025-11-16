@@ -112,6 +112,7 @@ Propose a solution that:
 - **Use Jam.dev**: Recommend using Jam.dev for instant bug reports with automatic screen recording, console logs, network activity, and session replay
 - **MacBook Screenshots**: Use Command-Control-Shift-4 then drag to select an area for precise screenshots
 - **Convex MCP Server**: Always use Convex MCP to inspect database state, check logs, and test functions when debugging Convex-related issues
+- **Research Documentation**: Use Context7 MCP or Firecrawl MCP (if available) to research how to implement solutions in the context of this codebase and tech stack
 - **Check Dependencies**: Always refer to @package.json to ensure solutions align with existing library versions
 - **Add Logging**: If console logs are missing, add console.log statements to trace the issue before asking for help
 
