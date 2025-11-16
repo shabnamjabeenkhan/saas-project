@@ -607,7 +607,7 @@ export const createGoogleAdsCampaign = action({
           console.log(`📝 Creating ads for ${adGroup.name}...`);
 
           // 🔒 SECURITY: Sanitize ad content to remove any hallucinated phone numbers
-          function sanitizePhoneNumbers(text: string): string {
+          const sanitizePhoneNumbers = (text: string): string => {
             // Remove UK phone numbers in various formats
             return text
               .replace(/(\+44\s?|0)7\d{9}/g, '') // Remove 11-digit mobile numbers
@@ -615,77 +615,75 @@ export const createGoogleAdsCampaign = action({
               .replace(/(\+44\s?|0)\d{3}\s?\d{3}\s?\d{4}/g, '') // Remove formatted numbers
               .replace(/\s+/g, ' ') // Clean up extra spaces
               .trim();
-          }
+          };
 
-          const adOperations = [];
-          const rawHeadlines = adGroup.adCopy.headlines?.slice(0, 15) || ['Your Business Name']; // Max 15 headlines
-          const rawDescriptions = adGroup.adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust']; // Max 4 descriptions
+          // Helper function to sanitize and validate text content
+          const sanitizeText = (text: string, maxLength: number): string | null => {
+            if (!text || typeof text !== 'string') {
+              return null;
+            }
+            // First remove phone numbers, then trim and validate
+            const phoneSanitized = sanitizePhoneNumbers(text);
+            // Trim whitespace and remove invalid characters
+            const sanitized = phoneSanitized
+              .trim()
+              .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+              .substring(0, maxLength)
+              .trim();
+            // Return null if empty after sanitization
+            return sanitized.length > 0 ? sanitized : null;
+          };
 
-          // Sanitize all ad content
-          const sanitizedHeadlines = rawHeadlines.map(sanitizePhoneNumbers);
-          const sanitizedDescriptions = rawDescriptions.map(sanitizePhoneNumbers);
+          // Validate and sanitize headlines (min 3 required, max 30 chars each)
+          const rawHeadlines = adGroup.adCopy.headlines || [];
+          const headlines = rawHeadlines
+            .map((h: string) => sanitizeText(h, 30))
+            .filter((h: string | null): h is string => h !== null)
+            .slice(0, 15); // Google Ads allows up to 15 headlines, we'll use first 15 valid ones
 
-          // Filter out empty/null content and ensure minimum requirements
-          const headlines = sanitizedHeadlines
-            .filter((h: string) => h && h.trim().length > 0)
-            .slice(0, 15);
-          
-          // Ensure minimum 3 headlines (Google Ads requirement)
+          // Validate and sanitize descriptions (min 2 required, max 90 chars each)
+          const rawDescriptions = adGroup.adCopy.descriptions || [];
+          const descriptions = rawDescriptions
+            .map((d: string) => sanitizeText(d, 90))
+            .filter((d: string | null): d is string => d !== null)
+            .slice(0, 4); // Google Ads allows up to 4 descriptions, we'll use first 4 valid ones
+
+          // Log validation results for debugging
+          console.log(`📋 Ad content validation for ${adGroup.name}:`, {
+            rawHeadlinesCount: rawHeadlines.length,
+            validHeadlinesCount: headlines.length,
+            rawDescriptionsCount: rawDescriptions.length,
+            validDescriptionsCount: descriptions.length,
+            headlines: headlines.map((h: string) => ({ text: h, length: h.length })),
+            descriptions: descriptions.map((d: string) => ({ text: d, length: d.length })),
+            finalUrl: adGroup.adCopy.finalUrl || 'https://example.com'
+          });
+
+          // Google Ads requires minimum 3 headlines and 2 descriptions for Responsive Search Ads
           if (headlines.length < 3) {
-            headlines.push(...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - headlines.length));
+            const errorMsg = `Insufficient valid headlines for "${adGroup.name}": ${headlines.length}/3 required. Raw headlines: ${JSON.stringify(rawHeadlines)}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
           }
 
-          const descriptions = sanitizedDescriptions
-            .filter((d: string) => d && d.trim().length > 0)
-            .slice(0, 4);
-          
-          // Ensure minimum 2 descriptions (Google Ads requirement)
           if (descriptions.length < 2) {
-            descriptions.push(...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - descriptions.length));
+            const errorMsg = `Insufficient valid descriptions for "${adGroup.name}": ${descriptions.length}/2 required. Raw descriptions: ${JSON.stringify(rawDescriptions)}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
           }
 
           // Validate final URL
-          const finalUrl = adGroup.adCopy.finalUrl || 'https://example.com';
-          if (!finalUrl || finalUrl.trim().length === 0) {
-            throw new Error(`Invalid finalUrl for ad group ${adGroup.name}: cannot be empty`);
-          }
-          
-          // Validate URL accessibility before creating ad (non-blocking for testing)
-          console.log(`🔍 Validating URL for ${adGroup.name}: ${finalUrl}`);
-          const urlValidation = await validateUrl(finalUrl);
-          
-          if (!urlValidation.isValid && urlValidation.dnsError) {
-            // Log warning but don't block - let Google Ads validate (better error messages)
-            if (urlValidation.dnsError === 'PLACEHOLDER_URL') {
-              console.warn(`⚠️ Placeholder URL detected for "${adGroup.name}": ${finalUrl}`);
-              console.warn(`   Google Ads will reject this. Consider using a real URL or call-only ads.`);
-            } else if (urlValidation.dnsError === 'HOSTNAME_NOT_FOUND') {
-              console.warn(`⚠️ URL may not be accessible for "${adGroup.name}": ${finalUrl}`);
-              console.warn(`   Domain may not exist. Google Ads will validate and reject if invalid.`);
-            } else {
-              console.warn(`⚠️ URL validation issue for "${adGroup.name}": ${urlValidation.error}`);
-              console.warn(`   Allowing ad creation - Google Ads will validate the URL.`);
-            }
-          }
-          
-          if (urlValidation.isValid) {
-            console.log(`✅ URL validation passed for ${adGroup.name}: ${finalUrl}`);
-          } else {
-            console.log(`⚠️ URL validation had issues for ${adGroup.name}, but allowing ad creation (Google Ads will validate): ${finalUrl}`);
+          const finalUrl = adGroup.adCopy.finalUrl?.trim() || 'https://example.com';
+          if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+            const errorMsg = `Invalid final URL for "${adGroup.name}": ${finalUrl}`;
+            console.error(`❌ ${errorMsg}`);
+            results.errors.push(errorMsg);
+            continue; // Skip this ad group
           }
 
-          // Log sanitization results
-          console.log(`🔒 Sanitized headlines for ${adGroup.name}:`, {
-            before: rawHeadlines,
-            after: headlines,
-            count: headlines.length
-          });
-          console.log(`🔒 Sanitized descriptions for ${adGroup.name}:`, {
-            before: rawDescriptions,
-            after: descriptions,
-            count: descriptions.length
-          });
-
+          const adOperations = [];
           adOperations.push({
             create: {
               adGroup: adGroupResourceName,
@@ -695,10 +693,10 @@ export const createGoogleAdsCampaign = action({
                 finalUrls: [finalUrl],
                 responsiveSearchAd: {
                   headlines: headlines.map((headline: string) => ({
-                    text: headline.substring(0, 30) // Ensure max 30 chars per headline
+                    text: headline
                   })),
                   descriptions: descriptions.map((description: string) => ({
-                    text: description.substring(0, 90) // Ensure max 90 chars per description
+                    text: description
                   }))
                 }
               }
@@ -1342,6 +1340,7 @@ async function createResponsiveSearchAd(
     throw new Error(errorMessage);
   }
 }
+
 
 // Helper function to create ad extensions
 async function createAdExtensions(
