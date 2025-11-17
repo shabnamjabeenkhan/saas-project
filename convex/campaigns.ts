@@ -680,6 +680,7 @@ export const pushToGoogleAds = action({
       console.log('📞 Calling googleAdsCampaigns.createGoogleAdsCampaign with campaignId:', args.campaignId);
       const result: any = await ctx.runAction(api.googleAdsCampaigns.createGoogleAdsCampaign, {
         campaignId: args.campaignId,
+        pushOptions: pushOptions,
       });
       console.log('📞 Google Ads result received:', JSON.stringify(result, null, 2));
 

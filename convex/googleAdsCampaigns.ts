@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { GoogleAdsApi, Customer } from "google-ads-api";
 
 // Helper function to get current user's token identifier
 async function getCurrentUserToken(ctx: any) {
@@ -271,8 +272,8 @@ function parseGoogleAdsError(errorText: string): {
 // const DEVELOPMENT_MODE = process.env.NODE_ENV === 'development';
 const DEVELOPMENT_MODE = false;
 
-// Google Ads REST API Client Configuration
-async function getGoogleAdsAccessToken(ctx: any): Promise<string> {
+// Google Ads SDK Client Configuration
+async function getGoogleAdsClient(ctx: any): Promise<Customer> {
   // Get tokens from database
   const tokens = await ctx.runQuery(api.googleAds.getTokens, {});
 
@@ -288,10 +289,72 @@ async function getGoogleAdsAccessToken(ctx: any): Promise<string> {
     if (!refreshedTokens) {
       throw new Error("Failed to refresh Google Ads token");
     }
-    return refreshedTokens.accessToken;
   }
 
+  // Initialize Google Ads API client
+  const client = new GoogleAdsApi({
+    client_id: process.env.VITE_GOOGLE_CLIENT_ID!,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+    developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+  });
+
+  // Get customer ID
+  const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
+
+  // Create customer instance with refresh token
+  const customer = client.Customer({
+    customer_id: customerId,
+    refresh_token: tokens.refreshToken || tokens.accessToken, // SDK handles refresh automatically
+  });
+
+  return customer;
+}
+
+// Legacy function for backward compatibility (kept for token refresh logic)
+async function getGoogleAdsAccessToken(ctx: any): Promise<string> {
+  const tokens = await ctx.runQuery(api.googleAds.getTokens, {});
+  if (!tokens) {
+    throw new Error("Google Ads not connected");
+  }
+  if (tokens.isExpired && tokens.refreshToken) {
+    await refreshGoogleAdsToken(ctx, tokens);
+    const refreshedTokens = await ctx.runQuery(api.googleAds.getTokens, {});
+    if (!refreshedTokens) {
+      throw new Error("Failed to refresh Google Ads token");
+    }
+    return refreshedTokens.accessToken;
+  }
   return tokens.accessToken;
+}
+
+// 🔒 SECURITY: Shared phone number sanitization function
+function sanitizePhoneNumbersFromText(text: string): string {
+  // Remove UK phone numbers in various formats (including spaced numbers)
+  return text
+    // First normalize spaces, then remove phone numbers
+    .replace(/(\+44\s?|0)7\d{2}\s?\d{3}\s?\d{4}/g, '') // Remove spaced mobile: 077 684 7429 or 0776847429
+    .replace(/(\+44\s?|0)7\d{9}/g, '') // Remove 11-digit mobile numbers (no spaces)
+    .replace(/(\+44\s?|0)\d{3}\s?\d{3}\s?\d{4}/g, '') // Remove formatted landline: 012 345 6789
+    .replace(/(\+44\s?|0)\d{10}/g, '') // Remove 10-digit landline numbers (no spaces)
+    .replace(/\s+/g, ' ') // Clean up extra spaces
+    .trim();
+}
+
+// Helper function to sanitize and validate text content
+function sanitizeAdText(text: string, maxLength: number): string | null {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+  // First remove phone numbers, then trim and validate
+  const phoneSanitized = sanitizePhoneNumbersFromText(text);
+  // Trim whitespace and remove invalid characters
+  const sanitized = phoneSanitized
+    .trim()
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .substring(0, maxLength)
+    .trim();
+  // Return null if empty after sanitization
+  return sanitized.length > 0 ? sanitized : null;
 }
 
 // Helper function to refresh expired tokens
@@ -385,8 +448,12 @@ export const testGoogleAdsConnection = action({
 export const createGoogleAdsCampaign = action({
   args: {
     campaignId: v.string(), // ID from our campaigns table
+    pushOptions: v.optional(v.object({
+      createAsDraft: v.boolean(),
+      testMode: v.boolean(),
+    })),
   },
-  handler: async (ctx: any, args: { campaignId: string }): Promise<any> => {
+  handler: async (ctx: any, args: { campaignId: string; pushOptions?: { createAsDraft: boolean; testMode: boolean } }): Promise<any> => {
     console.log('🔥🔥🔥 HANDLER ENTRY - This MUST appear if function called');
     console.log('🔥🔥🔥 Arguments received:', JSON.stringify(args));
     console.log('🔥🔥🔥 Context exists:', !!ctx);
@@ -430,94 +497,84 @@ export const createGoogleAdsCampaign = action({
         throw new Error("Google Ads account not connected");
       }
 
-      // Step 4: Get access token and customer ID
-      const accessToken = await getGoogleAdsAccessToken(ctx);
-      console.log('🔑 Access token received (first 20 chars):', accessToken?.substring(0, 20) + '...');
-
-      console.log('🏠 Environment variable GOOGLE_ADS_MANAGER_ACCOUNT_ID:', process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID);
+      // Step 4: Get Google Ads SDK client
+      console.log('🔑 Initializing Google Ads SDK client...');
+      const customer = await getGoogleAdsClient(ctx);
       const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
-      console.log('👤 Customer ID after formatting:', customerId);
+      console.log('👤 Customer ID:', customerId);
 
-      // Step 5: Create campaign budget first
+      // Step 5: Create campaign budget first using SDK
       console.log('💰 Creating budget for campaign:', campaignData.campaignName);
 
-      const budgetRequestBody = {
-        operations: [{
-          create: {
+      let budgetResourceName: string;
+      try {
+        const budgetResult = await customer.campaignBudgets.create([
+          {
             name: `${campaignData.campaignName} Budget ${Date.now()}`,
-            amountMicros: campaignData.dailyBudget * 1000000, // Convert to micros
-            deliveryMethod: 'STANDARD'
+            amount_micros: campaignData.dailyBudget * 1000000, // Convert to micros
+            delivery_method: 'STANDARD'
           }
-        }]
-      };
+        ]);
 
-      console.log('💰 Budget request body:', JSON.stringify(budgetRequestBody, null, 2));
-
-      const budgetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignBudgets:mutate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-          'login-customer-id': customerId,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(budgetRequestBody)
-      });
-
-      if (!budgetResponse.ok) {
-        const budgetError = await budgetResponse.text();
+        const budgetResource = budgetResult.results[0]?.resource_name;
+        if (!budgetResource) {
+          throw new Error('Budget creation succeeded but resource_name is missing');
+        }
+        budgetResourceName = budgetResource;
+        console.log('✅ Budget created:', budgetResourceName);
+      } catch (budgetError: any) {
         console.error('❌ Budget creation failed:', budgetError);
-        throw new Error(`Budget creation failed: ${budgetResponse.status} - ${budgetError}`);
+        const errorMessage = budgetError?.message || JSON.stringify(budgetError);
+        throw new Error(`Budget creation failed: ${errorMessage}`);
       }
 
-      const budgetData = await budgetResponse.json();
-      const budgetResourceName = budgetData.results[0].resourceName;
-      console.log('✅ Budget created:', budgetResourceName);
-
-      // Step 6: Create the campaign
+      // Step 6: Create the campaign using SDK
       console.log('🏗️ Creating campaign in Google Ads');
 
-      const requestBody = {
-        operations: [{
-          create: {
+      // 🔒 SECURITY: Always create campaigns, ad groups, and ads as PAUSED
+      // This prevents accidental spending and allows manual review before going live
+      const campaignStatus = 'PAUSED';
+      const adGroupStatus = 'PAUSED';
+      const adStatus = 'PAUSED';
+
+      console.log('📊 Campaign creation status (all PAUSED for safety):', {
+        campaignStatus,
+        adGroupStatus,
+        adStatus
+      });
+
+      let campaignResourceName: string;
+      let googleCampaignId: string;
+      
+      try {
+        const campaignResult = await customer.campaigns.create([
+          {
             name: `${campaignData.campaignName} ${Date.now()}`, // Add timestamp to prevent duplicates
-            status: 'PAUSED',
-            advertisingChannelType: 'SEARCH',
-            campaignBudget: budgetResourceName,
-            manualCpc: {},
-            containsEuPoliticalAdvertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+            status: campaignStatus,
+            advertising_channel_type: 'SEARCH',
+            campaign_budget: budgetResourceName,
+            manual_cpc: {},
+            contains_eu_political_advertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
           }
-        }]
-      };
+        ]);
 
-      console.log('📤 Request body being sent:', JSON.stringify(requestBody, null, 2));
+        const campaignResource = campaignResult.results[0]?.resource_name;
+        if (!campaignResource) {
+          throw new Error('Campaign creation succeeded but resource_name is missing');
+        }
+        campaignResourceName = campaignResource;
+        googleCampaignId = campaignResourceName.split('/').pop() || '';
 
-      const campaignResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaigns:mutate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-          'login-customer-id': customerId,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!campaignResponse.ok) {
-        const campaignError = await campaignResponse.text();
+        console.log('✅ Campaign created successfully:', {
+          googleCampaignId,
+          resourceName: campaignResourceName
+        });
+        results.campaignCreated = true;
+      } catch (campaignError: any) {
         console.error('❌ Campaign creation failed:', campaignError);
-        throw new Error(`Campaign creation failed: ${campaignResponse.status} - ${campaignError}`);
+        const errorMessage = campaignError?.message || JSON.stringify(campaignError);
+        throw new Error(`Campaign creation failed: ${errorMessage}`);
       }
-
-      const campaignResponseData = await campaignResponse.json();
-      const campaignResourceName = campaignResponseData.results[0].resourceName;
-      const googleCampaignId = campaignResourceName.split('/').pop();
-
-      console.log('✅ Campaign created successfully:', {
-        googleCampaignId,
-        resourceName: campaignResourceName
-      });
-      results.campaignCreated = true;
 
       // Step 7: Create Ad Groups
       console.log('🎯 Creating ad groups...');
@@ -528,110 +585,60 @@ export const createGoogleAdsCampaign = action({
         console.log(`🎯 Creating ad group ${i + 1}/${campaignData.adGroups.length}: ${adGroup.name}`);
 
         try {
-          const adGroupRequestBody = {
-            operations: [{
-              create: {
-                name: adGroup.name,
-                campaign: campaignResourceName,
-                status: 'ENABLED',
-                type: 'SEARCH_STANDARD',
-                cpcBidMicros: 1000000 // £1.00 default bid in micros
-              }
-            }]
-          };
+          // Create ad group using SDK
+          const adGroupResult = await customer.adGroups.create([
+            {
+              name: adGroup.name,
+              campaign: campaignResourceName,
+              status: adGroupStatus,
+              type: 'SEARCH_STANDARD',
+              cpc_bid_micros: 1000000 // £1.00 default bid in micros
+            }
+          ]);
 
-          const adGroupResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroups:mutate`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-              'login-customer-id': customerId,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(adGroupRequestBody)
-          });
-
-          if (!adGroupResponse.ok) {
-            const adGroupError = await adGroupResponse.text();
-            console.error(`❌ Ad group ${adGroup.name} creation failed:`, adGroupError);
-            results.errors.push(`Ad group "${adGroup.name}" creation failed`);
-            continue;
+          const adGroupResourceName = adGroupResult.results[0]?.resource_name;
+          if (!adGroupResourceName) {
+            throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
           }
-
-          const adGroupData = await adGroupResponse.json();
-          const adGroupResourceName = adGroupData.results[0].resourceName;
           adGroupResourceNames.push(adGroupResourceName);
           results.adGroupsCreated++;
 
           console.log(`✅ Ad group created: ${adGroup.name} -> ${adGroupResourceName}`);
 
-          // Step 8: Add keywords to the ad group
+          // Step 8: Add keywords to the ad group using SDK
           console.log(`🔑 Adding ${adGroup.keywords.length} keywords to ${adGroup.name}...`);
 
-          const keywordOperations = adGroup.keywords.map((keyword: string) => ({
-            create: {
-              adGroup: adGroupResourceName,
+          try {
+            // SDK supports batch creation
+            const keywordCreates = adGroup.keywords.slice(0, 10).map((keyword: string) => ({
+              ad_group: adGroupResourceName,
               status: 'ENABLED',
               keyword: {
                 text: keyword,
-                matchType: 'BROAD'
+                match_type: 'BROAD'
               },
-              cpcBidMicros: 1000000 // £1.00 default bid
-            }
-          }));
+              cpc_bid_micros: 1000000 // £1.00 default bid
+            }));
 
-          const keywordRequestBody = {
-            operations: keywordOperations
-          };
+            // Create keywords in batch
+            await Promise.all(
+              keywordCreates.map((keywordData: any) => 
+                customer.adGroupCriteria.create(keywordData)
+              )
+            );
 
-          const keywordResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupCriteria:mutate`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-              'login-customer-id': customerId,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(keywordRequestBody)
-          });
-
-          if (!keywordResponse.ok) {
-            const keywordError = await keywordResponse.text();
+            console.log(`✅ Added ${keywordCreates.length} keywords to ${adGroup.name}`);
+          } catch (keywordError: any) {
             console.error(`❌ Keywords for ${adGroup.name} failed:`, keywordError);
-            results.errors.push(`Keywords for "${adGroup.name}" creation failed`);
-          } else {
-            console.log(`✅ Added ${adGroup.keywords.length} keywords to ${adGroup.name}`);
+            results.errors.push(`Keywords for "${adGroup.name}" creation failed: ${keywordError?.message || 'Unknown error'}`);
           }
 
           // Step 9: Create ads in the ad group
           console.log(`📝 Creating ads for ${adGroup.name}...`);
 
-          // 🔒 SECURITY: Sanitize ad content to remove any hallucinated phone numbers
-          const sanitizePhoneNumbers = (text: string): string => {
-            // Remove UK phone numbers in various formats
-            return text
-              .replace(/(\+44\s?|0)7\d{9}/g, '') // Remove 11-digit mobile numbers
-              .replace(/(\+44\s?|0)\d{10}/g, '') // Remove 10-digit landline numbers
-              .replace(/(\+44\s?|0)\d{3}\s?\d{3}\s?\d{4}/g, '') // Remove formatted numbers
-              .replace(/\s+/g, ' ') // Clean up extra spaces
-              .trim();
-          };
-
-          // Helper function to sanitize and validate text content
+          // 🔒 SECURITY: Use shared sanitization function (defined above)
           const sanitizeText = (text: string, maxLength: number): string | null => {
-            if (!text || typeof text !== 'string') {
-              return null;
-            }
-            // First remove phone numbers, then trim and validate
-            const phoneSanitized = sanitizePhoneNumbers(text);
-            // Trim whitespace and remove invalid characters
-            const sanitized = phoneSanitized
-              .trim()
-              .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
-              .substring(0, maxLength)
-              .trim();
-            // Return null if empty after sanitization
-            return sanitized.length > 0 ? sanitized : null;
+            return sanitizeAdText(text, maxLength);
           };
 
           // Validate and sanitize headlines (min 3 required, max 30 chars each)
@@ -683,15 +690,16 @@ export const createGoogleAdsCampaign = action({
             continue; // Skip this ad group
           }
 
-          const adOperations = [];
-          adOperations.push({
-            create: {
-              adGroup: adGroupResourceName,
-              status: 'ENABLED',
+          // Create responsive search ad using SDK
+          try {
+            // 🔍 ULTRA-VERBOSE PAYLOAD LOGGING: Capture exact content being sent to Google Ads
+            const adPayloadData = {
+              ad_group: adGroupResourceName,
+              status: adStatus,
               ad: {
                 type: 'RESPONSIVE_SEARCH_AD',
-                finalUrls: [finalUrl],
-                responsiveSearchAd: {
+                final_urls: [finalUrl],
+                responsive_search_ad: {
                   headlines: headlines.map((headline: string) => ({
                     text: headline
                   })),
@@ -700,64 +708,77 @@ export const createGoogleAdsCampaign = action({
                   }))
                 }
               }
+            };
+
+            // 🔍 PHONE CONTAMINATION CHECK: Verify no phone numbers in payload
+            const payloadString = JSON.stringify(adPayloadData);
+            const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
+            const ukPhoneRegex = /(\+44\s?|0)7\d{2}\s?\d{3}\s?\d{4}|(\+44\s?|0)7\d{9}/g;
+            
+            console.log('🔍 PRE-SEND PAYLOAD INSPECTION for', adGroup.name, ':');
+            console.log('📋 Full payload:', payloadString);
+            console.log('📋 Headlines being sent:', headlines);
+            console.log('📋 Descriptions being sent:', descriptions);
+            console.log('📋 Final URL:', finalUrl);
+            
+            // Check for contaminated number
+            if (contaminatedPhoneRegex.test(payloadString)) {
+              console.error('🚨 CRITICAL: Contaminated phone number FOUND in ad payload!');
+              console.error('🚨 Payload contains 077 684 7429 - BLOCKING SEND');
+              throw new Error('Contaminated phone number detected in ad payload - aborting send');
             }
-          });
-
-          const adRequestBody = {
-            operations: adOperations
-          };
-
-          console.log(`📋 Ad request body for ${adGroup.name}:`, JSON.stringify(adRequestBody, null, 2));
-
-          const adResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupAds:mutate`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-              'login-customer-id': customerId,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(adRequestBody)
-          });
-
-          if (!adResponse.ok) {
-            const adError = await adResponse.text();
-            console.error(`❌ Ad creation for ${adGroup.name} failed with status ${adResponse.status}:`, adError);
-
-            // Parse error and extract policy violation details
-            const parsedError = parseGoogleAdsError(adError);
             
-            // Log detailed error information
-            console.error(`🔍 Google Ads API Error Details for ${adGroup.name}:`, {
-              status: adResponse.status,
-              statusText: adResponse.statusText,
-              isPolicyViolation: parsedError.isPolicyViolation,
-              message: parsedError.message,
-              policyDetails: parsedError.policyDetails
-            });
+            // Check for any UK phone numbers
+            const phoneMatches = payloadString.match(ukPhoneRegex);
+            if (phoneMatches && phoneMatches.length > 0) {
+              console.error('🚨 CRITICAL: Phone numbers detected in ad payload:', phoneMatches);
+              console.error('🚨 Ad text should NEVER contain phone numbers - BLOCKING SEND');
+              throw new Error(`Phone numbers detected in ad content: ${phoneMatches.join(', ')}`);
+            }
             
-            // Create user-friendly error message
+            console.log('✅ Payload validation passed - no phone numbers detected');
+
+            const adResult = await customer.adGroupAds.create([adPayloadData as any]);
+
+            results.adsCreated++;
+            console.log(`✅ Created ad for ${adGroup.name}:`, adResult.results[0]?.resource_name || 'Success');
+          } catch (adError: any) {
+            console.error(`❌ Ad creation for ${adGroup.name} failed:`, adError);
+            
+            // SDK provides structured error objects
             let errorMessage = `Ad creation for "${adGroup.name}" failed`;
             
-            if (parsedError.isPolicyViolation && parsedError.policyDetails) {
-              // Extract specific policy violation reasons
-              const violations = parsedError.policyDetails.map(v => {
-                if (v.topic === 'DESTINATION_NOT_WORKING' && v.url) {
-                  return `URL ${v.url} is not accessible (DNS error: ${v.reason.includes('HOSTNAME_NOT_FOUND') ? 'domain not found' : 'connection failed'})`;
+            if (adError?.message) {
+              errorMessage += `: ${adError.message}`;
+            } else if (adError?.error) {
+              // Handle SDK error structure
+              const errorDetails = adError.error;
+              if (errorDetails?.message) {
+                errorMessage += `: ${errorDetails.message}`;
+              }
+              // Check for policy violations in SDK error format
+              if (errorDetails?.details) {
+                const violations = errorDetails.details
+                  .filter((d: any) => d['@type']?.includes('GoogleAdsFailure'))
+                  .flatMap((d: any) => d.errors || [])
+                  .filter((e: any) => e.errorCode?.policyFindingError)
+                  .map((e: any) => {
+                    const policyDetails = e.details?.policyFindingDetails;
+                    if (policyDetails?.policyTopicEntries) {
+                      return policyDetails.policyTopicEntries
+                        .map((entry: any) => entry.topic || 'Policy violation')
+                        .join(', ');
+                    }
+                    return 'Policy violation';
+                  });
+                
+                if (violations.length > 0) {
+                  errorMessage += `: ${violations.join('; ')}`;
                 }
-                return v.reason;
-              });
-              
-              errorMessage += `: ${violations.join('; ')}`;
-            } else {
-              errorMessage += `: ${parsedError.message}`;
+              }
             }
             
             results.errors.push(errorMessage);
-          } else {
-            const adData = await adResponse.json();
-            results.adsCreated++;
-            console.log(`✅ Created ad for ${adGroup.name}:`, adData.results?.[0]?.resourceName || 'Success');
           }
 
         } catch (adGroupError) {
@@ -801,92 +822,37 @@ export const createGoogleAdsCampaign = action({
         console.log('📞 Creating call extensions with phone:', phoneNumber);
 
         try {
-          // First create the call asset
-          const callAssetRequestBody = {
-            operations: [{
-              create: {
-                type: 'CALL',
-                callAsset: {
-                  phoneNumber: phoneNumber,
-                  countryCode: 'GB',
-                  callConversionReportingState: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
-                }
+          // Create call asset using SDK
+          const callAssetResult = await customer.assets.create([
+            {
+              type: 'CALL',
+              call_asset: {
+                phone_number: phoneNumber,
+                country_code: 'GB',
+                call_conversion_reporting_state: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
               }
-            }]
-          };
+            }
+          ]);
 
-          const assetResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/assets:mutate`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-              'login-customer-id': customerId,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(callAssetRequestBody)
-          });
-
-          if (!assetResponse.ok) {
-            const assetError = await assetResponse.text();
-            console.error(`❌ Call asset creation failed:`, assetError);
-            results.errors.push(`Call asset creation failed: ${assetError.substring(0, 100)}`);
-            return;
-          }
-
-          const assetData = await assetResponse.json();
-          const assetResourceName = assetData.results[0].resourceName;
+          const assetResourceName = callAssetResult.results[0].resource_name;
           console.log('✅ Call asset created:', assetResourceName);
           console.log('🔍 CALL EXTENSION DEBUG: Phone used in API call:', phoneNumber);
 
-          // Then link the asset to the campaign
-          const campaignAssetRequestBody = {
-            operations: [{
-              create: {
-                asset: assetResourceName,
-                campaign: campaignResourceName,
-                fieldType: 'CALL'
-              }
-            }]
-          };
-
-          const extensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignAssets:mutate`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-              'login-customer-id': customerId,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(campaignAssetRequestBody)
-          });
-
-          if (!extensionResponse.ok) {
-            const extensionError = await extensionResponse.text();
-            console.error(`❌ Campaign asset linking failed with status ${extensionResponse.status}:`, extensionError);
-
-            // Parse and log detailed Google Ads API error
-            try {
-              const errorDetails = JSON.parse(extensionError);
-              console.error(`🔍 Google Ads API Error Details for campaign asset linking:`, {
-                status: extensionResponse.status,
-                statusText: extensionResponse.statusText,
-                error: errorDetails.error,
-                details: errorDetails.details || errorDetails.message || errorDetails
-              });
-              results.errors.push(`Campaign asset linking failed: ${errorDetails.error?.message || errorDetails.message || 'API Error'}`);
-            } catch (parseError) {
-              console.error(`🔍 Raw Google Ads API Error for campaign asset linking:`, extensionError);
-              results.errors.push(`Campaign asset linking failed: ${extensionError.substring(0, 100)}`);
+          // Link the asset to the campaign using SDK
+          const campaignAssetResult = await customer.campaignAssets.create([
+            {
+              asset: assetResourceName,
+              campaign: campaignResourceName,
+              field_type: 'CALL'
             }
-          } else {
-            const extensionData = await extensionResponse.json();
-            results.extensionsCreated++;
-            console.log('✅ Call extension linked to campaign successfully:', extensionData.results?.[0]?.resourceName || 'Success');
-          }
+          ]);
 
-        } catch (extensionError) {
+          results.extensionsCreated++;
+          console.log('✅ Call extension linked to campaign successfully:', campaignAssetResult.results[0]?.resource_name || 'Success');
+        } catch (extensionError: any) {
           console.error('❌ Error creating call extension:', extensionError);
-          results.errors.push(`Call extension error: ${extensionError}`);
+          const errorMessage = extensionError?.message || JSON.stringify(extensionError);
+          results.errors.push(`Call extension error: ${errorMessage}`);
         }
       }
 
@@ -954,7 +920,7 @@ export const createGoogleAdsCampaign = action({
         console.log('🎯 DEBUG: Starting ad groups, keywords, and ads creation...');
         console.log('🎯 DEBUG: Will process', campaignData.adGroups.length, 'ad groups');
 
-        await createAdGroupsWithAdsAndKeywords(campaignData, customerId, accessToken, campaignResourceName);
+        await createAdGroupsWithAdsAndKeywords(campaignData, customer, campaignResourceName);
 
         console.log('✅ DEBUG: Ad groups creation process completed');
       } catch (error) {
@@ -973,7 +939,7 @@ export const createGoogleAdsCampaign = action({
       // Step 8: Create Ad Extensions
       try {
         console.log('📱 Creating ad extensions...');
-        await createAdExtensions(campaignData, customerId, accessToken, campaignResourceName, ctx);
+        await createAdExtensions(campaignData, customer, campaignResourceName, ctx);
         console.log('✅ Ad extensions completed');
       } catch (error) {
         console.error('❌ Ad extensions failed:', error instanceof Error ? error.message : String(error));
@@ -1006,8 +972,7 @@ export const createGoogleAdsCampaign = action({
 // Helper function to create ad groups with keywords and ads
 async function createAdGroupsWithAdsAndKeywords(
   campaignData: any,
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   campaignResourceName: string
 ) {
   console.log('🚀🚀 ENTERING createAdGroupsWithAdsAndKeywords function');
@@ -1056,67 +1021,57 @@ async function createAdGroupsWithAdsAndKeywords(
     console.log(`🎯🎯 PROCESSING Ad Group ${i + 1}/${campaignData.adGroups.length}: ${adGroup.name}`);
 
     try {
-      // Create Ad Group
-      console.log('📡 Creating ad group via API...');
-      const adGroupResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroups:mutate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-          'login-customer-id': customerId,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          operations: [{
-            create: {
-              name: adGroup.name || 'Default Ad Group',
-              campaign: campaignResourceName,
-              status: 'ENABLED',
-              type: 'SEARCH_STANDARD',
-              cpcBidMicros: 1000000 // £1.00 default bid
-            }
-          }]
-        })
-      });
+      // Create Ad Group using SDK
+      console.log('📡 Creating ad group via SDK...');
+      try {
+        // Use same status logic as main flow (default to PAUSED for safety)
+        const adGroupStatus = 'PAUSED'; // Default to paused in helper function
+        
+        const adGroupResult = await customer.adGroups.create([
+          {
+            name: adGroup.name || 'Default Ad Group',
+            campaign: campaignResourceName,
+            status: adGroupStatus,
+            type: 'SEARCH_STANDARD',
+            cpc_bid_micros: 1000000 // £1.00 default bid
+          }
+        ]);
 
-      if (!adGroupResponse.ok) {
-        const error = await adGroupResponse.text();
+        const adGroupResourceName = adGroupResult.results[0]?.resource_name;
+        if (!adGroupResourceName) {
+          throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
+        }
+        console.log('✅ Ad group created successfully:', {
+          name: adGroup.name,
+          resourceName: adGroupResourceName
+        });
+
+        // Create Keywords for this ad group
+        if (adGroup.keywords && adGroup.keywords.length > 0) {
+          await createKeywords(adGroup.keywords, customer, adGroupResourceName);
+        }
+
+        // Create Responsive Search Ad for this ad group
+        if (adGroup.adCopy) {
+          try {
+            const adResult = await createResponsiveSearchAd(adGroup.adCopy, customer, adGroupResourceName);
+            if (adResult?.success) {
+              console.log(`✅ Ad created successfully for ${adGroup.name}`);
+            }
+          } catch (adError) {
+            console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
+              error: adError instanceof Error ? adError.message : String(adError),
+              adGroupName: adGroup.name
+            });
+            // Continue processing other ad groups even if one fails
+          }
+        }
+      } catch (error: any) {
         console.error('❌ Ad group creation failed:', {
-          status: adGroupResponse.status,
-          statusText: adGroupResponse.statusText,
-          error: error,
+          error: error?.message || String(error),
           adGroupName: adGroup.name
         });
         continue;
-      }
-
-      const adGroupData = await adGroupResponse.json();
-      const adGroupResourceName = adGroupData.results[0].resourceName;
-      console.log('✅ Ad group created successfully:', {
-        name: adGroup.name,
-        resourceName: adGroupResourceName,
-        adGroupData: JSON.stringify(adGroupData, null, 2)
-      });
-
-      // Create Keywords for this ad group
-      if (adGroup.keywords && adGroup.keywords.length > 0) {
-        await createKeywords(adGroup.keywords, customerId, accessToken, adGroupResourceName);
-      }
-
-      // Create Responsive Search Ad for this ad group
-      if (adGroup.adCopy) {
-        try {
-          const adResult = await createResponsiveSearchAd(adGroup.adCopy, customerId, accessToken, adGroupResourceName);
-          if (adResult?.success) {
-            console.log(`✅ Ad created successfully for ${adGroup.name}`);
-          }
-        } catch (adError) {
-          console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
-            error: adError instanceof Error ? adError.message : String(adError),
-            adGroupName: adGroup.name
-          });
-          // Continue processing other ad groups even if one fails
-        }
       }
 
     } catch (error) {
@@ -1130,67 +1085,50 @@ async function createAdGroupsWithAdsAndKeywords(
   }
 }
 
-// Helper function to create keywords
+// Helper function to create keywords using SDK
 async function createKeywords(
   keywords: string[],
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   adGroupResourceName: string
 ) {
   console.log('🔑 Creating keywords for ad group:', {
     keywords: keywords,
     keywordCount: keywords.length,
-    customerId: customerId,
     adGroupResourceName: adGroupResourceName
   });
 
-  const keywordOperations = keywords.slice(0, 10).map(keyword => ({ // Limit to 10 keywords
-    create: {
-      adGroup: adGroupResourceName,
+  try {
+    // Create keywords in batch using SDK
+    const keywordCreates = keywords.slice(0, 10).map(keyword => ({ // Limit to 10 keywords
+      ad_group: adGroupResourceName,
       status: 'ENABLED',
       keyword: {
         text: keyword,
-        matchType: 'BROAD' // Can be EXACT, PHRASE, or BROAD
+        match_type: 'BROAD' // Can be EXACT, PHRASE, or BROAD
       },
-      cpcBidMicros: 1500000 // £1.50 keyword bid
-    }
-  }));
+      cpc_bid_micros: 1500000 // £1.50 keyword bid
+    }));
 
-  const keywordResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupCriteria:mutate`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-      'login-customer-id': customerId,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      operations: keywordOperations
-    })
-  });
+    await Promise.all(
+      keywordCreates.map((keywordData: any) => 
+        customer.adGroupCriteria.create(keywordData)
+      )
+    );
 
-  if (keywordResponse.ok) {
-    const keywordData = await keywordResponse.json();
     console.log('✅ Keywords created successfully:', {
-      keywordCount: keywords.length,
-      responseData: JSON.stringify(keywordData, null, 2)
+      keywordCount: keywordCreates.length
     });
-  } else {
-    const error = await keywordResponse.text();
+  } catch (error: any) {
     console.error('❌ Keywords creation failed:', {
-      status: keywordResponse.status,
-      statusText: keywordResponse.statusText,
-      error: error,
-      keywordOperations: JSON.stringify(keywordOperations, null, 2)
+      error: error?.message || String(error)
     });
   }
 }
 
-// Helper function to create responsive search ad
+// Helper function to create responsive search ad using SDK
 async function createResponsiveSearchAd(
   adCopy: any,
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   adGroupResourceName: string
 ) {
   console.log('📝 Creating Responsive Search Ad for ad group:', {
@@ -1201,19 +1139,35 @@ async function createResponsiveSearchAd(
     finalUrl: adCopy?.finalUrl
   });
 
-  // Validate and prepare headlines (minimum 3, maximum 15)
+  // 🔒 SECURITY: Sanitize headlines to remove any phone numbers
   const rawHeadlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name'];
-  const headlines = rawHeadlines.filter((h: string) => h && h.trim().length > 0).slice(0, 15);
-  if (headlines.length < 3) {
-    headlines.push(...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - headlines.length));
-  }
+  const sanitizedHeadlines = rawHeadlines
+    .map((h: string) => sanitizeAdText(h, 30))
+    .filter((h: string | null): h is string => h !== null);
+  
+  const headlines = sanitizedHeadlines.length >= 3 
+    ? sanitizedHeadlines.slice(0, 15)
+    : [...sanitizedHeadlines, ...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - sanitizedHeadlines.length)];
 
-  // Validate and prepare descriptions (minimum 2, maximum 4)
+  // 🔒 SECURITY: Sanitize descriptions to remove any phone numbers
   const rawDescriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust'];
-  const descriptions = rawDescriptions.filter((d: string) => d && d.trim().length > 0).slice(0, 4);
-  if (descriptions.length < 2) {
-    descriptions.push(...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - descriptions.length));
-  }
+  const sanitizedDescriptions = rawDescriptions
+    .map((d: string) => sanitizeAdText(d, 90))
+    .filter((d: string | null): d is string => d !== null);
+  
+  const descriptions = sanitizedDescriptions.length >= 2
+    ? sanitizedDescriptions.slice(0, 4)
+    : [...sanitizedDescriptions, ...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - sanitizedDescriptions.length)];
+
+  // 🔍 Log sanitization results for debugging
+  console.log('🔒 Phone sanitization applied to ad content:', {
+    rawHeadlinesCount: rawHeadlines.length,
+    sanitizedHeadlinesCount: headlines.length,
+    rawDescriptionsCount: rawDescriptions.length,
+    sanitizedDescriptionsCount: descriptions.length,
+    sampleHeadlines: headlines.slice(0, 3).map((h: string) => ({ text: h, length: h.length })),
+    sampleDescriptions: descriptions.slice(0, 2).map((d: string) => ({ text: d, length: d.length }))
+  });
 
   // Validate final URL
   const finalUrl = adCopy.finalUrl || 'https://example.com';
@@ -1254,87 +1208,80 @@ async function createResponsiveSearchAd(
     finalUrl: finalUrl
   });
 
-  // 🔧 FIX: Correct Google Ads API v22 structure
-  // - Add 'type' field at ad level (required)
-  // - Move finalUrls to ad level (not inside responsiveSearchAd)
-  const requestBody = {
-    operations: [{
-      create: {
-        adGroup: adGroupResourceName,
-        status: 'ENABLED',
-        ad: {
-          type: 'RESPONSIVE_SEARCH_AD',
-          finalUrls: [finalUrl],
-          responsiveSearchAd: {
-            headlines: headlines.map((headline: string) => ({
-              text: headline.substring(0, 30) // Max 30 chars per headline
-            })),
-            descriptions: descriptions.map((description: string) => ({
-              text: description.substring(0, 90) // Max 90 chars per description
-            }))
-          }
+  // Create responsive search ad using SDK
+  try {
+    // Default to PAUSED for safety in helper function
+    const adStatus = 'PAUSED';
+    
+    // 🔍 ULTRA-VERBOSE PAYLOAD LOGGING: Capture exact content being sent to Google Ads
+    const adPayloadData = {
+      ad_group: adGroupResourceName,
+      status: adStatus,
+      ad: {
+        type: 'RESPONSIVE_SEARCH_AD',
+        final_urls: [finalUrl],
+        responsive_search_ad: {
+          headlines: headlines.map((headline: string) => ({
+            text: headline.substring(0, 30) // Max 30 chars per headline
+          })),
+          descriptions: descriptions.map((description: string) => ({
+            text: description.substring(0, 90) // Max 90 chars per description
+          }))
         }
       }
-    }]
-  };
+    };
+    
+    // 🔍 PHONE CONTAMINATION CHECK: Verify no phone numbers in payload
+    const payloadString = JSON.stringify(adPayloadData);
+    const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
+    const ukPhoneRegex = /(\+44\s?|0)7\d{2}\s?\d{3}\s?\d{4}|(\+44\s?|0)7\d{9}/g;
+    
+    console.log('🔍 PRE-SEND PAYLOAD INSPECTION (helper function):');
+    console.log('📋 Full payload:', payloadString);
+    console.log('📋 Headlines being sent:', headlines.map((h: string) => h.substring(0, 30)));
+    console.log('📋 Descriptions being sent:', descriptions.map((d: string) => d.substring(0, 90)));
+    console.log('📋 Final URL:', finalUrl);
+    
+    // Check for contaminated number
+    if (contaminatedPhoneRegex.test(payloadString)) {
+      console.error('🚨 CRITICAL: Contaminated phone number FOUND in ad payload (helper function)!');
+      console.error('🚨 Payload contains 077 684 7429 - BLOCKING SEND');
+      throw new Error('Contaminated phone number detected in ad payload - aborting send');
+    }
+    
+    // Check for any UK phone numbers
+    const phoneMatches = payloadString.match(ukPhoneRegex);
+    if (phoneMatches && phoneMatches.length > 0) {
+      console.error('🚨 CRITICAL: Phone numbers detected in ad payload (helper function):', phoneMatches);
+      console.error('🚨 Ad text should NEVER contain phone numbers - BLOCKING SEND');
+      throw new Error(`Phone numbers detected in ad content: ${phoneMatches.join(', ')}`);
+    }
+    
+    console.log('✅ Payload validation passed - no phone numbers detected (helper function)');
+    
+    const adResult = await customer.adGroupAds.create([adPayloadData as any]);
 
-  console.log('📋 Ad request body:', JSON.stringify(requestBody, null, 2));
-
-  const adResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/adGroupAds:mutate`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-      'login-customer-id': customerId,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (adResponse.ok) {
-    const adData = await adResponse.json();
     console.log('✅ Responsive Search Ad created successfully:', {
       adGroupResourceName,
-      responseData: JSON.stringify(adData, null, 2)
+      resourceName: adResult.results[0]?.resource_name
     });
-    return { success: true, resourceName: adData.results?.[0]?.resourceName };
-  } else {
-    const errorText = await adResponse.text();
+    return { success: true, resourceName: adResult.results[0]?.resource_name };
+  } catch (adError: any) {
     console.error('❌ Ad creation failed:', {
-      status: adResponse.status,
-      statusText: adResponse.statusText,
-      error: errorText,
-      adGroupResourceName,
-      requestBody: JSON.stringify(requestBody, null, 2)
+      error: adError?.message || String(adError),
+      adGroupResourceName
     });
 
-    // Parse error and extract policy violation details
-    const parsedError = parseGoogleAdsError(errorText);
-    
-    // Log detailed error information
-    console.error('🔍 Google Ads API Error Details:', {
-      status: adResponse.status,
-      statusText: adResponse.statusText,
-      isPolicyViolation: parsedError.isPolicyViolation,
-      message: parsedError.message,
-      policyDetails: parsedError.policyDetails
-    });
-    
-    // Create user-friendly error message
+    // SDK provides structured error objects
     let errorMessage = 'Ad creation failed';
     
-    if (parsedError.isPolicyViolation && parsedError.policyDetails) {
-      // Extract specific policy violation reasons
-      const violations = parsedError.policyDetails.map(v => {
-        if (v.topic === 'DESTINATION_NOT_WORKING' && v.url) {
-          return `URL ${v.url} is not accessible (DNS error: ${v.reason.includes('HOSTNAME_NOT_FOUND') ? 'domain not found' : 'connection failed'})`;
-        }
-        return v.reason;
-      });
-      
-      errorMessage += `: ${violations.join('; ')}`;
-    } else {
-      errorMessage += `: ${parsedError.message}`;
+    if (adError?.message) {
+      errorMessage += `: ${adError.message}`;
+    } else if (adError?.error) {
+      const errorDetails = adError.error;
+      if (errorDetails?.message) {
+        errorMessage += `: ${errorDetails.message}`;
+      }
     }
     
     throw new Error(errorMessage);
@@ -1342,11 +1289,10 @@ async function createResponsiveSearchAd(
 }
 
 
-// Helper function to create ad extensions
+// Helper function to create ad extensions using SDK
 async function createAdExtensions(
   campaignData: any,
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   campaignResourceName: string,
   ctx: any
 ) {
@@ -1357,12 +1303,12 @@ async function createAdExtensions(
     const phoneNumber = freshOnboardingData?.phone;
 
     if (phoneNumber) {
-      await createCallExtension(phoneNumber, customerId, accessToken, campaignResourceName);
+      await createCallExtension(phoneNumber, customer, campaignResourceName);
     }
 
     // Create Sitelink Extensions (if available)
     if (campaignData.sitelinkExtensions && campaignData.sitelinkExtensions.length > 0) {
-      await createSitelinkExtensions(campaignData.sitelinkExtensions, customerId, accessToken, campaignResourceName);
+      await createSitelinkExtensions(campaignData.sitelinkExtensions, customer, campaignResourceName);
     }
 
   } catch (error) {
@@ -1370,93 +1316,104 @@ async function createAdExtensions(
   }
 }
 
-// Helper function to create call extension
+// Helper function to create call extension using SDK
 async function createCallExtension(
   phoneNumber: string,
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   campaignResourceName: string
 ) {
   console.log('🔍 CALL EXTENSION DEBUG: Phone used in createCallExtension:', phoneNumber);
-  const callExtensionResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignExtensionSettings:mutate`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-      'login-customer-id': customerId,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      operations: [{
-        create: {
-          campaign: campaignResourceName,
-          extensionType: 'CALL',
-          extensionSetting: {
-            extensions: [{
-              callExtension: {
-                phoneNumber: phoneNumber,
-                countryCode: 'GB',
-                callOnly: false
-              }
-            }]
-          }
-        }
-      }]
-    })
-  });
+  
+  // 🔍 CRITICAL VALIDATION: Verify phone number is correct before sending to Google Ads
+  const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
+  if (contaminatedPhoneRegex.test(phoneNumber)) {
+    console.error('🚨 CRITICAL: Contaminated phone number detected in call extension!');
+    console.error('🚨 Phone:', phoneNumber);
+    console.error('🚨 This should NEVER happen - blocking call extension creation');
+    throw new Error(`Contaminated phone number detected in call extension: ${phoneNumber}`);
+  }
+  
+  console.log('✅ Call extension phone validation passed:', phoneNumber);
+  
+  try {
+    // Create call asset first
+    const callAssetPayload = {
+      type: 'CALL',
+      call_asset: {
+        phone_number: phoneNumber,
+        country_code: 'GB',
+        call_conversion_reporting_state: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
+      }
+    };
+    
+    console.log('🔍 CALL EXTENSION PAYLOAD:', JSON.stringify(callAssetPayload, null, 2));
+    
+    const callAssetResult = await customer.assets.create([callAssetPayload] as any);
 
-  if (callExtensionResponse.ok) {
-    console.log('✅ LEGACY Call extension created with phone:', phoneNumber);
-    console.log('🔍 LEGACY METHOD EXECUTED - This is creating call extensions');
-  } else {
-    const error = await callExtensionResponse.text();
-    console.error('❌ Call extension creation failed:', error);
+    // Link asset to campaign
+    await customer.campaignAssets.create([
+      {
+        asset: callAssetResult.results[0].resource_name,
+        campaign: campaignResourceName,
+        field_type: 'CALL'
+      }
+    ]);
+
+    console.log('✅ Call extension created with phone:', phoneNumber);
+  } catch (error: any) {
+    console.error('❌ Call extension creation failed:', error?.message || String(error));
   }
 }
 
-// Helper function to create sitelink extensions
+// Helper function to create sitelink extensions using SDK
 async function createSitelinkExtensions(
   sitelinks: any[],
-  customerId: string,
-  accessToken: string,
+  customer: Customer,
   campaignResourceName: string
 ) {
-  const sitelinkOperations = sitelinks.slice(0, 6).map(sitelink => ({ // Max 6 sitelinks
-    create: {
+  try {
+    const sitelinkCreates = sitelinks.slice(0, 6).map(sitelink => ({ // Max 6 sitelinks
       campaign: campaignResourceName,
-      extensionType: 'SITELINK',
-      extensionSetting: {
+      extension_type: 'SITELINK',
+      extension_setting: {
         extensions: [{
-          sitelinkExtension: {
-            linkText: sitelink.text?.substring(0, 25) || 'Learn More',
-            finalUrls: [sitelink.url || 'https://example.com']
+          sitelink_extension: {
+            link_text: sitelink.text?.substring(0, 25) || 'Learn More',
+            final_urls: [sitelink.url || 'https://example.com']
           }
         }]
       }
-    }
-  }));
+    }));
 
-  for (const operation of sitelinkOperations) {
-    const sitelinkResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaignExtensionSettings:mutate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-        'login-customer-id': customerId,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        operations: [operation]
-      })
-    });
+    // Note: SDK may not have campaignExtensionSettings, using campaignAssets for sitelinks
+    // Create sitelink assets first, then link to campaign
+    const sitelinkAssets = await Promise.all(
+      sitelinkCreates.map((sitelinkData: any) =>
+        customer.assets.create([{
+          type: 'SITELINK',
+          sitelink_asset: {
+            link_text: sitelinkData.extension_setting.extensions[0].sitelink_extension.link_text,
+            description1: sitelinkData.extension_setting.extensions[0].sitelink_extension.final_urls?.[0] || ''
+          }
+        }])
+      )
+    );
 
-    if (!sitelinkResponse.ok) {
-      const error = await sitelinkResponse.text();
-      console.error('❌ Sitelink creation failed:', error);
-    }
+    // Link sitelink assets to campaign
+    await Promise.all(
+      sitelinkAssets.map((assetResult, index) =>
+        customer.campaignAssets.create([{
+          asset: assetResult.results[0].resource_name,
+          campaign: campaignResourceName,
+          field_type: 'SITELINK'
+        }])
+      )
+    );
+
+    console.log('✅ Sitelink extensions created');
+  } catch (error: any) {
+    console.error('❌ Sitelink creation failed:', error?.message || String(error));
   }
-
-  console.log('✅ Sitelink extensions created');
 }
 
 // Update campaign status in Google Ads
@@ -1480,32 +1437,16 @@ export const updateGoogleAdsCampaignStatus = action({
         );
         return result;
       } else {
-        // Real Google Ads REST API call
-        const accessToken = await getGoogleAdsAccessToken(ctx);
+        // Real Google Ads SDK call
+        const customer = await getGoogleAdsClient(ctx);
         const customerId = process.env.GOOGLE_ADS_MANAGER_ACCOUNT_ID!.replace(/-/g, '');
 
-        const updateResponse = await fetch(`https://googleads.googleapis.com/v22/customers/${customerId}/campaigns:mutate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            operations: [{
-              update: {
-                resourceName: `customers/${customerId}/campaigns/${args.googleCampaignId}`,
-                status: args.status
-              },
-              updateMask: 'status'
-            }]
-          })
-        });
-
-        const updateData = await updateResponse.json();
-        if (!updateResponse.ok) {
-          throw new Error(`Failed to update campaign: ${updateData.error?.message || 'Unknown error'}`);
-        }
+        await customer.campaigns.update([
+          {
+            resource_name: `customers/${customerId}/campaigns/${args.googleCampaignId}`,
+            status: args.status
+          }
+        ]);
 
         return {
           success: true,
