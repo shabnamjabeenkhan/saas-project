@@ -156,121 +156,165 @@ export function CampaignHeaderControls({
   };
 
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          Your Campaign Preview
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          AI-generated Google Ads campaign based on your business information
-        </p>
+    <div className="mb-6">
+      {/* Main Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            Your Campaign Preview
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            AI-generated Google Ads campaign based on your business information
+          </p>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {campaign && (
-          <>
-            {/* Compliance Reminder */}
-            <div className="text-xs text-gray-400 text-right">
-              <span>Reminder: You are responsible for the accuracy of all claims. See </span>
-              <a
-                href="/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                Terms
-              </a>
-              <span>.</span>
-            </div>
+      {/* Sticky Campaign Controls */}
+      <div className="sticky top-0 z-10 bg-black/95 backdrop-blur-sm border-b border-gray-800 -mx-6 px-6 py-4 mb-6">
+        <div className="max-w-7xl mx-auto">
+          {campaign && (
+            <>
+              {/* Compliance Reminder */}
+              <div className="rounded-lg p-3 mb-4" style={{backgroundColor: "#1a1a2e", border: "1px solid rgba(59, 130, 246, 0.2)"}}>
+                <div className="text-xs text-gray-300 text-center">
+                  <span>Reminder: You are responsible for the accuracy of all claims. See </span>
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 underline font-medium"
+                  >
+                    Terms
+                  </a>
+                  <span>.</span>
+                </div>
+              </div>
 
-            <div className="flex gap-2">
-              {isGoogleAdsConnected ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePushToGoogleAds}
-                    disabled={isProcessing}
-                    className="text-white border-gray-700 hover:bg-gray-800"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Zap className="w-4 h-4 mr-2" />
-                    )}
-                    {isProcessing ? "Pushing..." : "Push to Google Ads"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportCampaign}
-                    className="text-white border-gray-700 hover:bg-gray-800"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export JSON
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={disconnectGoogleAds}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                  >
-                    Disconnect
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={connectGoogleAds}
-                  disabled={isConnecting}
-                  className="text-white border-gray-700 hover:bg-gray-800"
-                >
-                  {isConnecting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              {/* Controls Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                {/* Google Ads Connection */}
+                <div className="flex justify-center md:justify-start">
+                  {isGoogleAdsConnected ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePushToGoogleAds}
+                        disabled={isProcessing}
+                        className="text-white border-gray-700 hover:bg-gray-800"
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        {isProcessing ? "Pushing..." : "Push to Google Ads"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportCampaign}
+                        className="text-white border-gray-700 hover:bg-gray-800"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export JSON
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={disconnectGoogleAds}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
                   ) : (
-                    <Link className="w-4 h-4 mr-2" />
+                    <Button
+                      variant="outline"
+                      size="default"
+                      onClick={connectGoogleAds}
+                      disabled={isConnecting}
+                      className="bg-gradient-to-r from-gray-800 to-gray-700 text-white border-gray-600 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg px-6 py-3 text-sm font-medium"
+                    >
+                      {isConnecting ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Link className="w-4 h-4 mr-2" />
+                      )}
+                      {isConnecting ? "Connecting..." : "Connect Google Ads"}
+                    </Button>
                   )}
-                  {isConnecting ? "Connecting..." : "Connect Google Ads"}
-                </Button>
-              )}
-            </div>
-          </>
-        )}
+                </div>
 
-        {/* Regeneration limit indicator */}
-        {regenerationLimits && campaign && (
-          <div className="text-xs text-gray-400 text-right mb-1">
-            {regenerationLimits.testing ? (
-              <span className="text-green-400">Testing mode - unlimited regenerations</span>
-            ) : regenerationLimits.allowed ? (
-              <span>{regenerationLimits.remaining}/10 regenerations remaining this month</span>
-            ) : (
-              <span className="text-orange-400 flex items-center justify-end gap-1">
-                <Clock className="w-3 h-3" />
-                {(regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed'}
-              </span>
-            )}
-          </div>
-        )}
+                {/* Regeneration Status */}
+                <div className="flex justify-center">
+                  {regenerationLimits && (
+                    <div>
+                      {regenerationLimits.testing ? (
+                        <div className="rounded-full px-4 py-2 text-xs font-medium text-center" style={{backgroundColor: "#0f2419", border: "1px solid #22c55e", color: "#22c55e"}}>
+                          Testing mode - unlimited regenerations
+                        </div>
+                      ) : regenerationLimits.allowed ? (
+                        <div className="text-xs text-gray-400 text-center py-1">
+                          {regenerationLimits.remaining}/10 regenerations remaining this month
+                        </div>
+                      ) : (
+                        <div className="rounded-full px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-1" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b", color: "#f59e0b"}}>
+                          <Clock className="w-3 h-3" />
+                          {(regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-        <Button
-          onClick={handleGenerateCampaign}
-          disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
-          className="bg-primary hover:bg-primary/90"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              {campaign ? 'Regenerate' : 'Generate'} Campaign
+                {/* Regenerate Button */}
+                <div className="flex justify-center md:justify-end">
+                  <Button
+                    onClick={handleGenerateCampaign}
+                    disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
+                    className="bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white border-0 shadow-xl px-6 py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        {campaign ? 'Regenerate' : 'Generate'} Campaign
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </>
           )}
-        </Button>
+
+          {/* Generate Button for when no campaign exists */}
+          {!campaign && (
+            <div className="flex justify-center">
+              <Button
+                onClick={handleGenerateCampaign}
+                disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
+                className="bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white border-0 shadow-xl px-6 py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Generate Campaign
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

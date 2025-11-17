@@ -24,12 +24,12 @@ interface CampaignQualityCheckerProps {
 }
 
 export function CampaignQualityChecker({
-  complianceChecks,
-  optimizationSuggestions,
-  seasonalRecommendations,
+  complianceChecks = [],
+  optimizationSuggestions = [],
+  seasonalRecommendations = [],
   onRegenerate,
 }: CampaignQualityCheckerProps) {
-  const [activeTab, setActiveTab] = useState<'compliance' | 'optimization' | 'seasonal'>('compliance');
+  const [activeTab, setActiveTab] = useState<'compliance' | 'optimization'>('compliance');
 
   // Calculate compliance summary
   const errors = complianceChecks.filter(c => !c.passed && c.rule.severity === 'error');
@@ -37,7 +37,7 @@ export function CampaignQualityChecker({
   const infos = complianceChecks.filter(c => !c.passed && c.rule.severity === 'info');
   const passed = complianceChecks.filter(c => c.passed);
 
-  const overallScore = Math.round((passed.length / complianceChecks.length) * 100);
+  const overallScore = complianceChecks.length > 0 ? Math.round((passed.length / complianceChecks.length) * 100) : 0;
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-400';
@@ -120,15 +120,6 @@ export function CampaignQualityChecker({
             <TrendingUp className="w-4 h-4 mr-2" />
             Optimization ({optimizationSuggestions.length})
           </Button>
-          <Button
-            variant={activeTab === 'seasonal' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveTab('seasonal')}
-            className={activeTab === 'seasonal' ? '' : 'text-white border-gray-700 hover:bg-gray-800'}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Seasonal ({seasonalRecommendations.length})
-          </Button>
         </div>
 
         {/* Content Area */}
@@ -162,26 +153,6 @@ export function CampaignQualityChecker({
             </div>
           )}
 
-          {activeTab === 'seasonal' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="w-5 h-5 text-purple-400" />
-                <h3 className="font-medium text-white">Seasonal Recommendations</h3>
-              </div>
-              {seasonalRecommendations.length > 0 ? (
-                <div className="space-y-3">
-                  {seasonalRecommendations.map((recommendation, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-[#0A0A0A] border border-gray-700 rounded-lg">
-                      <Calendar className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
-                      <p className="text-sm text-white">{recommendation}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No seasonal recommendations available.</p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Action Buttons */}

@@ -1,5 +1,4 @@
 import { SyncStatusComponent } from "~/components/dashboard/sync-status";
-import { GoogleAdsConnectionComponent } from "~/components/dashboard/google-ads-connection";
 
 export default function GoogleAdsSettings() {
   return (
@@ -9,7 +8,7 @@ export default function GoogleAdsSettings() {
         <div className="px-1">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Google Ads Settings</h1>
           <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">
-            Manage your Google Ads integration and data sync settings
+            View your Google Ads data sync status and telemetry
           </p>
         </div>
 
@@ -21,14 +20,6 @@ export default function GoogleAdsSettings() {
           <div className="overflow-x-auto">
             <SyncStatusComponent />
           </div>
-        </div>
-
-        {/* Connection Settings */}
-        <div className="bg-white/5 border border-gray-800/50 rounded-xl p-4 sm:p-6">
-          <h2 className="text-base sm:text-lg font-medium text-white mb-3 sm:mb-4">
-            Connection Settings
-          </h2>
-          <GoogleAdsConnectionComponent />
         </div>
       </div>
     </div>
