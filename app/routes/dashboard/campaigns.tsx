@@ -283,6 +283,11 @@ export default function Campaigns() {
                   'Consider adding negative keywords to reduce irrelevant clicks',
                   'Increase mobile bid adjustments for emergency services',
                 ]}
+                seasonalRecommendations={[
+                  'Winter: Emphasize emergency heating services',
+                  'Summer: Highlight cooling and maintenance services',
+                  'Spring/Autumn: Focus on seasonal system checks',
+                ]}
               />
 
               {/* Compliance Notes */}

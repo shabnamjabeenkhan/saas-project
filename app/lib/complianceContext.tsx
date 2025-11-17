@@ -98,6 +98,10 @@ export const useCompliance = (): ComplianceContextType => {
   return context;
 };
 
+export const useComplianceOptional = (): ComplianceContextType | null => {
+  return useContext(ComplianceContext);
+};
+
 // Helper hook for logging specific compliance events
 export const useComplianceLogging = () => {
   const { logComplianceEvent } = useCompliance();

@@ -6,7 +6,7 @@ export const LovableFAQSection = () => {
     {
       id: 'item-1',
       question: 'Do I need Google Ads experience to use TradeBoost AI?',
-      answer: 'Not at all! TradeBoost AI is designed for tradespeople with zero marketing experience. Our AI handles all the technical setup, keyword research, and campaign optimization. You just answer 5 simple questions about your business.',
+      answer: 'Not at all! TradeBoost AI is designed for tradespeople with zero marketing experience. Our AI handles all the technical setup, keyword research, and campaign optimization. You just answer 5 simple questions about your business. Note: You will need a Google Ads account to connect and publish your campaigns.',
     },
     {
       id: 'item-4',
@@ -16,7 +16,7 @@ export const LovableFAQSection = () => {
     {
       id: 'item-5',
       question: 'How much should I budget for Google Ads spend?',
-      answer: 'We recommend starting with £300-500/month for Google Ads spend (separate from your TradeBoost AI subscription). This typically generates 15-30 quality leads per month. You control the budget and can adjust it based on results.',
+      answer: 'We recommend starting with £100-200/month for Google Ads spend (separate from your TradeBoost AI subscription). This typically generates 15-30 quality leads per month. You control the budget and can adjust it based on results.',
     },
     {
       id: 'item-6',

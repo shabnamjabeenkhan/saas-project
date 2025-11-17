@@ -13,8 +13,10 @@ export function useGoogleAdsAuth() {
     return localStorage.getItem("mock_google_ads_connected") === "true";
   });
 
-  // Get connection status from Convex
-  const isConnectedQuery = useQuery(api.googleAds.isConnected);
+  // Get connection status from Convex - only in production mode
+  const isConnectedQuery = DEVELOPMENT_MODE 
+    ? null 
+    : useQuery(api.googleAds.isConnected);
   const disconnectMutation = useMutation(api.googleAds.disconnect);
 
   // Use Convex data for connection status, with fallback to localStorage in dev mode

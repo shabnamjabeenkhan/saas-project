@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useCompliance } from '~/lib/complianceContext';
+import { useComplianceOptional } from '~/lib/complianceContext';
 import { TermsVersionManager } from '~/lib/termsVersioning';
 import { TermsAcceptanceModal } from './TermsAcceptanceModal';
 import { useUser } from '@clerk/react-router';
@@ -13,7 +13,14 @@ interface TermsGuardProps {
 }
 
 export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) => {
-  const { userId, isAuthenticated } = useCompliance();
+  const complianceContext = useComplianceOptional();
+
+  // If compliance context is not available, just render children
+  if (!complianceContext) {
+    return <>{children}</>;
+  }
+
+  const { userId, isAuthenticated } = complianceContext;
   const { user } = useUser();
   const [needsAcceptance, setNeedsAcceptance] = useState<boolean>(false);
   const [userLastVersion, setUserLastVersion] = useState<string | null>(null);
