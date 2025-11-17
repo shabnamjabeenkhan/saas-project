@@ -136,7 +136,7 @@ export default function Campaigns() {
               </TabsTrigger>
               <TabsTrigger value="creatives" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
                 <Palette className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Creatives</span>
+                <span className="hidden sm:inline">Ad Preview</span>
                 <span className="sm:hidden">Ads</span>
               </TabsTrigger>
               <TabsTrigger value="compliance" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
@@ -230,25 +230,9 @@ export default function Campaigns() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-[#0A0A0A] border border-gray-700 rounded-lg">
-                      <h4 className="font-medium text-white mb-2">Option 1: Manual Setup</h4>
-                      <p className="text-sm text-gray-300 mb-3">
-                        Copy the campaign data and set up your Google Ads manually
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopyToClipboard(JSON.stringify(campaign, null, 2))}
-                        className="text-white border-gray-700 hover:bg-gray-800"
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy Campaign Data
-                      </Button>
-                    </div>
-
-                    <div className="p-4 bg-[#0A0A0A] border border-gray-700 rounded-lg">
-                      <h4 className="font-medium text-white mb-2">Option 2: Google Ads Integration</h4>
+                      <h4 className="font-medium text-white mb-2">Google Ads Integration</h4>
                       <p className="text-sm text-gray-300 mb-3">
                         Use the header controls above to connect your Google Ads account and push campaigns
                       </p>
@@ -298,11 +282,6 @@ export default function Campaigns() {
                   'Include "Gas Safe Registered" in headlines for gas services',
                   'Consider adding negative keywords to reduce irrelevant clicks',
                   'Increase mobile bid adjustments for emergency services',
-                ]}
-                seasonalRecommendations={[
-                  'Winter season: Emphasize emergency heating and boiler repair services',
-                  'Add "frozen pipes" and "no heating" keywords for winter peak demand',
-                  'Consider increasing budget during cold weather forecasts',
                 ]}
               />
 

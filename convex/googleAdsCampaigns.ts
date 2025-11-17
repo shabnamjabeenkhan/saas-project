@@ -565,11 +565,11 @@ export const createGoogleAdsCampaign = action({
         campaignResourceName = campaignResource;
         googleCampaignId = campaignResourceName.split('/').pop() || '';
 
-        console.log('✅ Campaign created successfully:', {
-          googleCampaignId,
-          resourceName: campaignResourceName
-        });
-        results.campaignCreated = true;
+      console.log('✅ Campaign created successfully:', {
+        googleCampaignId,
+        resourceName: campaignResourceName
+      });
+      results.campaignCreated = true;
       } catch (campaignError: any) {
         console.error('❌ Campaign creation failed:', campaignError);
         const errorMessage = campaignError?.message || JSON.stringify(campaignError);
@@ -588,10 +588,10 @@ export const createGoogleAdsCampaign = action({
           // Create ad group using SDK
           const adGroupResult = await customer.adGroups.create([
             {
-              name: adGroup.name,
-              campaign: campaignResourceName,
+                name: adGroup.name,
+                campaign: campaignResourceName,
               status: adGroupStatus,
-              type: 'SEARCH_STANDARD',
+                type: 'SEARCH_STANDARD',
               cpc_bid_micros: 1000000 // £1.00 default bid in micros
             }
           ]);
@@ -773,7 +773,7 @@ export const createGoogleAdsCampaign = action({
                   });
                 
                 if (violations.length > 0) {
-                  errorMessage += `: ${violations.join('; ')}`;
+              errorMessage += `: ${violations.join('; ')}`;
                 }
               }
             }
@@ -787,74 +787,9 @@ export const createGoogleAdsCampaign = action({
         }
       }
 
-      // Step 10: Create call extensions
-      // 🔧 FIX: Get phone from fresh onboarding data instead of stale campaign data
-      const freshOnboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
-      const phoneNumber = freshOnboardingData?.phone;
-
-      if (!phoneNumber) {
-        throw new Error("Missing phone number from onboarding data");
-      }
-      console.log('📞 Attempting call extension creation...');
-      console.log('📞 Fresh onboarding phone:', freshOnboardingData?.phone || 'NOT FOUND');
-      console.log('📞 Fallback campaign phone:', campaignData.businessInfo?.phone || 'NOT FOUND');
-      console.log('📞 Using phone number:', phoneNumber || 'UNDEFINED/NULL');
-
-      // 🔍 ENHANCED PHONE TRACKING: Log phone consistency across all ad groups
-      console.log('🔍 PHONE CONSISTENCY CHECK:');
-      if (campaignData.adGroups && Array.isArray(campaignData.adGroups)) {
-        campaignData.adGroups.forEach((adGroup: any, index: number) => {
-          console.log(`  Ad Group ${index + 1} (${adGroup.name}): Using campaign phone ${phoneNumber}`);
-          console.log(`  Final URL: ${adGroup.adCopy?.finalUrl || 'MISSING'}`);
-        });
-      }
-      console.log('🔍 Call extensions will use phone:', phoneNumber);
-
-      // 🔍 VALIDATION: Confirm we're using the correct phone number
-      if (freshOnboardingData?.phone && campaignData.businessInfo?.phone &&
-          freshOnboardingData.phone !== campaignData.businessInfo.phone) {
-        console.warn('⚠️ Phone mismatch detected - using fresh onboarding data');
-        console.warn('  Onboarding phone (using):', freshOnboardingData.phone);
-        console.warn('  Campaign phone (stale):', campaignData.businessInfo.phone);
-      }
-
-      if (phoneNumber) {
-        console.log('📞 Creating call extensions with phone:', phoneNumber);
-
-        try {
-          // Create call asset using SDK
-          const callAssetResult = await customer.assets.create([
-            {
-              type: 'CALL',
-              call_asset: {
-                phone_number: phoneNumber,
-                country_code: 'GB',
-                call_conversion_reporting_state: 'USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION'
-              }
-            }
-          ]);
-
-          const assetResourceName = callAssetResult.results[0].resource_name;
-          console.log('✅ Call asset created:', assetResourceName);
-          console.log('🔍 CALL EXTENSION DEBUG: Phone used in API call:', phoneNumber);
-
-          // Link the asset to the campaign using SDK
-          const campaignAssetResult = await customer.campaignAssets.create([
-            {
-              asset: assetResourceName,
-              campaign: campaignResourceName,
-              field_type: 'CALL'
-            }
-          ]);
-
-          results.extensionsCreated++;
-          console.log('✅ Call extension linked to campaign successfully:', campaignAssetResult.results[0]?.resource_name || 'Success');
-        } catch (extensionError: any) {
-          console.error('❌ Error creating call extension:', extensionError);
-          const errorMessage = extensionError?.message || JSON.stringify(extensionError);
-          results.errors.push(`Call extension error: ${errorMessage}`);
-        }
-      }
+      // Step 10: Call extensions are now created via createAdExtensions helper function
+      // This ensures proper validation and prevents duplicate creation
+      // Call extensions will be created in Step 8 via createAdExtensions()
 
       // Final validation
       const success = results.campaignCreated && results.adGroupsCreated > 0 && results.adsCreated > 0;
@@ -1029,10 +964,10 @@ async function createAdGroupsWithAdsAndKeywords(
         
         const adGroupResult = await customer.adGroups.create([
           {
-            name: adGroup.name || 'Default Ad Group',
-            campaign: campaignResourceName,
+              name: adGroup.name || 'Default Ad Group',
+              campaign: campaignResourceName,
             status: adGroupStatus,
-            type: 'SEARCH_STANDARD',
+              type: 'SEARCH_STANDARD',
             cpc_bid_micros: 1000000 // £1.00 default bid
           }
         ]);
@@ -1041,30 +976,30 @@ async function createAdGroupsWithAdsAndKeywords(
         if (!adGroupResourceName) {
           throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
         }
-        console.log('✅ Ad group created successfully:', {
-          name: adGroup.name,
+      console.log('✅ Ad group created successfully:', {
+        name: adGroup.name,
           resourceName: adGroupResourceName
-        });
+      });
 
-        // Create Keywords for this ad group
-        if (adGroup.keywords && adGroup.keywords.length > 0) {
+      // Create Keywords for this ad group
+      if (adGroup.keywords && adGroup.keywords.length > 0) {
           await createKeywords(adGroup.keywords, customer, adGroupResourceName);
-        }
+      }
 
-        // Create Responsive Search Ad for this ad group
-        if (adGroup.adCopy) {
-          try {
+      // Create Responsive Search Ad for this ad group
+      if (adGroup.adCopy) {
+        try {
             const adResult = await createResponsiveSearchAd(adGroup.adCopy, customer, adGroupResourceName);
-            if (adResult?.success) {
-              console.log(`✅ Ad created successfully for ${adGroup.name}`);
-            }
-          } catch (adError) {
-            console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
-              error: adError instanceof Error ? adError.message : String(adError),
-              adGroupName: adGroup.name
-            });
-            // Continue processing other ad groups even if one fails
+          if (adResult?.success) {
+            console.log(`✅ Ad created successfully for ${adGroup.name}`);
           }
+        } catch (adError) {
+          console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
+            error: adError instanceof Error ? adError.message : String(adError),
+            adGroupName: adGroup.name
+          });
+          // Continue processing other ad groups even if one fails
+        }
         }
       } catch (error: any) {
         console.error('❌ Ad group creation failed:', {
@@ -1217,18 +1152,18 @@ async function createResponsiveSearchAd(
     const adPayloadData = {
       ad_group: adGroupResourceName,
       status: adStatus,
-      ad: {
-        type: 'RESPONSIVE_SEARCH_AD',
+        ad: {
+          type: 'RESPONSIVE_SEARCH_AD',
         final_urls: [finalUrl],
         responsive_search_ad: {
-          headlines: headlines.map((headline: string) => ({
-            text: headline.substring(0, 30) // Max 30 chars per headline
-          })),
-          descriptions: descriptions.map((description: string) => ({
-            text: description.substring(0, 90) // Max 90 chars per description
-          }))
+            headlines: headlines.map((headline: string) => ({
+              text: headline.substring(0, 30) // Max 30 chars per headline
+            })),
+            descriptions: descriptions.map((description: string) => ({
+              text: description.substring(0, 90) // Max 90 chars per description
+            }))
+          }
         }
-      }
     };
     
     // 🔍 PHONE CONTAMINATION CHECK: Verify no phone numbers in payload
@@ -1349,19 +1284,30 @@ async function createCallExtension(
     console.log('🔍 CALL EXTENSION PAYLOAD:', JSON.stringify(callAssetPayload, null, 2));
     
     const callAssetResult = await customer.assets.create([callAssetPayload] as any);
+    const assetResourceName = callAssetResult.results[0]?.resource_name;
+    
+    if (!assetResourceName) {
+      throw new Error('Call asset created but resource_name is missing');
+    }
+    
+    console.log('✅ Call asset created:', assetResourceName);
 
     // Link asset to campaign
-    await customer.campaignAssets.create([
+    const campaignAssetResult = await customer.campaignAssets.create([
       {
-        asset: callAssetResult.results[0].resource_name,
+        asset: assetResourceName,
         campaign: campaignResourceName,
         field_type: 'CALL'
       }
-    ]);
-
+    ] as any);
+    
+    const linkedResourceName = campaignAssetResult.results[0]?.resource_name;
+    console.log('✅ Call extension linked to campaign:', linkedResourceName);
     console.log('✅ Call extension created with phone:', phoneNumber);
+    console.log('🔍 VERIFICATION: Call extension resource:', linkedResourceName);
   } catch (error: any) {
     console.error('❌ Call extension creation failed:', error?.message || String(error));
+    throw error; // Re-throw to ensure error is caught upstream
   }
 }
 
@@ -1382,8 +1328,8 @@ async function createSitelinkExtensions(
             final_urls: [sitelink.url || 'https://example.com']
           }
         }]
-      }
-    }));
+    }
+  }));
 
     // Note: SDK may not have campaignExtensionSettings, using campaignAssets for sitelinks
     // Create sitelink assets first, then link to campaign
@@ -1410,7 +1356,7 @@ async function createSitelinkExtensions(
       )
     );
 
-    console.log('✅ Sitelink extensions created');
+  console.log('✅ Sitelink extensions created');
   } catch (error: any) {
     console.error('❌ Sitelink creation failed:', error?.message || String(error));
   }
@@ -1444,7 +1390,7 @@ export const updateGoogleAdsCampaignStatus = action({
         await customer.campaigns.update([
           {
             resource_name: `customers/${customerId}/campaigns/${args.googleCampaignId}`,
-            status: args.status
+                status: args.status
           }
         ]);
 
