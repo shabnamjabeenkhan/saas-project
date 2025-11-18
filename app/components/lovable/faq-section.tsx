@@ -31,12 +31,12 @@ export const LovableFAQSection = () => {
     {
       id: 'item-8',
       question: 'How is this different from hiring a marketing agency?',
-      answer: 'Marketing agencies typically charge £2,000-4,000/month with 6-12 month contracts, plus setup fees. TradeBoost AI costs £69-189/month with no contracts, no setup fees, and gives you full control and transparency over your campaigns.',
+      answer: 'Marketing agencies typically charge £2,000-4,000/month with 6-12 month contracts, plus setup fees. TradeBoost AI costs $69/month with no contracts, no setup fees, and gives you full control and transparency over your campaigns.',
     },
     {
       id: 'item-9',
       question: 'What certifications do I need to use TradeBoost AI?',
-      answer: 'All trades require valid Business Registration. Plumbers need Gas Safe Registration if working on gas appliances, heating systems, or gas pipework - it\'s legally required for all engineers who work on boilers, heating systems, gas appliances, and gas pipework to be on the Gas Safe Register. Electricians must have Part P Electrical Certification for domestic electrical work.',
+      answer: 'All trades require valid Business Registration. It\'s legally required for all engineers who work on boilers, heating systems, gas appliances, and gas pipework to be on the Gas Safe Register. Electricians must have Part P Electrical Certification for domestic electrical work.',
     },
   ];
 

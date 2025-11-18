@@ -4,10 +4,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Check, Phone } from "lucide-react";
 import { cn } from "~/lib/utils";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "~/components/ui/tooltip";
 
 interface LovablePricingSectionProps {
@@ -18,18 +15,18 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   const plans = [
     {
       name: 'Standard',
-      price: '£69',
+      price: '$69',
       period: 'mo',
       description: 'Perfect for growing businesses',
       features: [
-        { label: '15 AI campaign generations', info: 'Generate up to 15 complete Google Ads campaigns per month.' },
-        { label: 'Up to 3 service areas', info: 'Target customers in up to 3 different locations or postcodes.' },
-        { label: 'Performance tracking', info: 'Monitor clicks, calls, and conversion rates from your ads.' },
-        { label: 'Email support', info: 'Get help via email with priority response times.' },
-        { label: 'Monthly optimization', info: 'Regular campaign reviews and improvement suggestions.' },
-        { label: 'Emergency templates', info: 'Pre-built templates for urgent service campaigns.' },
-        { label: 'Seasonal campaigns', info: 'Auto-adjust campaigns for peak seasons like winter heating.' },
-        { label: 'ROI reporting', info: 'Track return on investment and cost per lead.' },
+        { label: '2 AI campaign generations per month'},
+        { label: '4 targeted ads per campaign'},
+        { label: 'UK trade compliance built-in'},
+        { label: 'Seasonal intelligence'},
+        { label: 'Performance tracking'},
+        { label: 'Monthly optimization'},
+        { label: 'Emergency templates' },
+        { label: 'Estimated ROI reporting' },
       ],
       buttonText: 'Get Started',
       isPopular: false,
@@ -87,20 +84,10 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
                   }}
                 >
                   {plan.features.map((f, i) => (
-                    <Tooltip key={i}>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-3 cursor-pointer select-none text-gray-300 hover:text-white transition-colors">
-                          <Check className="text-green-400 w-5 h-5 flex-shrink-0" />
-                          <span className="text-base leading-[20px] font-medium">{f.label}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        className="max-w-[280px] text-sm bg-gray-900/95 text-gray-100 border border-gray-600 rounded-xl px-3 py-2 shadow-xl backdrop-blur-sm"
-                      >
-                        {f.info}
-                      </TooltipContent>
-                    </Tooltip>
+                    <div key={i} className="flex items-center gap-3 text-gray-300 hover:text-white transition-colors">
+                      <Check className="text-green-400 w-5 h-5 flex-shrink-0" />
+                      <span className="text-base leading-[20px] font-medium">{f.label}</span>
+                    </div>
                   ))}
                 </div>
 
