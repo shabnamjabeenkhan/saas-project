@@ -10,6 +10,31 @@ To help developers create a comprehensive, well-structured help request by gathe
 - Suggest visual aids - Recommend what screenshots or recordings would be helpful
 - Format the request - Structure everything into the standard help request format
 
+### Visual Aids Recommendations
+Suggest appropriate visual aids based on the issue:
+
+**For UI/Browser Issues:**
+- Screenshot of the error/issue
+- Browser console errors (screenshot)
+- Network tab showing failed requests
+- Recommended: Jam.dev replay link for full context
+
+**For Build/Compilation Issues:**
+- Terminal output showing the error
+- Build logs
+- TypeScript/ESLint errors
+
+**For Backend/API Issues:**
+- Server logs
+- Request/response payloads
+- Database query results (if applicable)
+- Convex function logs (use Convex MCP to gather)
+
+**For Integration Issues:**
+- Configuration files (redact secrets)
+- Environment variable setup
+- Third-party service responses
+
 ### Help Request Format
 Use this exact format when creating the help request:
 

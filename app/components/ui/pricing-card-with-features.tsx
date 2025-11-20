@@ -68,8 +68,7 @@ export const TradeBoostPricingCard = () => {
           <Button
             className={cn(
               "flex items-center justify-center gap-3 w-[220px] h-[64px] rounded-[39px] text-[20px] font-medium text-white",
-              "bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500",
-              "border-[3px] border-blue-600",
+              "!bg-background border-[3px] border-gray-800",
               "shadow-sm hover:opacity-90 transition-all duration-150"
             )}
           >

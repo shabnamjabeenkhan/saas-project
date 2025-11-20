@@ -105,7 +105,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
                       "flex items-center justify-center w-[200px] h-[60px] rounded-[30px] text-[18px] font-semibold text-white border-0 shadow-xl",
                       plan.isPopular
                         ? "bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800"
-                        : "bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-500 hover:via-gray-600 hover:to-gray-700",
+                        : "bg-black hover:bg-gray-900",
                       "transition-all duration-300 transform hover:scale-[1.05] hover:shadow-2xl"
                     )}
                   >
