@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import AnimatedGenerateButton from "~/components/ui/animated-generate-button";
 import {
   CheckCircle,
   AlertTriangle,
@@ -158,13 +159,14 @@ export function CampaignQualityChecker({
         {/* Action Buttons */}
         {onRegenerate && (
           <div className="flex gap-3 mt-6 pt-4 border-t border-gray-700">
-            <Button
-              variant="outline"
+            <AnimatedGenerateButton
+              labelIdle="Regenerate Campaign"
+              labelActive="Regenerating..."
+              generating={false}
+              highlightHueDeg={160}
               onClick={onRegenerate}
-              className="text-white border-gray-700 hover:bg-gray-800"
-            >
-              Regenerate Campaign
-            </Button>
+              className="text-white"
+            />
           </div>
         )}
 

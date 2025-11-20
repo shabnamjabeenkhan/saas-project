@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
+import AnimatedGenerateButton from "~/components/ui/animated-generate-button";
 import {
   Zap,
   Sparkles,
@@ -229,20 +230,15 @@ export function CampaignHeaderControls({
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      size="default"
+                    <AnimatedGenerateButton
+                      labelIdle="Connect Google Ads"
+                      labelActive="Connecting..."
+                      generating={isConnecting}
+                      highlightHueDeg={200}
                       onClick={connectGoogleAds}
                       disabled={isConnecting}
-                      className="bg-gradient-to-r from-gray-800 to-gray-700 text-white border-gray-600 hover:from-gray-700 hover:to-gray-600 transition-all duration-200 shadow-lg px-6 py-3 text-sm font-medium"
-                    >
-                      {isConnecting ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Link className="w-4 h-4 mr-2" />
-                      )}
-                      {isConnecting ? "Connecting..." : "Connect Google Ads"}
-                    </Button>
+                      className="text-white"
+                    />
                   )}
                 </div>
 
@@ -270,23 +266,15 @@ export function CampaignHeaderControls({
 
                 {/* Regenerate Button */}
                 <div className="flex justify-center md:justify-end">
-                  <Button
+                  <AnimatedGenerateButton
+                    labelIdle={campaign ? 'Regenerate Campaign' : 'Generate Campaign'}
+                    labelActive="Generating..."
+                    generating={isGenerating}
+                    highlightHueDeg={160}
                     onClick={handleGenerateCampaign}
                     disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
-                    className="bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white border-0 shadow-xl px-6 py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5 mr-2" />
-                        {campaign ? 'Regenerate' : 'Generate'} Campaign
-                      </>
-                    )}
-                  </Button>
+                    className="text-white px-6 py-4 text-base font-semibold"
+                  />
                 </div>
               </div>
             </>
@@ -295,23 +283,15 @@ export function CampaignHeaderControls({
           {/* Generate Button for when no campaign exists */}
           {!campaign && (
             <div className="flex justify-center">
-              <Button
+              <AnimatedGenerateButton
+                labelIdle="Generate Campaign"
+                labelActive="Generating..."
+                generating={isGenerating}
+                highlightHueDeg={160}
                 onClick={handleGenerateCampaign}
                 disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
-                className="bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white border-0 shadow-xl px-6 py-4 text-base font-semibold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    Generate Campaign
-                  </>
-                )}
-              </Button>
+                className="text-white px-6 py-4 text-base font-semibold"
+              />
             </div>
           )}
         </div>

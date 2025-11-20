@@ -31,7 +31,7 @@ export const LovableHowItWorksSection = () => {
     {
       id: 5,
       title: "Connect & Launch",
-      subtitle: "Link your Google Ads account (we'll help), set your budget, and go live.",
+      subtitle: "Link your Google Ads account, set your budget, and go live.",
       icon: <Target className="w-8 h-8" />
     }
   ];

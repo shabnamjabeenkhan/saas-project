@@ -21,7 +21,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
   }
 
   const { userId, isAuthenticated } = complianceContext;
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [needsAcceptance, setNeedsAcceptance] = useState<boolean>(false);
   const [userLastVersion, setUserLastVersion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +69,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
       console.log('🔍 Terms check triggered:', {
         userId,
         isAuthenticated,
+        isLoaded,
         queryResult: getUserLastAcceptedTermsVersion,
         queryState: getUserLastAcceptedTermsVersion === undefined ? 'loading' : 'loaded'
       });
@@ -77,6 +78,12 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
       if (isPublicRoute()) {
         setNeedsAcceptance(false);
         setIsLoading(false);
+        return;
+      }
+
+      // Wait for auth to be loaded before checking
+      if (!isLoaded) {
+        console.log('⏳ Auth still loading, waiting...');
         return;
       }
 
@@ -129,7 +136,7 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
     };
 
     checkTermsAcceptance();
-  }, [userId, isAuthenticated, user, getUserLastAcceptedTermsVersion]);
+  }, [userId, isAuthenticated, isLoaded, user, getUserLastAcceptedTermsVersion]);
 
   const handleTermsAccepted = async () => {
     try {
@@ -170,8 +177,8 @@ export const TermsGuard: React.FC<TermsGuardProps> = ({ children, onSignOut }) =
     }
   };
 
-  // Show loading state while checking
-  if (isLoading) {
+  // Show loading state only for authenticated users, and only after auth state is loaded
+  if (isLoading && isLoaded && isAuthenticated && userId && userId !== 'anonymous') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
