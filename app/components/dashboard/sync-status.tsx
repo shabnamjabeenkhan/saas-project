@@ -92,13 +92,13 @@ export function SyncStatusComponent({ onDataRefresh }: SyncStatusProps) {
   return (
     <Card className="bg-[#1a1a1a] border-gray-800">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
           <div>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-white flex items-center gap-2 text-lg sm:text-xl">
               <Activity className="w-5 h-5 text-primary" />
               Google Ads Sync Status
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base">
               Real-time data synchronization from Google Ads API
             </CardDescription>
           </div>
@@ -107,7 +107,7 @@ export function SyncStatusComponent({ onDataRefresh }: SyncStatusProps) {
             disabled={isManualSyncing || syncStatus.issyncing}
             variant="outline"
             size="sm"
-            className="text-white border-gray-700 hover:bg-gray-800"
+            className="text-white border-gray-700 hover:bg-gray-800 w-full sm:w-auto"
           >
             {(isManualSyncing || syncStatus.issyncing) ? (
               <>
@@ -125,50 +125,50 @@ export function SyncStatusComponent({ onDataRefresh }: SyncStatusProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current Status */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
-            <div className="text-lg font-semibold text-white">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="text-center p-3 sm:p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
+            <div className="text-lg sm:text-xl font-semibold text-white">
               {formatTimeAgo(syncStatus.lastSyncTime)}
             </div>
-            <p className="text-sm text-gray-400">Last Sync</p>
+            <p className="text-xs sm:text-sm text-gray-400">Last Sync</p>
           </div>
-          <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
-            <div className="text-lg font-semibold text-white">
+          <div className="text-center p-3 sm:p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
+            <div className="text-lg sm:text-xl font-semibold text-white">
               {syncMetrics.successRate}%
             </div>
-            <p className="text-sm text-gray-400">Success Rate</p>
+            <p className="text-xs sm:text-sm text-gray-400">Success Rate</p>
           </div>
-          <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
-            <div className="text-lg font-semibold text-white">
+          <div className="text-center p-3 sm:p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
+            <div className="text-lg sm:text-xl font-semibold text-white">
               {nextSyncIn}h
             </div>
-            <p className="text-sm text-gray-400">Next Auto Sync</p>
+            <p className="text-xs sm:text-sm text-gray-400">Next Auto Sync</p>
           </div>
         </div>
 
         {/* Sync Frequency */}
-        <div className="flex items-center justify-between p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 sm:p-4 bg-[#0A0A0A] rounded-lg border border-gray-700">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
             <Clock className="w-4 h-4 text-blue-400" />
-            <span className="text-white">Sync Frequency</span>
+            <span className="text-white text-sm sm:text-base">Sync Frequency</span>
           </div>
-          <Badge variant="outline" className="text-blue-400 border-blue-400">
+          <Badge variant="outline" className="text-blue-400 border-blue-400 text-xs sm:text-sm mx-auto sm:mx-0">
             {syncStatus.syncFrequency}
           </Badge>
         </div>
 
         {/* Recent Sync History */}
         <div>
-          <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+          <h4 className="font-medium text-white mb-3 flex items-center justify-center sm:justify-start gap-2">
             <Zap className="w-4 h-4 text-primary" />
             Recent Sync History
           </h4>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {syncStatus.syncHistory.slice(0, 5).map((event, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-[#0A0A0A] rounded border border-gray-700">
-                <div className="flex items-center gap-3">
+              <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 bg-[#0A0A0A] rounded border border-gray-700">
+                <div className="flex flex-col sm:flex-row sm:items-center items-center gap-3">
                   {getStatusIcon(event.status)}
-                  <div>
+                  <div className="text-center sm:text-left">
                     <div className="text-sm text-white">
                       {formatTimeAgo(event.timestamp)}
                     </div>
@@ -177,30 +177,35 @@ export function SyncStatusComponent({ onDataRefresh }: SyncStatusProps) {
                     </div>
                   </div>
                 </div>
-                {getStatusBadge(event.status)}
+                <div className="flex justify-center sm:justify-end">
+                  {getStatusBadge(event.status)}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Performance Metrics */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center">
-            <div className="text-xl font-bold text-white">{syncMetrics.totalRecordsLast10Syncs}</div>
-            <p className="text-xs text-gray-400">Records Updated (Last 10 Syncs)</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
+            <div className="text-lg sm:text-xl font-bold text-white">{syncMetrics.totalRecordsLast10Syncs}</div>
+            <p className="text-xs sm:text-sm text-gray-400">Records Updated (Last 10 Syncs)</p>
           </div>
-          <div className="text-center">
-            <div className="text-xl font-bold text-white">{Math.round(syncMetrics.averageDuration / 1000)}s</div>
-            <p className="text-xs text-gray-400">Average Sync Duration</p>
+          <div className="text-center p-3 bg-[#0A0A0A] rounded-lg border border-gray-700">
+            <div className="text-lg sm:text-xl font-bold text-white">{Math.round(syncMetrics.averageDuration / 1000)}s</div>
+            <p className="text-xs sm:text-sm text-gray-400">Average Sync Duration</p>
           </div>
         </div>
 
         {/* Error Message */}
         {syncMetrics.lastErrorMessage && (
-          <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg">
-            <div className="flex items-center gap-2">
-              <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-red-300">Last Error: {syncMetrics.lastErrorMessage}</span>
+          <div className="p-3 sm:p-4 bg-red-900/20 border border-red-700 rounded-lg">
+            <div className="flex items-start gap-2">
+              <XCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <span className="text-xs sm:text-sm text-red-300 break-words">
+                <span className="hidden sm:inline">Last Error: </span>
+                {syncMetrics.lastErrorMessage}
+              </span>
             </div>
           </div>
         )}
