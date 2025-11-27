@@ -51,9 +51,20 @@ Implementation phase - Backend API setup
   - Fixed: Changed freshness threshold from 15 to 45 minutes (reduces API calls by ~67%)
   - Fixed: Corrected internal mutation call from api.adSpendMutations to internal.adSpendMutations
   - Verified Convex deployment: `bunx convex dev --once --typecheck=disable` passed successfully
+- ✅ convex/metrics.ts - Created NEW FILE with getDashboardMetrics query
+  - Query: getDashboardMetrics (public query, not action)
+  - Helper: computeMonthDatesForUser() - reused from adSpend.ts pattern
+  - Aggregates qualified calls count for current month (filters by qualificationStatus === "qualified")
+  - Sums ad spend MTD from adSpendSnapshots table (filters by monthKey and todayDate)
+  - Gets averageRevenuePerJob from onboardingData.acquisitionGoals.averageJobValue
+  - Calculates Cost Per Lead (CPL) = Ad Spend ÷ Qualified Calls (null if 0 calls)
+  - Calculates Estimated ROI = (Qualified Calls × Average Revenue Per Job) − Ad Spend
+  - Returns: { timeRange, qualifiedCalls, adSpend, costPerLead, estimatedRoi, lastUpdatedAt, hasRealData }
+  - Includes proper return validator with v.object() and v.union() for nullable costPerLead
+  - Verified Convex deployment: `bunx convex dev --once --typecheck=disable` passed successfully
 
 ## Current Work
-- 🔄 Next: convex/metrics.ts - Create getDashboardMetrics query
+- 🔄 Next: app/routes/dashboard/index.tsx - Wire UI to metrics query
 
 ## Blockers
 - ⚠️ userId extraction in webhook: `mapProviderPayload` needs provider-specific logic to extract `userId`
@@ -67,7 +78,7 @@ Implementation phase - Backend API setup
 2. ✅ convex/callTracking.ts - DONE
 3. ✅ convex/http.ts - DONE
 4. ✅ convex/adSpend.ts - DONE
-5. ⏭️ convex/metrics.ts - Query
+5. ✅ convex/metrics.ts - DONE
 6. ⏭️ app/routes/dashboard/index.tsx - Wire UI
 7. ⏭️ Manual testing (section 9 of feature-plan.md)
 
@@ -122,8 +133,8 @@ Implementation phase - Backend API setup
   - Token refresh handled automatically by getGoogleAdsClient() helper
 
 ## Context Management
-- Last updated at: After freshness threshold optimization (15→45 min) and internal mutation bug fix
-- Current context usage: ~45%
+- Last updated at: After metrics.ts implementation
+- Current context usage: ~50%
 - Will compact at 40-60%
 
 ## Setup Required

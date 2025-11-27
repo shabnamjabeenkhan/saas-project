@@ -18,6 +18,7 @@ import type * as debug from "../debug.js";
 import type * as googleAds from "../googleAds.js";
 import type * as googleAdsCampaigns from "../googleAdsCampaigns.js";
 import type * as http from "../http.js";
+import type * as metrics from "../metrics.js";
 import type * as migrations from "../migrations.js";
 import type * as onboarding from "../onboarding.js";
 import type * as sendEmails from "../sendEmails.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   googleAds: typeof googleAds;
   googleAdsCampaigns: typeof googleAdsCampaigns;
   http: typeof http;
+  metrics: typeof metrics;
   migrations: typeof migrations;
   onboarding: typeof onboarding;
   sendEmails: typeof sendEmails;
