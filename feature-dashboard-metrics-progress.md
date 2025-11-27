@@ -62,9 +62,23 @@ Implementation phase - Backend API setup
   - Returns: { timeRange, qualifiedCalls, adSpend, costPerLead, estimatedRoi, lastUpdatedAt, hasRealData }
   - Includes proper return validator with v.object() and v.union() for nullable costPerLead
   - Verified Convex deployment: `bunx convex dev --once --typecheck=disable` passed successfully
+- ✅ app/routes/dashboard/index.tsx - Wired UI to metrics query
+  - Added useQuery(api.metrics.getDashboardMetrics) to fetch live data
+  - Replaced hard-coded overviewStats with real metrics (Qualified Calls, Ad Spend MTD, Cost Per Lead)
+  - Replaced hard-coded "Quick Summary" numbers with live metrics (Ad Spend, Revenue, Profit, ROI)
+  - Replaced hard-coded "Bottom Line" numbers with live metrics (Estimated ROI, Spent, Revenue, Profit)
+  - Added loading state: Shows "…" when metrics === undefined
+  - Added empty state: Shows "Setting up..." message when !metrics.hasRealData
+  - Added "Estimated" labels: All ROI displays now show "Estimated ROI" and "Estimated Return on Investment"
+  - Created formatCurrency() and formatPercent() helpers in app/lib/utils.ts
+  - Handles negative ROI: Shows red color for negative values
+  - Calculates ROI percentage: (estimatedRoi / adSpend) * 100
+  - Calculates estimated revenue: estimatedRoi + adSpend
+  - Verified build: `bun run build` passed successfully
+  - Verified Convex deployment: `bunx convex dev --once --typecheck=disable` passed successfully
 
 ## Current Work
-- 🔄 Next: app/routes/dashboard/index.tsx - Wire UI to metrics query
+- 🔄 Next: Manual testing (section 9 of feature-plan.md)
 
 ## Blockers
 - ⚠️ userId extraction in webhook: `mapProviderPayload` needs provider-specific logic to extract `userId`
@@ -79,7 +93,7 @@ Implementation phase - Backend API setup
 3. ✅ convex/http.ts - DONE
 4. ✅ convex/adSpend.ts - DONE
 5. ✅ convex/metrics.ts - DONE
-6. ⏭️ app/routes/dashboard/index.tsx - Wire UI
+6. ✅ app/routes/dashboard/index.tsx - DONE
 7. ⏭️ Manual testing (section 9 of feature-plan.md)
 
 ## Key Decisions
@@ -133,8 +147,8 @@ Implementation phase - Backend API setup
   - Token refresh handled automatically by getGoogleAdsClient() helper
 
 ## Context Management
-- Last updated at: After metrics.ts implementation
-- Current context usage: ~50%
+- Last updated at: After frontend UI integration (dashboard/index.tsx)
+- Current context usage: ~55%
 - Will compact at 40-60%
 
 ## Setup Required
