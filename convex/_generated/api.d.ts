@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as adSpend from "../adSpend.js";
+import type * as adSpendMutations from "../adSpendMutations.js";
+import type * as adSpendQueries from "../adSpendQueries.js";
 import type * as callTracking from "../callTracking.js";
 import type * as campaigns from "../campaigns.js";
 import type * as compliance from "../compliance.js";
@@ -36,6 +39,9 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  adSpend: typeof adSpend;
+  adSpendMutations: typeof adSpendMutations;
+  adSpendQueries: typeof adSpendQueries;
   callTracking: typeof callTracking;
   campaigns: typeof campaigns;
   compliance: typeof compliance;
