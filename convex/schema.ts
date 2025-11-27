@@ -257,4 +257,47 @@ export default defineSchema({
     .index("violationType", ["violationType"])
     .index("severity", ["severity"])
     .index("resolved", ["resolved"]),
+
+  // Real-Time Dashboard Metrics Tables
+  qualifiedCalls: defineTable({
+    userId: v.string(),
+    provider: v.string(), // "twilio", "callrail", etc.
+    externalCallId: v.string(), // provider's unique ID (for idempotency)
+    fromNumber: v.optional(v.string()),
+    toNumber: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
+    startedAt: v.number(), // ms since epoch (raw event time, in UTC)
+    durationSeconds: v.number(),
+    answered: v.boolean(),
+    qualificationStatus: v.string(), // "qualified" | "unqualified"
+    qualificationReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_start", ["userId", "startedAt"])
+    .index("by_external_id", ["provider", "externalCallId"]),
+
+  adSpendSnapshots: defineTable({
+    userId: v.string(),
+    date: v.string(), // "YYYY-MM-DD" in user's timezone
+    currencyCode: v.string(), // e.g. "GBP" or "USD"
+    spendMicros: v.number(), // raw micros from Google Ads
+    syncedAt: v.number(), // ms epoch when we last synced this date
+    source: v.string(), // "google_ads"
+    googleCustomerId: v.optional(v.string()),
+    rawError: v.optional(v.string()), // last sync error if any
+  })
+    .index("by_user_date", ["userId", "date"])
+    .index("by_user", ["userId"]),
+
+  metricsCache: defineTable({
+    userId: v.string(),
+    monthKey: v.string(), // "YYYY-MM" in user's timezone
+    callsQualified: v.number(),
+    adSpendMicros: v.number(),
+    averageRevenuePerJob: v.number(),
+    estimatedRoiMicros: v.number(), // ROI money in micros
+    lastComputedAt: v.number(),
+  })
+    .index("by_user_month", ["userId", "monthKey"]),
 });

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as callTracking from "../callTracking.js";
 import type * as campaigns from "../campaigns.js";
 import type * as compliance from "../compliance.js";
 import type * as debug from "../debug.js";
@@ -35,6 +36,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  callTracking: typeof callTracking;
   campaigns: typeof campaigns;
   compliance: typeof compliance;
   debug: typeof debug;
