@@ -12,9 +12,27 @@ Tag this file in implementation prompts:
 
 ## Build Verification Process
 
-### Step 1: TypeScript Verification
-Run this first to catch type errors:
-bun run typecheckExpected outcome:
+**CRITICAL: Use `bun` for every install, script, or task. No npm/pnpm/yarn.**
+
+### Step 0: Change Verification
+**Before running any commands**, review your diff and confirm only the intended files changed:
+```bash
+git status
+git diff
+```
+
+### Step 1: Lint Check
+Run the repo's lint step to clear every warning/error:
+```bash
+bun run lint
+```
+**OR** if lint isn't available, use typecheck:
+```bash
+bun run typecheck
+```
+
+**Expected outcome:**
+- No linting errors or warnings
 - No TypeScript errors
 - React Router types generated in `.react-router/types/**/*`
 - Convex types generated in `.convex/_generated/**/*`
@@ -24,10 +42,15 @@ bun run typecheckExpected outcome:
 - If schema types are missing → run this first before convex dev
 
 ### Step 2: Build Verification
-Compile the full project:
-bun run buildExpected outcome:
+Execute build and confirm it succeeds without warnings that require action:
+```bash
+bun run build
+```
+
+**Expected outcome:**
 - `build/` directory created successfully
 - No compilation errors
+- No warnings that require action
 - Client and server bundles generated
 
 **Common fixes:**
@@ -35,23 +58,78 @@ bun run buildExpected outcome:
 - If you see circular dependency warnings → refactor the import structure
 - If ESM module errors → ensure you're using proper import syntax
 
-### Step 3: Backend (Convex) Verification
-For any Convex schema or function changes:
-bunx convex dev --onceExpected outcome:
+### Step 3: Convex Compilation
+Execute Convex compilation and ensure there are zero schema/validator/runtime compilation issues:
+```bash
+bunx convex dev --once
+```
+
+**Expected outcome:**
 - Schema validates without errors
 - Functions can be deployed
 - No database migration issues
 - Types sync correctly
+- Zero schema/validator/runtime compilation issues
 
 **Common fixes:**
 - If schema validation fails → check `convex/schema.ts` for syntax errors
 - If table references fail → ensure table names match in queries
 - If field types mismatch → verify v.string(), v.number(), etc. are correct
 
+### Step 4: Re-verify Git Status
+After the commands pass, re-check git status to make sure no unexpected files changed during the process:
+```bash
+git status
+```
+
+**Expected outcome:**
+- Only expected files changed (build artifacts, generated types)
+- No unexpected modifications
+
 ## Quick Verification Command
 
-Run all three checks in sequence:
-bun run typecheck && bun run build && bunx convex dev --onceIf all three pass, you're good to proceed to testing!
+Run all checks in sequence:
+```bash
+git status && bun run lint && bun run build && bunx convex dev --once && git status
+```
+
+**OR** if lint isn't available:
+```bash
+git status && bun run typecheck && bun run build && bunx convex dev --once && git status
+```
+
+If all checks pass, you're good to proceed to testing!
+
+## MDX File Guidelines
+
+### CRITICAL: The `<` character in MDX files
+
+MDX interprets `<` as the start of a JSX component. This causes build errors like:
+- `Unexpected character before name`
+- `Unexpected end of file in name`
+
+**Common mistakes:**
+- ❌ `Cost reduced to <$1` → MDX sees `<$1` as a broken JSX tag
+- ❌ `<5 min response time` → MDX sees `<5` as a broken JSX tag  
+- ❌ `<2% error rate` → MDX sees `<2` as a broken JSX tag
+- ❌ `if (x < 10)` → In inline code this is fine, but in prose it breaks
+
+**Fixes:**
+- ✅ `Cost reduced to under $1`
+- ✅ `Under 5 min response time`
+- ✅ `Less than 2% error rate`
+- ✅ `` `if (x < 10)` `` → Wrap in backticks for code
+- ✅ `&lt;5 min` → Use HTML entity (ugly but works)
+
+**Rule:** When writing MDX content, NEVER use bare `<` followed by numbers or `$`. Always use:
+- "under", "less than", "below" instead of `<`
+- "over", "greater than", "above" instead of `>`
+- Or wrap in backticks if it's code: `` `<5` ``
+
+**Before committing any `.mdx` file**, search for `<[0-9]` and `<\$` patterns and fix them:
+```bash
+grep -r '<[0-9]\|<\$' docs/ --include="*.mdx"
+```
 
 ## Common Issues & Solutions
 
@@ -77,6 +155,19 @@ bun run typecheck && bun run build && bunx convex dev --onceIf all three pass, y
 3. Verify no circular dependencies between tables
 4. Run `bunx convex dev --once` for detailed error messages
 
+### Issue: MDX build errors with `<` character
+**Solution**:
+1. Search for `<[0-9]` and `<\$` patterns in `.mdx` files
+2. Replace with "under", "less than", "below" or wrap in backticks
+3. Re-run build to verify fix
+
+## If Verification Fails
+
+1. **Read the error message carefully** - it usually points to the exact problem
+2. **Fix the identified issue** (import path, schema field, type error, MDX syntax)
+3. **Re-run the failing command** to verify the fix
+4. **Run all commands again from the failing step onward** to ensure nothing broke in other areas
+
 ## Next Steps After Verification
 
 Once all checks pass:
@@ -84,13 +175,6 @@ Once all checks pass:
 2. ✅ Mark implementation as "complete" in progress file
 3. ✅ Proceed to manual testing (follow your feature plan's testing section)
 4. ✅ If errors remain, debug using `@.cursor/commands/debug.md`
-
-## If Verification Fails
-
-1. **Read the error message carefully** - it usually points to the exact problem
-2. **Fix the identified issue** (import path, schema field, type error)
-3. **Re-run the failing command** to verify the fix
-4. **Run all three commands again** to ensure nothing broke in other areas
 
 ## Useful Reference
 

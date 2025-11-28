@@ -74,7 +74,7 @@ export function NavUser({ user }: any) {
       <div className="mb-2">
         <Button
           size="sm"
-          className="w-full"
+          className="w-full bg-white text-black hover:bg-gray-100"
           disabled={isUpgrading}
           onClick={() => {
             setIsUpgrading(true);
