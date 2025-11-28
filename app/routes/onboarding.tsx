@@ -538,9 +538,24 @@ function Step2Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step2
           placeholder="https://yourcompany.co.uk"
           className="bg-[#0A0A0A] border-gray-700"
         />
-        <p className="text-xs text-muted-foreground">
-          Not required for UK trade businesses. If provided, will be used in your ads.
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Not required for UK trade businesses. If provided, will be used in your ads.
+          </p>
+          <div className="p-2 bg-yellow-900/20 border border-yellow-700/50 rounded text-xs text-yellow-300">
+            <p className="font-medium mb-1">⚠️ Without a website URL:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-yellow-200/80">
+              <li>Your ads will use 'example.com' as a fallback</li>
+              <li>Quality Score will be lower (3-4/10 vs 6-7/10)</li>
+              <li>Ads will have lower performance and visibility</li>
+              <li>Higher cost per click (CPC) - you'll pay more for each click</li>
+              <li>Lower conversion rates - fewer calls and jobs</li>
+            </ul>
+            <p className="mt-1.5 text-yellow-200/90">
+              Adding a website URL significantly improves ad quality and reduces costs.
+            </p>
+          </div>
+        </div>
         {form.formState.errors.websiteUrl && (
           <p className="text-sm text-red-500">{form.formState.errors.websiteUrl.message}</p>
         )}

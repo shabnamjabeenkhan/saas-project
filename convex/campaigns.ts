@@ -15,7 +15,7 @@ const adGroupSchema = v.object({
   adCopy: v.object({
     headlines: v.array(v.string()),
     descriptions: v.array(v.string()),
-    finalUrl: v.string(),
+    finalUrl: v.optional(v.string()),
   }),
 });
 
@@ -264,6 +264,24 @@ export const saveCampaign = mutation({
     campaignData: campaignSchema,
   },
   handler: async (ctx, args): Promise<string> => {
+    // 🔒 CRITICAL: Ensure all ad groups have finalUrl before database operations
+    const onboardingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+    const websiteUrl = onboardingData?.websiteUrl || "https://example.com";
+
+    // Deep clone and ensure finalUrl is present
+    const campaignDataWithUrls = {
+      ...args.campaignData,
+      adGroups: args.campaignData.adGroups.map(adGroup => ({
+        ...adGroup,
+        adCopy: {
+          ...adGroup.adCopy,
+          finalUrl: adGroup.adCopy.finalUrl || websiteUrl
+        }
+      }))
+    };
+
+    console.log('🔗 Ensured finalUrl for all ad groups:', campaignDataWithUrls.adGroups.map(ag => ag.adCopy.finalUrl));
+
     // Check if campaign already exists
     const existingCampaign = await ctx.db
       .query("campaigns")
@@ -271,7 +289,7 @@ export const saveCampaign = mutation({
       .first();
 
     const saveData = {
-      ...args.campaignData,
+      ...campaignDataWithUrls,
       userId: args.userId,
       createdAt: Date.now(),
       status: "ready" as const,
@@ -562,9 +580,8 @@ export const pushToGoogleAds = action({
         } else {
           // Validate URL accessibility
           try {
-            const urlObj = new URL(finalUrl);
-            const hostname = urlObj.hostname;
-            
+            new URL(finalUrl);
+
             // Quick DNS check - try to resolve hostname
             // Note: Full validation happens in googleAdsCampaigns.ts before ad creation
             // This is a pre-check to catch obvious issues early
@@ -754,7 +771,7 @@ export const createMockGoogleAdsCampaign = action({
       testMode: v.boolean(),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     console.log('🔧 Mock Google Ads API: Creating campaign', args.campaignData.name);
 
     // Simulate API delay
@@ -781,6 +798,53 @@ export const createMockGoogleAdsCampaign = action({
     };
   },
 });
+
+// Forbidden phrases that trigger Google Ads "Third Party Consumer Technical Support" policy violations
+const FORBIDDEN_TECH_SUPPORT_PHRASES = [
+  // Generic technical support terms
+  'tech support',
+  'technical support',
+  'computer support',
+  'device support',
+  'software support',
+  'IT support',
+  'help desk',
+  'customer support',
+  'remote support',
+  'online support',
+  'phone support',
+  'live support',
+  'support team',
+  'support service',
+  // Generic repair terms without trade context
+  'device repair',
+  'computer repair',
+  'laptop repair',
+  'phone repair',
+  'tablet repair',
+  'printer repair',
+  'router repair',
+  // Generic service terms
+  'fix your device',
+  'fix your computer',
+  'fix your phone',
+  'repair service',
+  'repair center',
+  // Terms that imply third-party support
+  'we can help',
+  'we fix',
+  'we repair',
+  'call for help',
+  'get help now',
+  'need help',
+];
+
+// Trade-specific required phrases to ensure compliance
+const REQUIRED_TRADE_PHRASES = {
+  plumbing: ['plumber', 'plumbing', 'heating', 'boiler', 'water', 'pipe', 'drain', 'bathroom', 'kitchen'],
+  electrical: ['electrician', 'electrical', 'wiring', 'fuse', 'consumer unit', 'lighting', 'socket', 'switch'],
+  both: ['plumber', 'electrician', 'plumbing', 'electrical', 'heating', 'wiring', 'boiler', 'fuse'],
+};
 
 // Helper functions for enhanced prompts
 function getSeason(month: number): 'winter' | 'spring' | 'summer' | 'autumn' {
@@ -927,6 +991,46 @@ ${variationInstructions}
 - Price transparency required ("free quotes", "no hidden charges")
 - Professional credentials must be highlighted
 
+**🚨 GOOGLE ADS POLICY VIOLATION PREVENTION - THIRD PARTY CONSUMER TECHNICAL SUPPORT:**
+
+CRITICAL: Google Ads prohibits ads that offer third-party consumer technical support services. To prevent policy violations, you MUST:
+
+1. NEVER use generic technical support language:
+   ❌ FORBIDDEN: "tech support", "technical support", "computer support", "device support", "software support"
+   ❌ FORBIDDEN: "IT support", "help desk", "customer support", "remote support"
+   ❌ FORBIDDEN: "device repair", "computer repair", "phone repair", "tablet repair"
+   ❌ FORBIDDEN: "fix your device", "fix your computer", "we can help", "call for help"
+
+2. ALWAYS use trade-specific language:
+   ✅ REQUIRED: Every headline and description MUST include trade-specific terms:
+   ${tradeType === 'plumbing' || tradeType === 'both' ? '- Plumbing terms: "plumber", "plumbing", "heating", "boiler", "water", "pipe", "drain", "bathroom", "kitchen"' : ''}
+   ${tradeType === 'electrical' || tradeType === 'both' ? '- Electrical terms: "electrician", "electrical", "wiring", "fuse", "consumer unit", "lighting", "socket", "switch"' : ''}
+
+3. MANDATORY trade credentials in ad copy:
+   ${tradeType === 'plumbing' || tradeType === 'both' ? '- MUST include "Gas Safe Registered" or "Gas Safe" in gas/heating related ads' : ''}
+   ${tradeType === 'electrical' || tradeType === 'both' ? '- MUST include "Part P Certified" or "Part P compliant" in electrical ads' : ''}
+
+4. Location context is REQUIRED:
+   - Every ad MUST mention "${city}" or "local" or "near me" to establish geographic specificity
+   - Generic service language without location triggers policy violations
+
+5. Service specificity:
+   - Use specific trade services: "boiler repair", "electrical installation", "plumbing emergency"
+   - Avoid generic terms: "repair service", "fix service", "support service"
+
+**EXAMPLES OF POLICY-COMPLIANT AD TEXT:**
+✅ "Gas Safe Registered Plumber ${city}" (trade-specific + location + credential)
+✅ "Part P Certified Electrician - ${city}" (trade-specific + location + credential)
+✅ "Emergency Plumbing Service ${city}" (trade-specific + location)
+✅ "24/7 Electrical Repairs ${city}" (trade-specific + location)
+
+**EXAMPLES OF POLICY-VIOLATING AD TEXT:**
+❌ "Tech Support Available" (generic technical support)
+❌ "Device Repair Service" (no trade context)
+❌ "We Can Help - Call Now" (generic support language)
+❌ "Computer Support ${city}" (third-party tech support)
+❌ "Repair Service" (no trade specificity)
+
 **EXAMPLES OF CORRECT AD TEXT (NO PHONE NUMBERS):**
 ✅ "Emergency Plumber Ready" (NOT "Call [any digits]")
 ✅ "24/7 Gas Safe Service" (NOT "Ring [phone variable]")
@@ -972,6 +1076,108 @@ Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high co
 `;
 }
 
+// Validate ad copy for Google Ads policy violations
+function validateAdCopyForPolicyViolations(
+  adCopy: { headlines: string[]; descriptions: string[] },
+  tradeType: string,
+  city: string
+): { isValid: boolean; violations: string[]; sanitized: { headlines: string[]; descriptions: string[] } } {
+  const violations: string[] = [];
+  const sanitizedHeadlines: string[] = [];
+  const sanitizedDescriptions: string[] = [];
+
+  // Required trade-specific terms
+  const requiredTerms = REQUIRED_TRADE_PHRASES[tradeType as keyof typeof REQUIRED_TRADE_PHRASES] || [];
+
+  // Check headlines
+  for (const headline of adCopy.headlines) {
+    const lowerHeadline = headline.toLowerCase();
+    let sanitized = headline;
+    let hasViolation = false;
+
+    // Check for forbidden phrases
+    for (const forbidden of FORBIDDEN_TECH_SUPPORT_PHRASES) {
+      if (lowerHeadline.includes(forbidden.toLowerCase())) {
+        violations.push(`Headline contains forbidden phrase: "${forbidden}"`);
+        hasViolation = true;
+        // Replace with trade-specific alternative
+        sanitized = sanitized.replace(
+          new RegExp(forbidden, 'gi'),
+          tradeType === 'plumbing' || tradeType === 'both' ? 'Plumbing Service' : 'Electrical Service'
+        );
+      }
+    }
+
+    // Check for trade-specific terms
+    const hasTradeTerm = requiredTerms.some(term => lowerHeadline.includes(term.toLowerCase()));
+    const hasLocation = lowerHeadline.includes(city.toLowerCase()) || lowerHeadline.includes('local') || lowerHeadline.includes('near me');
+
+    if (!hasTradeTerm) {
+      violations.push(`Headline missing trade-specific term: "${headline}"`);
+      // Add trade-specific term if missing
+      if (tradeType === 'plumbing' || tradeType === 'both') {
+        sanitized = `Plumber ${city} - ${sanitized}`;
+      } else if (tradeType === 'electrical' || tradeType === 'both') {
+        sanitized = `Electrician ${city} - ${sanitized}`;
+      }
+    }
+
+    if (!hasLocation && !hasViolation) {
+      // Add location if missing (but don't count as violation, just enhance)
+      if (!sanitized.includes(city) && !sanitized.includes('local') && !sanitized.includes('near me')) {
+        sanitized = `${sanitized} ${city}`;
+      }
+    }
+
+    sanitizedHeadlines.push(sanitized);
+  }
+
+  // Check descriptions
+  for (const description of adCopy.descriptions) {
+    const lowerDescription = description.toLowerCase();
+    let sanitized = description;
+    let hasViolation = false;
+
+    // Check for forbidden phrases
+    for (const forbidden of FORBIDDEN_TECH_SUPPORT_PHRASES) {
+      if (lowerDescription.includes(forbidden.toLowerCase())) {
+        violations.push(`Description contains forbidden phrase: "${forbidden}"`);
+        hasViolation = true;
+        // Replace with trade-specific alternative
+        sanitized = sanitized.replace(
+          new RegExp(forbidden, 'gi'),
+          tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing service' : 'electrical service'
+        );
+      }
+    }
+
+    // Check for trade-specific terms
+    const hasTradeTerm = requiredTerms.some(term => lowerDescription.includes(term.toLowerCase()));
+    const hasLocation = lowerDescription.includes(city.toLowerCase()) || lowerDescription.includes('local') || lowerDescription.includes('near me');
+
+    if (!hasTradeTerm) {
+      violations.push(`Description missing trade-specific term: "${description}"`);
+      // Add trade-specific term if missing
+      if (tradeType === 'plumbing' || tradeType === 'both') {
+        sanitized = `Professional plumber ${city}. ${sanitized}`;
+      } else if (tradeType === 'electrical' || tradeType === 'both') {
+        sanitized = `Qualified electrician ${city}. ${sanitized}`;
+      }
+    }
+
+    sanitizedDescriptions.push(sanitized);
+  }
+
+  return {
+    isValid: violations.length === 0,
+    violations,
+    sanitized: {
+      headlines: sanitizedHeadlines,
+      descriptions: sanitizedDescriptions,
+    },
+  };
+}
+
 // Helper function to parse AI response into structured data
 function parseAIResponse(aiResponse: string, onboardingData: any): any {
   try {
@@ -980,7 +1186,42 @@ function parseAIResponse(aiResponse: string, onboardingData: any): any {
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
       const cleanedData = sanitizePhoneNumbers(parsed);
-      return validateAndEnhanceCampaignData(cleanedData, onboardingData);
+
+      // 🔒 CRITICAL FIX: Add finalUrl to all ad groups BEFORE validation
+      const websiteUrl = onboardingData.websiteUrl || "https://example.com";
+      if (cleanedData.adGroups && Array.isArray(cleanedData.adGroups)) {
+        cleanedData.adGroups.forEach((adGroup: any) => {
+          if (adGroup.adCopy && !adGroup.adCopy.finalUrl) {
+            adGroup.adCopy.finalUrl = websiteUrl;
+            console.log(`🔗 Added finalUrl to ad group "${adGroup.name}": ${websiteUrl}`);
+          }
+        });
+      }
+
+      const validatedData = validateAndEnhanceCampaignData(cleanedData, onboardingData);
+      
+      // Validate all ad groups for policy violations
+      const tradeType = onboardingData.tradeType;
+      const city = onboardingData.serviceArea?.city || 'UK';
+      
+      if (validatedData.adGroups && Array.isArray(validatedData.adGroups)) {
+        validatedData.adGroups = validatedData.adGroups.map((adGroup: any) => {
+          if (adGroup.adCopy) {
+            const validation = validateAdCopyForPolicyViolations(adGroup.adCopy, tradeType, city);
+            
+            if (!validation.isValid) {
+              console.warn(`⚠️ Policy violations detected in ad group "${adGroup.name}":`, validation.violations);
+              console.log(`🔧 Sanitizing ad copy...`);
+            }
+            
+            // Use sanitized copy
+            adGroup.adCopy = validation.sanitized;
+          }
+          return adGroup;
+        });
+      }
+      
+      return validatedData;
     }
 
     // If not JSON, create structured data from text

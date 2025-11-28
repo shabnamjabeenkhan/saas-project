@@ -6,8 +6,6 @@ import AnimatedGenerateButton from "~/components/ui/animated-generate-button";
 import {
   Zap,
   Sparkles,
-  Download,
-  Link,
   Loader2,
   Clock,
 } from "lucide-react";
@@ -73,19 +71,6 @@ export function CampaignHeaderControls({
       return;
     }
 
-    // Check for placeholder URLs and warn user
-    const placeholderUrls = ["https://example.com", "https://yoursite.com", "www.example.com"];
-    const hasPlaceholders = campaign.adGroups?.some((adGroup: any) =>
-      !adGroup.adCopy?.finalUrl || placeholderUrls.includes(adGroup.adCopy.finalUrl)
-    );
-
-    if (hasPlaceholders) {
-      toast.warning("⚠️ No website URL detected", {
-        description: "Your ads will show 'example.com' which may waste your budget. Consider adding a website URL in your profile or using call-only ads.",
-        duration: 10000,
-      });
-    }
-
     console.log('🎯 Starting campaign push process...', {
       campaignId: campaign._id,
       campaignName: campaign.campaignName,
@@ -140,21 +125,6 @@ export function CampaignHeaderControls({
     }
   };
 
-  const handleExportCampaign = () => {
-    if (!campaign) return;
-
-    const exportData = JSON.stringify(campaign, null, 2);
-    const blob = new Blob([exportData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${campaign.campaignName.replace(/\s+/g, '-').toLowerCase()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Campaign exported!");
-  };
 
   return (
     <div className="mb-6">
