@@ -16,13 +16,13 @@ export const LovableFAQSection = () => {
     {
       id: 'item-5',
       question: 'How much should I budget for Google Ads spend?',
-      answer: 'We recommend starting with £100-200/month for Google Ads spend (separate from your TradeBoost AI subscription). This typically generates 15-30 quality leads per month. You control the budget and can adjust it based on results.',
+      answer: 'We recommend starting with £100-150/month for Google Ads spend (separate from your TradeBoost AI subscription). This typically generates 10-15 quality leads per month. You control the budget and can adjust it based on results.',
     },
-    {
-      id: 'item-6',
-      question: 'What happens during quiet seasons?',
-      answer: 'Our AI automatically adjusts campaigns for seasonal trends. During slower summer months for heating engineers, it reduces spend and focuses on maintenance services. In winter, it ramps up emergency boiler campaigns. This saves you money year-round.',
-    },
+    // {
+    //   id: 'item-6',
+    //   question: 'What happens during quiet seasons?',
+    //   answer: 'Our AI automatically adjusts campaigns for seasonal trends. During slower summer months for heating engineers, it reduces spend and focuses on maintenance services. In winter, it ramps up emergency boiler campaigns. This saves you money year-round.',
+    // },
     {
       id: 'item-7',
       question: 'Can I cancel anytime?',
