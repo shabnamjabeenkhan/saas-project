@@ -617,7 +617,7 @@ export const createGoogleAdsCampaign = action({
                 text: keyword,
                 match_type: 'BROAD'
               },
-              cpc_bid_micros: 1000000 // £1.00 default bid
+              cpc_bid_micros: 1500000 // £1.50 default bid
             }));
 
             // Create keywords in batch

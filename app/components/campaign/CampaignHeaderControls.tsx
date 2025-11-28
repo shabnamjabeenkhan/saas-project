@@ -212,15 +212,6 @@ export function CampaignHeaderControls({
                         {isProcessing ? "Pushing..." : "Push to Google Ads"}
                       </Button>
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleExportCampaign}
-                        className="text-white border-gray-700 hover:bg-gray-800 text-xs sm:text-sm"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Export JSON
-                      </Button>
-                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={disconnectGoogleAds}
