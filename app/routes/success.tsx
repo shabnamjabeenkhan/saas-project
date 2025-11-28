@@ -230,7 +230,7 @@ export default function Success() {
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">What's Next?</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <Button asChild className="w-full">
+              <Button asChild className="w-full bg-black text-white hover:bg-gray-800">
                 <Link to={subscription?.status === 'active' ? "/dashboard" : "/pricing"}>
                   {subscription?.status === 'active' ? (
                     <>
@@ -242,7 +242,7 @@ export default function Success() {
                   )}
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="w-full">
+              <Button asChild className="w-full bg-black text-white hover:bg-gray-800">
                 <Link to="/">
                   Back to Home
                 </Link>

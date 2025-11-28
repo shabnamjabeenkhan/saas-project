@@ -194,7 +194,7 @@ export default function SubscriptionStatus() {
             variant="outline"
             onClick={handleManageSubscription}
             disabled={loadingDashboard || !subscription.customerId}
-            className="flex-1"
+            className="flex-1 text-white border-gray-600 hover:bg-gray-800"
           >
             {loadingDashboard ? (
               <>

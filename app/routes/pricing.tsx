@@ -3,9 +3,8 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { isFeatureEnabled, config } from "../../config";
-
-const POLAR_CHECKOUT_URL =
-  "https://buy.polar.sh/polar_cl_j6BOG8r1GyWlJm5h4VoEy2oltoL0ObZNnWiVw3D3sPM";
+import { useAction } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export default function Pricing() {
   if (!isFeatureEnabled("payments") || !config.ui.showPricing) {
@@ -13,11 +12,38 @@ export default function Pricing() {
   }
 
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const getAvailablePlans = useAction(api.subscriptions.getAvailablePlans);
+  const createCheckoutSession = useAction(api.subscriptions.createCheckoutSession);
 
-  const onBuy = () => {
+  const onBuy = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    window.location.href = POLAR_CHECKOUT_URL;
+    setError(null);
+    
+    try {
+      // Fetch plans from Polar (respects POLAR_SERVER env var)
+      const plans = await getAvailablePlans();
+      
+      // Get the first product's first price ID
+      const product = plans?.items?.[0];
+      const priceId = product?.prices?.[0]?.id;
+      
+      if (!priceId) {
+        throw new Error("No price ID found. Please ensure you have a product configured in Polar.");
+      }
+      
+      const checkoutUrl = await createCheckoutSession({ priceId });
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error("Failed to get checkout URL");
+      }
+    } catch (err) {
+      console.error("Failed to create checkout:", err);
+      setError(err instanceof Error ? err.message : "Failed to start checkout. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const features = [
@@ -34,14 +60,14 @@ export default function Pricing() {
   return (
     <section className="py-32 overflow-x-hidden" style={{ backgroundColor: '#18191a' }}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl space-y-6 text-center">
+        {/* <div className="mx-auto max-w-2xl space-y-6 text-center">
           <h2 className="text-center text-4xl font-semibold lg:text-5xl">
             Standard
           </h2>
           <p className="text-muted-foreground text-lg">
             Perfect for growing businesses
           </p>
-        </div>
+        </div> */}
 
         <div className="mt-12 sm:mt-16 lg:mt-20 flex justify-center max-w-5xl mx-auto px-4 sm:px-6">
           <div
@@ -82,8 +108,15 @@ export default function Pricing() {
             <div className="flex flex-col px-[6px] mt-2 gap-4">
               <div className="flex flex-col text-center">
                 <span className="text-xs sm:text-xs lg:text-sm text-gray-400 font-medium">Starting from</span>
-                <span className="text-[24px] sm:text-[28px] lg:text-[36px] font-bold leading-[28px] sm:leading-[34px] lg:leading-[42px] text-white">$69/mo</span>
+                <span className="text-[24px] sm:text-[28px] lg:text-[36px] font-bold leading-[28px] sm:leading-[34px] lg:leading-[42px] text-white">$59/mo</span>
               </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="text-sm text-red-400 text-center px-2">
+                  {error}
+                </div>
+              )}
 
               {/* Button */}
               <Button

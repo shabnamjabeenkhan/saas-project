@@ -15,7 +15,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   const plans = [
     {
       name: 'Standard',
-      price: '$69',
+      price: '$59',
       period: 'mo',
       description: 'Perfect for growing businesses',
       features: [

@@ -98,7 +98,6 @@ export function NavUser({ user }: any) {
     <SidebarMenu>
       <SidebarMenuItem>
         {showBillingUi && <UpgradeButton />}
-        {showBillingUi && <PlanPill />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
