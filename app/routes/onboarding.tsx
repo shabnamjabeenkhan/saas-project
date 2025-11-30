@@ -121,6 +121,7 @@ export default function OnboardingWizard() {
   const saveOnboardingData = useMutation(api.onboarding.saveOnboardingData);
   const completeOnboarding = useMutation(api.onboarding.completeOnboarding);
   const generateCampaign = useAction(api.campaigns.generateCampaign);
+  const updateOnboardingAndRegenerate = useAction(api.onboarding.updateOnboardingAndRegenerate);
   const existingData = useQuery(api.onboarding.getOnboardingData);
 
   // Check if user is admin and bypass onboarding
@@ -307,20 +308,80 @@ export default function OnboardingWizard() {
     try {
       console.log("Starting final submission...");
 
-      // Save final data
-      await saveStepData(allData);
-      console.log("Step data saved successfully");
+      // Prepare data for Convex
+      const convexData: any = {};
+      if (allData.step1) convexData.tradeType = allData.step1.tradeType;
+      if (allData.step2) {
+        convexData.businessName = allData.step2.businessName;
+        convexData.contactName = allData.step2.contactName;
+        convexData.email = allData.step2.email;
+        convexData.phone = allData.step2.phone;
+        convexData.websiteUrl = allData.step2.websiteUrl || "";
+      }
+      if (allData.step3) {
+        convexData.serviceArea = {
+          city: allData.step3.city,
+          postcode: allData.step3.postcode,
+          radius: allData.step3.radius,
+        };
+      }
+      if (allData.step4) convexData.serviceOfferings = allData.step4.serviceOfferings;
+      if (allData.step5) {
+        convexData.availability = {
+          workingHours: allData.step5.workingHours,
+          emergencyCallouts: allData.step5.emergencyCallouts,
+          weekendWork: allData.step5.weekendWork,
+        };
+        convexData.acquisitionGoals = {
+          monthlyLeads: allData.step5.monthlyLeads,
+          averageJobValue: allData.step5.averageJobValue,
+          monthlyBudget: allData.step5.monthlyBudget,
+        };
+      }
+      if (allData.step6) {
+        convexData.complianceData = {
+          businessRegistration: allData.step6.businessRegistration,
+          requiredCertifications: allData.step6.requiredCertifications,
+          publicLiabilityInsurance: allData.step6.publicLiabilityInsurance,
+          businessEmail: allData.step6.businessEmail,
+          businessNumber: allData.step6.businessNumber,
+          termsAccepted: allData.step6.termsAccepted,
+          complianceUnderstood: allData.step6.complianceUnderstood,
+          certificationWarning: allData.step6.certificationWarning,
+        };
+      }
+      convexData.isComplete = true;
 
-      // Mark as complete
-      await completeOnboarding();
-      console.log("Onboarding marked as complete successfully!");
+      // Check if this is a re-do (user has existing completed onboarding)
+      const isRedo = existingData?.isComplete === true;
 
-      // Generate AI campaign in the background
-      try {
-        await generateCampaign({});
-        console.log("Campaign generated successfully!");
-      } catch (campaignError) {
-        console.warn("Campaign generation failed, but onboarding completed:", campaignError);
+      if (isRedo) {
+        // Use updateOnboardingAndRegenerate - it checks for changes and only regenerates if relevant fields changed
+        console.log("Re-doing onboarding - using updateOnboardingAndRegenerate with change detection");
+        try {
+          const result = await updateOnboardingAndRegenerate(convexData);
+          if (result.regenerationTriggered) {
+            console.log("Campaign regenerated successfully!");
+          } else if (result.regenerationError) {
+            console.warn("Campaign regeneration failed:", result.regenerationError);
+          } else {
+            console.log("No relevant fields changed - campaign not regenerated");
+          }
+        } catch (error) {
+          console.warn("Update failed, but onboarding data saved:", error);
+        }
+      } else {
+        // Initial onboarding - save data, mark complete, and always generate campaign
+        console.log("Initial onboarding - generating campaign");
+        await saveStepData(allData);
+        await completeOnboarding();
+        
+        try {
+          await generateCampaign({});
+          console.log("Campaign generated successfully!");
+        } catch (campaignError) {
+          console.warn("Campaign generation failed, but onboarding completed:", campaignError);
+        }
       }
 
       // Add a small delay to ensure data is persisted before redirect

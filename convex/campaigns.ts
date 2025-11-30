@@ -38,6 +38,8 @@ const campaignSchema = v.object({
     })
   )),
   complianceNotes: v.array(v.string()),
+  optimizationSuggestions: v.optional(v.array(v.string())),
+  seasonalRecommendations: v.optional(v.array(v.string())),
 });
 
 // Generate AI campaign using OpenAI
@@ -154,7 +156,7 @@ export const generateCampaign = action({
   },
 });
 
-// Check regeneration limits (DISABLED FOR TESTING)
+// Check regeneration limits with trial/paid gating
 export const checkRegenerationLimits = query({
   args: {
     userId: v.string(),
@@ -162,67 +164,118 @@ export const checkRegenerationLimits = query({
   returns: v.object({
     allowed: v.boolean(),
     remaining: v.number(),
-    testing: v.boolean(),
+    cooldownSecondsRemaining: v.number(),
     reason: v.optional(v.string()),
+    testing: v.optional(v.boolean()),
   }),
   handler: async (ctx, args) => {
-    // TESTING MODE: Always allow regeneration
-    return {
-      allowed: true,
-      remaining: 999, // Show high number for testing
-      testing: true,
-    };
+    const now = Date.now();
+    const oneMinute = 60 * 1000; // 1 minute cooldown
+    const threeDays = 3 * 24 * 60 * 60 * 1000; // 3 days for trial
+    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days for monthly reset
 
-    // Original logic commented out for testing:
-    /*
+    // Get subscription status
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    // Get onboarding data to determine trial start
+    const onboardingData = await ctx.db
+      .query("onboardingData")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    // Get campaign to check regeneration count
     const campaign = await ctx.db
       .query("campaigns")
       .withIndex("userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    if (!campaign) {
-      return { allowed: true, remaining: 10, reason: "" };
+    // Determine if user is on trial or paid
+    const isPaidActive = subscription?.status === "active";
+    const isTrialActive = !isPaidActive && onboardingData?.completedAt 
+      ? (now - onboardingData.completedAt) < threeDays
+      : false;
+
+    // Check cooldown (1 minute between regenerations)
+    if (campaign?.lastRegeneration) {
+      const timeSinceLastRegen = now - campaign.lastRegeneration;
+      if (timeSinceLastRegen < oneMinute) {
+        const cooldownSeconds = Math.ceil((oneMinute - timeSinceLastRegen) / 1000);
+        return {
+          allowed: false,
+          remaining: 0,
+          cooldownSecondsRemaining: cooldownSeconds,
+          reason: `Please wait ${cooldownSeconds} second${cooldownSeconds !== 1 ? 's' : ''} before regenerating again.`,
+        };
+      }
     }
 
-    const now = Date.now();
-    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
-    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+    // Trial logic: 1 initial + 2 regenerations = 3 total within 3 days
+    if (isTrialActive) {
+      const totalGenerations = campaign?.regenerationCount || 0; // Already includes initial campaign
+      const remainingTrialRegens = Math.max(0, 3 - totalGenerations);
 
-    // Check cooldown period (30 minutes) - DISABLED FOR TESTING
-    // if (campaign.lastRegeneration && (now - campaign.lastRegeneration) < thirtyMinutes) {
-    //   const remainingCooldown = Math.ceil((thirtyMinutes - (now - campaign.lastRegeneration)) / 60000);
-    //   return {
-    //     allowed: false,
-    //     reason: `Please wait ${remainingCooldown} minutes before regenerating again.`,
-    //     remaining: Math.max(0, 10 - (campaign.monthlyRegenCount || 0))
-    //   };
-    // }
+      if (totalGenerations >= 3) {
+        return {
+          allowed: false,
+          remaining: 0,
+          cooldownSecondsRemaining: 0,
+          reason: "Trial limit reached (3 total generations). Upgrade to continue regenerating campaigns.",
+        };
+      }
 
-    // Reset monthly count if it's a new month
-    const shouldResetMonthly = !campaign.monthlyRegenResetDate ||
-                               (now - campaign.monthlyRegenResetDate) > oneMonth;
+      return {
+        allowed: true,
+        remaining: remainingTrialRegens,
+        cooldownSecondsRemaining: 0,
+      };
+    }
 
-    const currentMonthlyCount = shouldResetMonthly ? 0 : (campaign.monthlyRegenCount || 0);
+    // Paid logic: 3 regenerations per calendar month
+    if (isPaidActive) {
+      // Check if we need to reset monthly count (new calendar month)
+      const lastResetDate = campaign?.monthlyRegenResetDate || campaign?.createdAt || now;
+      const daysSinceReset = (now - lastResetDate) / (24 * 60 * 60 * 1000);
+      const shouldResetMonthly = daysSinceReset >= 30; // Calendar month reset
 
-    // Check monthly limit (10 per month) - DISABLED FOR TESTING
-    // if (currentMonthlyCount >= 10) {
-    //   return {
-    //     allowed: false,
-    //     reason: "Monthly regeneration limit reached (10/month). Try again next month.",
-    //     remaining: 0
-    //   };
-    // }
+      const currentMonthlyCount = shouldResetMonthly ? 0 : (campaign?.monthlyRegenCount || 0);
+      const remainingPaidRegens = Math.max(0, 3 - currentMonthlyCount);
 
+      if (currentMonthlyCount >= 3) {
+        // Calculate next reset date (first day of next month)
+        const resetDate = new Date(lastResetDate);
+        resetDate.setMonth(resetDate.getMonth() + 1);
+        resetDate.setDate(1);
+        resetDate.setHours(0, 0, 0, 0);
+
+        return {
+          allowed: false,
+          remaining: 0,
+          cooldownSecondsRemaining: 0,
+          reason: `Monthly regeneration limit reached (3/month). Resets on ${resetDate.toLocaleDateString()}.`,
+        };
+      }
+
+      return {
+        allowed: true,
+        remaining: remainingPaidRegens,
+        cooldownSecondsRemaining: 0,
+      };
+    }
+
+    // No subscription and trial expired
     return {
-      allowed: true,
-      remaining: 999, // Unlimited for testing
-      reason: ""
+      allowed: false,
+      remaining: 0,
+      cooldownSecondsRemaining: 0,
+      reason: "Trial expired. Please upgrade to continue regenerating campaigns.",
     };
-    */
   },
 });
 
-// Update regeneration tracking
+// Update regeneration tracking (only called on successful campaign generation)
 export const updateRegenerationTracking = mutation({
   args: {
     userId: v.string(),
@@ -238,14 +291,36 @@ export const updateRegenerationTracking = mutation({
     }
 
     const now = Date.now();
-    const oneMonth = 30 * 24 * 60 * 60 * 1000;
+    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-    // Reset monthly count if it's a new month
-    const shouldResetMonthly = !campaign.monthlyRegenResetDate ||
-                               (now - campaign.monthlyRegenResetDate) > oneMonth;
+    // Check subscription status to determine if monthly reset applies
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
 
-    const newMonthlyCount = shouldResetMonthly ? 1 : (campaign.monthlyRegenCount || 0) + 1;
-    const newResetDate = shouldResetMonthly ? now : campaign.monthlyRegenResetDate;
+    const isPaidActive = subscription?.status === "active";
+
+    // For paid users: reset monthly count if it's a new calendar month
+    // For trial users: just increment total count
+    let newMonthlyCount = campaign.monthlyRegenCount || 0;
+    let newResetDate = campaign.monthlyRegenResetDate || now;
+
+    if (isPaidActive) {
+      const lastResetDate = campaign.monthlyRegenResetDate || campaign.createdAt || now;
+      const daysSinceReset = (now - lastResetDate) / (24 * 60 * 60 * 1000);
+      const shouldResetMonthly = daysSinceReset >= 30; // Calendar month reset
+
+      if (shouldResetMonthly) {
+        newMonthlyCount = 1;
+        newResetDate = now;
+      } else {
+        newMonthlyCount = (campaign.monthlyRegenCount || 0) + 1;
+      }
+    } else {
+      // Trial users: don't track monthly count separately, just total
+      newMonthlyCount = campaign.monthlyRegenCount || 0; // Keep existing or 0
+    }
 
     await ctx.db.patch(campaign._id, {
       regenerationCount: (campaign.regenerationCount || 0) + 1,
@@ -621,6 +696,41 @@ export const pushToGoogleAds = action({
 
       console.log('✅ PRE-PUSH VALIDATION PASSED: Data is consistent');
 
+      // Check subscription/trial status before allowing push
+      const subscription = await ctx.runQuery(api.subscriptions.fetchUserSubscription);
+      
+      const isPaidActive = subscription?.status === "active";
+      const threeDays = 3 * 24 * 60 * 60 * 1000;
+      const isTrialActive = !isPaidActive && onboardingData?.completedAt 
+        ? (Date.now() - onboardingData.completedAt) < threeDays
+        : false;
+
+      if (!isPaidActive && !isTrialActive) {
+        throw new Error("Trial expired or subscription inactive. Please upgrade to push campaigns to Google Ads.");
+      }
+
+      // Validate website URL is not placeholder in production (reuse placeholderUrls from above)
+      const hasPlaceholderUrl = campaign.adGroups?.some((ag: any) => 
+        placeholderUrls.includes(ag.adCopy?.finalUrl)
+      );
+      
+      if (hasPlaceholderUrl && process.env.NODE_ENV === "production") {
+        throw new Error("Cannot push campaign: placeholder URLs detected. Please update your website URL in settings.");
+      }
+
+      // Validate ad groups have minimum required content
+      for (const adGroup of campaign.adGroups || []) {
+        const headlines = adGroup.adCopy?.headlines || [];
+        const descriptions = adGroup.adCopy?.descriptions || [];
+        
+        if (headlines.length < 3) {
+          throw new Error(`Ad group "${adGroup.name}" has fewer than 3 headlines. Please regenerate the campaign.`);
+        }
+        if (descriptions.length < 2) {
+          throw new Error(`Ad group "${adGroup.name}" has fewer than 2 descriptions. Please regenerate the campaign.`);
+        }
+      }
+
       // 🔒 FINAL SANITIZATION: One last pass to ensure no contaminated numbers
       const finalContaminationCheckRegex = /077\s?684\s?7429|0776847429/i;
       
@@ -846,6 +956,54 @@ const REQUIRED_TRADE_PHRASES = {
   both: ['plumber', 'electrician', 'plumbing', 'electrical', 'heating', 'wiring', 'boiler', 'fuse'],
 };
 
+// Service-to-theme mapping for ad group creation
+// Maps service names from onboarding to one of four themes: emergency, installation, maintenance, repair
+const SERVICE_TO_THEME_MAP: Record<string, 'emergency' | 'installation' | 'maintenance' | 'repair'> = {
+  // Plumbing services
+  'Emergency Plumbing': 'emergency',
+  'Boiler Installation': 'installation',
+  'Boiler Repair': 'repair',
+  'Central Heating': 'maintenance',
+  'Bathroom Installation': 'installation',
+  'Leak Repair': 'repair',
+  'Drainage': 'repair',
+  'Gas Safety Certificates': 'maintenance',
+  
+  // Electrical services
+  'Emergency Electrical': 'emergency',
+  'Consumer Unit Installation': 'installation',
+  'Rewiring': 'installation',
+  'Socket Installation': 'installation',
+  'Lighting Installation': 'installation',
+  'Electric Vehicle Charging': 'installation',
+  'Electrical Safety Certificates': 'maintenance',
+  'Smart Home Installation': 'installation',
+};
+
+// Group services by theme
+function groupServicesByTheme(serviceOfferings: string[]): {
+  emergency: string[];
+  installation: string[];
+  maintenance: string[];
+  repair: string[];
+} {
+  const grouped = {
+    emergency: [] as string[],
+    installation: [] as string[],
+    maintenance: [] as string[],
+    repair: [] as string[],
+  };
+
+  for (const service of serviceOfferings) {
+    const theme = SERVICE_TO_THEME_MAP[service];
+    if (theme && grouped[theme]) {
+      grouped[theme].push(service);
+    }
+  }
+
+  return grouped;
+}
+
 // Helper functions for enhanced prompts
 function getSeason(month: number): 'winter' | 'spring' | 'summer' | 'autumn' {
   if (month >= 2 && month <= 4) return 'spring';
@@ -904,6 +1062,12 @@ function buildCampaignPrompt(onboardingData: any, isRegeneration: boolean = fals
   const weekendText = availability?.weekendWork ? 'Works weekends' : 'Weekdays only';
   const currentMonth = new Date().getMonth();
   const season = getSeason(currentMonth);
+
+  // Group services by theme for conditional ad group creation
+  const servicesByTheme = groupServicesByTheme(serviceOfferings);
+  const availableThemes = Object.entries(servicesByTheme)
+    .filter(([_, services]) => services.length > 0)
+    .map(([theme, services]) => ({ theme, services }));
 
   // Add variation logic for regenerations
   let variationInstructions = '';
@@ -973,16 +1137,40 @@ ${variationInstructions}
 - The phone number in businessInfo.phone and callExtensions MUST match the exact number from onboarding: ${phone}
 
 **CAMPAIGN REQUIREMENTS:**
-1. Create exactly 4 targeted ad groups with distinct themes (emergency, installation, maintenance, repair, etc.)
-2. Generate 8-10 high-intent keywords per ad group including local variations for ${city}
-3. Write 3 compelling headlines (max 30 chars) and 2 descriptions (max 90 chars) per ad group
-4. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
-5. Include location-specific keywords: "${city} {service}", "{service} near me", "local {service}"
-6. Add emergency/urgency keywords if applicable: "24/7", "emergency", "urgent"
-7. Use "Call Now", "Call Today", "Phone Us" instead of actual phone numbers in ad text
-8. Add compliance notes for UK regulatory requirements
-9. Suggest optimization tips and seasonal recommendations
-10. Calculate daily budget: £${Math.round((acquisitionGoals?.monthlyBudget || 300) / 30)}
+1. Create ad groups ONLY for themes that have matching services from the user's selected serviceOfferings:
+${availableThemes.map(({ theme, services }) => `   - ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme: ${services.join(', ')}`).join('\n')}
+   IMPORTANT: Only create ad groups for themes listed above. Do NOT create ad groups for themes with no matching services.
+
+2. Generate exactly 12 headlines per ad group:
+   - Each headline MUST be ≤ 30 characters (count spaces and punctuation)
+   - NO truncated words allowed (e.g., "Londo" instead of "London" is FORBIDDEN)
+   - Headlines must cover five styles:
+     a) Keyword + city (e.g., "Plumber ${city}")
+     b) Local benefit (e.g., "Local Expert Service")
+     c) Value/offer (e.g., "Free Quotes Today")
+     d) Trust indicator (e.g., "Gas Safe Certified")
+     e) Action/CTA (e.g., "Call Now - 24/7")
+   - If a headline exceeds 30 chars, shorten it by:
+     * Removing less important words (e.g., "professional", "local")
+     * Using abbreviations: "installation" → "install", "emergency" → "urgent"
+     * Only as last resort: truncate at full-word boundary (never mid-word)
+
+3. Generate 2-4 descriptions per ad group (max 90 chars each)
+
+4. Generate 8-10 high-intent keywords per ad group:
+   - Keywords MUST derive ONLY from the services in that theme's serviceOfferings
+   - Include local variations: "${city} {service}", "{service} near me", "local {service}"
+   - Add emergency/urgency keywords if applicable: "24/7", "emergency", "urgent"
+
+5. Ensure ALL copy is UK-compliant and mentions required credentials (Gas Safe, Part P, etc.)
+
+6. Use "Call Now", "Call Today", "Phone Us" instead of actual phone numbers in ad text
+
+7. Add compliance notes for UK regulatory requirements
+
+8. Suggest optimization tips and seasonal recommendations
+
+9. Calculate daily budget: £${Math.round((acquisitionGoals?.monthlyBudget || 300) / 30)}
 
 **CRITICAL COMPLIANCE POINTS:**
 - Gas work MUST mention "Gas Safe Registered" if offering gas/heating services
@@ -1057,11 +1245,11 @@ Return ONLY a valid JSON object with this exact structure:
   },
   "adGroups": [
     {
-      "name": "string",
-      "keywords": ["array of strings"],
+      "name": "string (theme name: Emergency/Installation/Maintenance/Repair)",
+      "keywords": ["8-10 keywords derived from theme's services"],
       "adCopy": {
-        "headlines": ["3 headlines"],
-        "descriptions": ["2 descriptions"],
+        "headlines": ["EXACTLY 12 headlines, each ≤ 30 chars, no truncated words"],
+        "descriptions": ["2-4 descriptions, each ≤ 90 chars"],
         "finalUrl": "string"
       }
     }
@@ -1071,6 +1259,8 @@ Return ONLY a valid JSON object with this exact structure:
   "optimizationSuggestions": ["array"],
   "seasonalRecommendations": ["array"]
 }
+
+CRITICAL: Each ad group MUST have exactly 12 headlines. If you generate fewer, the system will add filler headlines, which reduces ad quality.
 
 Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers.
 `;
@@ -1300,6 +1490,139 @@ function sanitizePhoneNumbers(campaignData: any): any {
   return sanitized;
 }
 
+// Validate and fix headline length (≤ 30 chars, no truncated words)
+function validateAndFixHeadline(headline: string, maxLength: number = 30): string {
+  if (headline.length <= maxLength) {
+    return headline;
+  }
+
+  // Strategy 1: Remove less important words
+  const lessImportantWords = ['professional', 'local', 'expert', 'trusted', 'qualified', 'certified'];
+  let shortened = headline;
+  for (const word of lessImportantWords) {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    shortened = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
+    if (shortened.length <= maxLength) {
+      return shortened;
+    }
+  }
+
+  // Strategy 2: Replace longer words with shorter alternatives
+  const replacements: Record<string, string> = {
+    'installation': 'install',
+    'emergency': 'urgent',
+    'professional': 'pro',
+    'certified': 'cert',
+    'qualified': 'qual',
+  };
+
+  shortened = headline;
+  for (const [long, short] of Object.entries(replacements)) {
+    const regex = new RegExp(`\\b${long}\\b`, 'gi');
+    shortened = shortened.replace(regex, short);
+    if (shortened.length <= maxLength) {
+      return shortened;
+    }
+  }
+
+  // Strategy 3: Truncate at full-word boundary (last resort)
+  if (shortened.length > maxLength) {
+    const words = shortened.split(' ');
+    let result = '';
+    for (const word of words) {
+      if ((result + ' ' + word).length <= maxLength) {
+        result = result ? result + ' ' + word : word;
+      } else {
+        break;
+      }
+    }
+    return result || shortened.substring(0, maxLength).trim();
+  }
+
+  return shortened;
+}
+
+// Generate fallback headlines if AI returns fewer than 12
+function generateFallbackHeadlines(
+  adGroupName: string,
+  tradeType: string,
+  city: string,
+  existingHeadlines: string[],
+  targetCount: number = 12
+): string[] {
+  const fallbacks: string[] = [];
+  const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumber' : 'Electrician';
+  const bothTerm = tradeType === 'both' ? 'Tradesperson' : tradeTerm;
+  
+  const templates = [
+    `Local ${tradeTerm} ${city}`,
+    `${tradeTerm} ${city}`,
+    `Certified ${tradeTerm}`,
+    `24/7 ${tradeTerm} Service`,
+    `Expert ${tradeTerm} ${city}`,
+    `Trusted ${tradeTerm}`,
+    `Qualified ${tradeTerm} ${city}`,
+    `${city} ${tradeTerm}`,
+    `Fast ${tradeTerm} Service`,
+    `Reliable ${tradeTerm} ${city}`,
+    `Professional ${tradeTerm}`,
+    `${tradeTerm} Near Me`,
+  ];
+
+  // Filter out templates that match existing headlines too closely
+  const existingLower = existingHeadlines.map(h => h.toLowerCase());
+  for (const template of templates) {
+    const candidate = validateAndFixHeadline(template, 30);
+    const candidateLower = candidate.toLowerCase();
+    
+    // Skip if too similar to existing headline
+    const isSimilar = existingLower.some(existing => 
+      existing.includes(candidateLower.substring(0, 10)) || 
+      candidateLower.includes(existing.substring(0, 10))
+    );
+    
+    if (!isSimilar && candidate.length > 0) {
+      fallbacks.push(candidate);
+      if (fallbacks.length >= targetCount - existingHeadlines.length) {
+        break;
+      }
+    }
+  }
+
+  return fallbacks;
+}
+
+// Validate ad group content matches serviceOfferings
+function validateAdGroupServices(
+  adGroup: any,
+  serviceOfferings: string[],
+  servicesByTheme: ReturnType<typeof groupServicesByTheme>
+): boolean {
+  // Extract theme from ad group name
+  const themeMatch = adGroup.name?.toLowerCase().match(/(emergency|installation|maintenance|repair)/);
+  if (!themeMatch) {
+    return true; // Can't validate if theme unclear
+  }
+
+  const theme = themeMatch[1] as 'emergency' | 'installation' | 'maintenance' | 'repair';
+  const allowedServices = servicesByTheme[theme] || [];
+
+  // Check if keywords reference services not in allowedServices
+  const keywords = (adGroup.keywords || []).join(' ').toLowerCase();
+  for (const service of serviceOfferings) {
+    if (!allowedServices.includes(service)) {
+      const serviceLower = service.toLowerCase();
+      // Check if this disallowed service is mentioned in keywords
+      if (keywords.includes(serviceLower)) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" mentions service "${service}" which is not in theme "${theme}"`);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 // Validate campaign data integrity
 function validateCampaignDataIntegrity(campaignData: any, onboardingData: any): void {
   const onboardingPhone = onboardingData.phone;
@@ -1333,6 +1656,10 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
   const businessName = onboardingData.businessName;
   const phone = onboardingData.phone;
   const websiteUrl = onboardingData.websiteUrl || "https://example.com";
+  const serviceOfferings = onboardingData.serviceOfferings || [];
+  const tradeType = onboardingData.tradeType;
+  const city = serviceArea?.city || 'UK';
+  const servicesByTheme = groupServicesByTheme(serviceOfferings);
 
   // 🔍 COMPREHENSIVE LOGGING: Track phone number transformations
   console.log('🔍 VALIDATION DEBUG: Phone from onboarding:', phone);
@@ -1380,19 +1707,55 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       phone: phone, // 🔒 ALWAYS use onboarding phone, never AI-generated
       serviceArea: `${serviceArea?.city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
     },
-    adGroups: (data.adGroups || []).map((adGroup: any) => ({
-      ...adGroup,
-      adCopy: {
-        ...adGroup.adCopy,
-        finalUrl: websiteUrl // Use onboarding website URL or fallback to example.com
+    adGroups: (data.adGroups || []).map((adGroup: any) => {
+      // Validate ad group services match serviceOfferings
+      validateAdGroupServices(adGroup, serviceOfferings, servicesByTheme);
+
+      // Validate and fix headlines
+      const headlines = (adGroup.adCopy?.headlines || []).map((h: string) => validateAndFixHeadline(h, 30));
+      
+      // Ensure exactly 12 headlines
+      if (headlines.length < 12) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has only ${headlines.length} headlines, generating ${12 - headlines.length} fallback headlines`);
+        const fallbacks = generateFallbackHeadlines(adGroup.name, tradeType, city, headlines, 12);
+        headlines.push(...fallbacks);
+      } else if (headlines.length > 12) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has ${headlines.length} headlines, truncating to 12`);
+        headlines.splice(12);
       }
-    })),
+
+      // Validate descriptions (2-4, max 90 chars)
+      let descriptions = adGroup.adCopy?.descriptions || [];
+      descriptions = descriptions.filter((d: string) => d && d.length <= 90);
+      if (descriptions.length < 2) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has fewer than 2 descriptions, adding fallback`);
+        descriptions.push(
+          `Professional ${tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical'} services in ${city}`,
+          `Call today for immediate assistance`
+        );
+      }
+      if (descriptions.length > 4) {
+        descriptions.splice(4);
+      }
+
+      return {
+        ...adGroup,
+        adCopy: {
+          ...adGroup.adCopy,
+          headlines: headlines.slice(0, 12), // Ensure exactly 12
+          descriptions: descriptions.slice(0, 4), // Max 4
+          finalUrl: websiteUrl // Use onboarding website URL or fallback to example.com
+        }
+      };
+    }),
     callExtensions: [phone], // 🔒 ALWAYS use onboarding phone, never AI-generated
     complianceNotes: data.complianceNotes || [
       "All ads comply with UK advertising standards",
       "Emergency services claims must be substantiated",
       "Pricing should be transparent and include VAT where applicable",
     ],
+    optimizationSuggestions: data.optimizationSuggestions || [],
+    seasonalRecommendations: data.seasonalRecommendations || [],
   };
 
   // 🔒 FINAL VALIDATION: Ensure no contaminated numbers slipped through

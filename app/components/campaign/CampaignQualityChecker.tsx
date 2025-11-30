@@ -17,10 +17,19 @@ import {
 import { useState } from "react";
 import type { ComplianceCheck } from "~/lib/ukComplianceRules";
 
+interface AdGroup {
+  name: string;
+  adCopy: {
+    headlines: string[];
+    descriptions: string[];
+  };
+}
+
 interface CampaignQualityCheckerProps {
   complianceChecks: ComplianceCheck[];
   optimizationSuggestions: string[];
   seasonalRecommendations: string[];
+  adGroups?: AdGroup[];
   onRegenerate?: () => void;
 }
 
@@ -28,6 +37,7 @@ export function CampaignQualityChecker({
   complianceChecks = [],
   optimizationSuggestions = [],
   seasonalRecommendations = [],
+  adGroups = [],
   onRegenerate,
 }: CampaignQualityCheckerProps) {
   const [activeTab, setActiveTab] = useState<'compliance' | 'optimization'>('compliance');
@@ -39,6 +49,43 @@ export function CampaignQualityChecker({
   const passed = complianceChecks.filter(c => c.passed);
 
   const overallScore = complianceChecks.length > 0 ? Math.round((passed.length / complianceChecks.length) * 100) : 0;
+
+  // Calculate Ad Strength based on compliance checks and headline count
+  const calculateAdStrength = () => {
+    // Factor 1: Compliance score (0-100)
+    const complianceScore = overallScore;
+    
+    // Factor 2: Headline completeness (0-100)
+    // Check if all ad groups have exactly 12 headlines
+    let headlineScore = 100;
+    if (adGroups.length > 0) {
+      const groupsWith12Headlines = adGroups.filter(ag => 
+        ag.adCopy?.headlines?.length === 12
+      ).length;
+      headlineScore = Math.round((groupsWith12Headlines / adGroups.length) * 100);
+    } else {
+      // No ad groups = 0 score
+      headlineScore = 0;
+    }
+    
+    // Weighted average: 70% compliance, 30% headline completeness
+    const adStrengthScore = Math.round((complianceScore * 0.7) + (headlineScore * 0.3));
+    
+    return {
+      score: adStrengthScore,
+      level: adStrengthScore >= 90 ? 'Excellent' : 
+             adStrengthScore >= 75 ? 'Good' : 
+             adStrengthScore >= 60 ? 'Fair' : 'Poor',
+      color: adStrengthScore >= 90 ? 'text-green-400' :
+             adStrengthScore >= 75 ? 'text-blue-400' :
+             adStrengthScore >= 60 ? 'text-yellow-400' : 'text-red-400',
+      badgeColor: adStrengthScore >= 90 ? 'bg-green-600' :
+                  adStrengthScore >= 75 ? 'bg-blue-600' :
+                  adStrengthScore >= 60 ? 'bg-yellow-600' : 'bg-red-600',
+    };
+  };
+
+  const adStrength = calculateAdStrength();
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-400';
@@ -70,11 +117,12 @@ export function CampaignQualityChecker({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className={`text-2xl font-bold ${getScoreColor(overallScore)}`}>
-                {overallScore}%
+              <div className="text-xs text-muted-foreground mb-1">Ad Strength</div>
+              <div className={`text-2xl font-bold ${adStrength.color}`}>
+                {adStrength.score}%
               </div>
-              <Badge className={`${scoreBadge.color} text-white`}>
-                {scoreBadge.text}
+              <Badge className={`${adStrength.badgeColor} text-white mt-1`}>
+                {adStrength.level}
               </Badge>
             </div>
           </div>

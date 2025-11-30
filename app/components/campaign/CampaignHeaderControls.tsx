@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -8,9 +8,11 @@ import {
   Sparkles,
   Loader2,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleAdsAuth } from "~/lib/useGoogleAdsAuth";
+import { useNavigate } from "react-router";
 
 interface CampaignHeaderControlsProps {
   campaign: any; // TODO: Type this properly
@@ -23,6 +25,8 @@ export function CampaignHeaderControls({
 }: CampaignHeaderControlsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const navigate = useNavigate();
 
   const generateCampaign = useAction(api.campaigns.generateCampaign);
   const pushToGoogleAds = useAction(api.campaigns.pushToGoogleAds);
@@ -33,9 +37,45 @@ export function CampaignHeaderControls({
     campaign?.userId ? { userId: campaign.userId } : "skip"
   );
 
+  // Check subscription state for trial expiry and cancellation
+  const subscriptionState = useQuery(
+    api.subscriptions.getSubscriptionState,
+    campaign?.userId ? { userId: campaign.userId } : "skip"
+  );
+
+  // Update cooldown timer every second
+  useEffect(() => {
+    if (regenerationLimits?.cooldownSecondsRemaining && regenerationLimits.cooldownSecondsRemaining > 0) {
+      setCooldownSeconds(regenerationLimits.cooldownSecondsRemaining);
+      const interval = setInterval(() => {
+        setCooldownSeconds((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCooldownSeconds(0);
+    }
+  }, [regenerationLimits?.cooldownSecondsRemaining]);
+
   const handleGenerateCampaign = async () => {
     if (!onboardingData?.isComplete) {
       toast.error("Please complete your onboarding first");
+      return;
+    }
+
+    // Check subscription state - disallow if trial expired or cancelled period ended
+    if (subscriptionState?.isTrialExpired) {
+      toast.error("Trial expired. Please upgrade to continue regenerating campaigns.");
+      return;
+    }
+
+    if (subscriptionState?.isCancelledPeriodEnded) {
+      toast.error("Subscription period ended. Please renew your subscription to continue.");
       return;
     }
 
@@ -62,6 +102,17 @@ export function CampaignHeaderControls({
     if (!campaign) {
       console.error('❌ No campaign available to push');
       toast.error("No campaign to push");
+      return;
+    }
+
+    // Check subscription state - disallow if trial expired or cancelled period ended
+    if (subscriptionState?.isTrialExpired) {
+      toast.error("Trial expired. Please upgrade to push campaigns to Google Ads.");
+      return;
+    }
+
+    if (subscriptionState?.isCancelledPeriodEnded) {
+      toast.error("Subscription period ended. Please renew your subscription to push campaigns.");
       return;
     }
 
@@ -171,8 +222,8 @@ export function CampaignHeaderControls({
                         variant="outline"
                         size="sm"
                         onClick={handlePushToGoogleAds}
-                        disabled={isProcessing}
-                        className="text-white border-gray-700 hover:bg-gray-800 text-xs sm:text-sm"
+                        disabled={isProcessing || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
+                        className="text-white border-gray-700 hover:bg-gray-800 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isProcessing ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -197,7 +248,7 @@ export function CampaignHeaderControls({
                       generating={isConnecting}
                       highlightHueDeg={200}
                       onClick={connectGoogleAds}
-                      disabled={isConnecting}
+                      disabled={isConnecting || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
                       variant="outline"
                       className="w-full sm:w-auto"
                     />
@@ -208,13 +259,18 @@ export function CampaignHeaderControls({
                 <div className="flex justify-center order-last lg:order-none">
                   {regenerationLimits && (
                     <div className="w-full max-w-xs lg:w-auto">
-                      {regenerationLimits.testing ? (
+                      {(regenerationLimits as any).testing ? (
                         <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center" style={{backgroundColor: "#0f2419", border: "1px solid #22c55e", color: "#22c55e"}}>
                           Testing mode - unlimited regenerations
                         </div>
-                      ) : regenerationLimits.allowed ? (
+                      ) : regenerationLimits.allowed && cooldownSeconds === 0 ? (
                         <div className="text-xs text-gray-400 text-center py-1">
-                          {regenerationLimits.remaining}/10 regenerations remaining this month
+                          {regenerationLimits.remaining}/3 regenerations remaining this month
+                        </div>
+                      ) : cooldownSeconds > 0 ? (
+                        <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-1" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b", color: "#f59e0b"}}>
+                          <Clock className="w-3 h-3" />
+                          <span>Please wait {cooldownSeconds}s</span>
                         </div>
                       ) : (
                         <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-1" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b", color: "#f59e0b"}}>
@@ -235,9 +291,20 @@ export function CampaignHeaderControls({
                     generating={isGenerating}
                     highlightHueDeg={160}
                     onClick={handleGenerateCampaign}
-                    disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
+                    disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && (!regenerationLimits.allowed || cooldownSeconds > 0)) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
                     className="w-full sm:w-auto font-semibold pb-4"
                   />
+                  {/* Upgrade Plan CTA when trial expired or subscription inactive */}
+                  {(subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded) && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => navigate("/pricing")}
+                      className="ml-2 bg-white text-black hover:bg-gray-100"
+                    >
+                      {subscriptionState.isTrialExpired ? "Upgrade Plan" : "Renew Subscription"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
@@ -245,16 +312,72 @@ export function CampaignHeaderControls({
 
           {/* Generate Button for when no campaign exists */}
           {!campaign && (
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2">
               <AnimatedGenerateButton
                 labelIdle="Generate Campaign"
                 labelActive="Generating..."
                 generating={isGenerating}
                 highlightHueDeg={160}
                 onClick={handleGenerateCampaign}
-                disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed)}
+                disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && (!regenerationLimits.allowed || cooldownSeconds > 0)) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
                 className="w-full sm:w-auto max-w-xs sm:max-w-none font-semibold"
               />
+              {/* Upgrade Plan CTA when trial expired or subscription inactive */}
+              {(subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded) && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate("/pricing")}
+                  className="bg-white text-black hover:bg-gray-100"
+                >
+                  {subscriptionState.isTrialExpired ? "Upgrade Plan" : "Renew Subscription"}
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Trial Expired / Cancellation Warning */}
+          {subscriptionState && (subscriptionState.isTrialExpired || subscriptionState.isCancelledPeriodEnded) && (
+            <div className="mt-4 rounded-lg p-4" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b"}}>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-amber-200 mb-1">
+                    {subscriptionState.isTrialExpired ? "Trial Expired" : "Subscription Ended"}
+                  </h4>
+                  <p className="text-xs text-amber-300 mb-3">
+                    {subscriptionState.isTrialExpired
+                      ? "Your free trial has ended. Upgrade to continue generating and managing campaigns."
+                      : "Your subscription period has ended. Renew your subscription to continue using all features."}
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => navigate("/pricing")}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    {subscriptionState.isTrialExpired ? "Upgrade Now" : "Renew Subscription"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Cancelled Subscription Warning (still active until period end) */}
+          {subscriptionState?.isCancelled && !subscriptionState.isCancelledPeriodEnded && subscriptionState.billingPeriodEndsAt && (
+            <div className="mt-4 rounded-lg p-4" style={{backgroundColor: "#1a1a2e", border: "1px solid rgba(59, 130, 246, 0.2)"}}>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-200 mb-1">
+                    Subscription Cancelled
+                  </h4>
+                  <p className="text-xs text-blue-300">
+                    Your subscription will remain active until {new Date(subscriptionState.billingPeriodEndsAt).toLocaleDateString()}. 
+                    You can continue using all features until then.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>

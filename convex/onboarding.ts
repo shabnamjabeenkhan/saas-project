@@ -1,10 +1,50 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { api } from "./_generated/api";
 
 // Helper function to get current user's token identifier
 async function getCurrentUserToken(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   return identity?.subject || null;
+}
+
+// Helper function to check if relevant onboarding fields changed
+// Relevant fields that affect campaign generation:
+// tradeType, businessName, phone, serviceArea, serviceOfferings, availability, acquisitionGoals, websiteUrl
+function hasRelevantOnboardingChanges(oldData: any, newData: any): boolean {
+  // Compare tradeType
+  if (oldData?.tradeType !== newData?.tradeType) return true;
+  
+  // Compare businessName
+  if (oldData?.businessName !== newData?.businessName) return true;
+  
+  // Compare phone
+  if (oldData?.phone !== newData?.phone) return true;
+  
+  // Compare websiteUrl
+  if (oldData?.websiteUrl !== newData?.websiteUrl) return true;
+  
+  // Compare serviceArea
+  if (oldData?.serviceArea?.city !== newData?.serviceArea?.city) return true;
+  if (oldData?.serviceArea?.postcode !== newData?.serviceArea?.postcode) return true;
+  if (oldData?.serviceArea?.radius !== newData?.serviceArea?.radius) return true;
+  
+  // Compare serviceOfferings (array comparison)
+  const oldServices = JSON.stringify((oldData?.serviceOfferings || []).sort());
+  const newServices = JSON.stringify((newData?.serviceOfferings || []).sort());
+  if (oldServices !== newServices) return true;
+  
+  // Compare availability
+  if (oldData?.availability?.workingHours !== newData?.availability?.workingHours) return true;
+  if (oldData?.availability?.emergencyCallouts !== newData?.availability?.emergencyCallouts) return true;
+  if (oldData?.availability?.weekendWork !== newData?.availability?.weekendWork) return true;
+  
+  // Compare acquisitionGoals
+  if (oldData?.acquisitionGoals?.monthlyLeads !== newData?.acquisitionGoals?.monthlyLeads) return true;
+  if (oldData?.acquisitionGoals?.averageJobValue !== newData?.acquisitionGoals?.averageJobValue) return true;
+  if (oldData?.acquisitionGoals?.monthlyBudget !== newData?.acquisitionGoals?.monthlyBudget) return true;
+  
+  return false;
 }
 
 // Save or update onboarding data for a user
@@ -197,5 +237,97 @@ export const resetOnboardingCompletely = mutation({
     await ctx.db.delete(existingData._id);
 
     return { success: true, message: "Onboarding data completely reset" };
+  },
+});
+
+// Update onboarding data and regenerate campaign if relevant fields changed
+// This action wraps saveOnboardingData + generateCampaign with change detection
+export const updateOnboardingAndRegenerate = action({
+  args: {
+    tradeType: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    serviceArea: v.optional(v.object({
+      city: v.string(),
+      postcode: v.optional(v.string()),
+      radius: v.number(),
+    })),
+    serviceOfferings: v.optional(v.array(v.string())),
+    availability: v.optional(v.object({
+      workingHours: v.string(),
+      emergencyCallouts: v.boolean(),
+      weekendWork: v.boolean(),
+    })),
+    acquisitionGoals: v.optional(v.object({
+      monthlyLeads: v.number(),
+      averageJobValue: v.number(),
+      monthlyBudget: v.number(),
+    })),
+    complianceData: v.optional(v.object({
+      businessRegistration: v.boolean(),
+      requiredCertifications: v.boolean(),
+      publicLiabilityInsurance: v.boolean(),
+      businessEmail: v.string(),
+      businessNumber: v.string(),
+      termsAccepted: v.boolean(),
+      complianceUnderstood: v.boolean(),
+      certificationWarning: v.boolean(),
+    })),
+    isComplete: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    dataId: string;
+    regenerationTriggered: boolean;
+    regenerationError?: string;
+  }> => {
+    const userId = await getCurrentUserToken(ctx);
+
+    if (!userId) {
+      throw new Error("User not authenticated");
+    }
+
+    // Get existing data before updating
+    const existingData = await ctx.runQuery(api.onboarding.getOnboardingData);
+
+    // Save updated onboarding data
+    const dataId: string = await ctx.runMutation(api.onboarding.saveOnboardingData, args);
+
+    // Check if relevant fields changed and user has completed onboarding
+    if (existingData && existingData.isComplete) {
+      // Merge old and new data for comparison
+      const mergedOldData = { ...existingData };
+      const mergedNewData = { ...existingData, ...args };
+      
+      if (hasRelevantOnboardingChanges(mergedOldData, mergedNewData)) {
+        try {
+          // Trigger campaign regeneration (respects limits automatically via checkRegenerationLimits)
+          await ctx.runAction(api.campaigns.generateCampaign, { userId });
+          return {
+            success: true,
+            dataId,
+            regenerationTriggered: true,
+          };
+        } catch (error) {
+          // If regeneration fails (e.g., limit reached, cooldown), still return success for data save
+          console.warn('Campaign regeneration failed:', error);
+          return {
+            success: true,
+            dataId,
+            regenerationTriggered: false,
+            regenerationError: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+    }
+
+    return {
+      success: true,
+      dataId,
+      regenerationTriggered: false,
+    };
   },
 });

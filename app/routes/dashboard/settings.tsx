@@ -5,15 +5,52 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { useNavigate } from "react-router";
-import { CheckCircle, Edit3, AlertCircle } from "lucide-react";
+import { CheckCircle, Edit3, AlertCircle, Lock, Info } from "lucide-react";
 import SubscriptionStatus from "~/components/subscription-status";
+import { useAuth } from "@clerk/react-router";
+import { toast } from "sonner";
 
 export default function Page() {
   const navigate = useNavigate();
+  const { userId: clerkUserId } = useAuth();
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
   const restartOnboarding = useMutation(api.onboarding.restartOnboarding);
+  
+  // Get campaign to find userId (campaigns store userId as tokenIdentifier)
+  const campaign = useQuery(api.campaigns.getCampaign, {});
+  
+  // Use campaign userId if available, otherwise use Clerk userId (which should match tokenIdentifier)
+  const userId = campaign?.userId || clerkUserId;
+  
+  // Check regeneration limits to determine if editing should be disabled
+  const regenerationLimits = useQuery(
+    api.campaigns.checkRegenerationLimits,
+    userId ? { userId } : "skip"
+  );
+  
+  // Check subscription state for trial expiry and cancellation
+  const subscriptionState = useQuery(
+    api.subscriptions.getSubscriptionState,
+    userId ? { userId } : "skip"
+  );
+  
+  const canRegenerate = regenerationLimits?.allowed ?? false;
+  const isTrialExpired = subscriptionState?.isTrialExpired ?? false;
+  const isCancelledPeriodEnded = subscriptionState?.isCancelledPeriodEnded ?? false;
+  const isCooldown = regenerationLimits && regenerationLimits.cooldownSecondsRemaining > 0;
+  
+  // Allow editing if:
+  // - Can regenerate AND not trial expired AND not cancelled period ended
+  // - OR cancelled but period not ended (still active until billingPeriodEndsAt)
+  const canEdit = (canRegenerate && !isTrialExpired && !isCancelledPeriodEnded) || 
+                  (subscriptionState?.isCancelled && !subscriptionState.isCancelledPeriodEnded);
 
   const handleEditOnboarding = async () => {
+    if (!canEdit) {
+      toast.error((regenerationLimits as { reason?: string }).reason || "Editing is currently disabled");
+      return;
+    }
+    
     try {
       await restartOnboarding({});
       navigate("/onboarding");
@@ -46,15 +83,37 @@ export default function Page() {
                         </Badge>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleEditOnboarding}
-                      className="flex items-center gap-2 border-gray-700 text-gray-300 hover:text-white"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                      Edit Information
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEditOnboarding}
+                        disabled={!canEdit}
+                        className="flex items-center gap-2 border-gray-700 text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {!canEdit ? (
+                          <>
+                            <Lock className="h-4 w-4" />
+                            Edit Disabled
+                          </>
+                        ) : (
+                          <>
+                            <Edit3 className="h-4 w-4" />
+                            Edit Information
+                          </>
+                        )}
+                      </Button>
+                      {(isTrialExpired || isCancelledPeriodEnded) && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => navigate("/pricing")}
+                          className="bg-white text-black hover:bg-gray-100"
+                        >
+                          {isTrialExpired ? "Upgrade Plan" : "Renew Subscription"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <CardDescription className="text-gray-400">
                     Your business details collected during onboarding
@@ -151,6 +210,54 @@ export default function Page() {
                     Complete Onboarding
                   </Button>
                 </CardContent>
+              </Card>
+            )}
+
+            {/* Trial Expired / Cancellation Warning */}
+            {subscriptionState && (subscriptionState.isTrialExpired || subscriptionState.isCancelledPeriodEnded) && (
+              <Card className="border-amber-200 bg-amber-950">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <CardTitle className="text-amber-200">
+                        {subscriptionState.isTrialExpired ? "Trial Expired" : "Subscription Ended"}
+                      </CardTitle>
+                      <CardDescription className="text-amber-300 mt-2">
+                        {subscriptionState.isTrialExpired
+                          ? "Your free trial has ended. Upgrade to continue editing your business information and managing campaigns."
+                          : "Your subscription period has ended. Renew your subscription to continue using all features."}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="default"
+                    onClick={() => navigate("/pricing")}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    {subscriptionState.isTrialExpired ? "Upgrade Now" : "Renew Subscription"}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Cancelled Subscription Info (still active until period end) */}
+            {subscriptionState?.isCancelled && !subscriptionState.isCancelledPeriodEnded && subscriptionState.billingPeriodEndsAt && (
+              <Card className="border-blue-200 bg-blue-950">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <CardTitle className="text-blue-200">Subscription Cancelled</CardTitle>
+                      <CardDescription className="text-blue-300 mt-2">
+                        Your subscription will remain active until {new Date(subscriptionState.billingPeriodEndsAt).toLocaleDateString()}. 
+                        You can continue editing your business information and using all features until then.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
               </Card>
             )}
 

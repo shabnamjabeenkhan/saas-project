@@ -272,6 +272,85 @@ export const fetchUserSubscription = query({
   },
 });
 
+// Get subscription state including trial expiry and cancellation status
+export const getSubscriptionState = query({
+  args: {
+    userId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const threeDays = 3 * 24 * 60 * 60 * 1000; // 3 days for trial
+
+    let tokenIdentifier: string;
+    if (args.userId) {
+      tokenIdentifier = args.userId;
+    } else {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        return {
+          isTrialExpired: false,
+          isCancelled: false,
+          isCancelledPeriodEnded: false,
+          billingPeriodEndsAt: null,
+          canUseFeatures: true,
+        };
+      }
+      tokenIdentifier = identity.subject;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+
+    if (!user) {
+      return {
+        isTrialExpired: false,
+        isCancelled: false,
+        isCancelledPeriodEnded: false,
+        billingPeriodEndsAt: null,
+        canUseFeatures: true,
+      };
+    }
+
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", user.tokenIdentifier))
+      .first();
+
+    const onboardingData = await ctx.db
+      .query("onboardingData")
+      .withIndex("userId", (q) => q.eq("userId", user.tokenIdentifier))
+      .first();
+
+    // Check if subscription is active
+    const isPaidActive = subscription?.status === "active";
+    
+    // Check if trial expired (no active subscription AND trial period passed)
+    const isTrialExpired = !isPaidActive && onboardingData?.completedAt
+      ? (now - onboardingData.completedAt) >= threeDays
+      : false;
+
+    // Check if subscription is cancelled
+    const isCancelled = subscription?.cancelAtPeriodEnd === true;
+    const billingPeriodEndsAt = subscription?.currentPeriodEnd || null;
+    const isCancelledPeriodEnded = isCancelled && billingPeriodEndsAt
+      ? now >= billingPeriodEndsAt
+      : false;
+
+    // Can use features if: active subscription OR (cancelled but period not ended) OR (trial active)
+    const canUseFeatures = isPaidActive || (isCancelled && !isCancelledPeriodEnded) || (!isTrialExpired && !isPaidActive && onboardingData?.completedAt && (now - onboardingData.completedAt) < threeDays);
+
+    return {
+      isTrialExpired,
+      isCancelled,
+      isCancelledPeriodEnded,
+      billingPeriodEndsAt,
+      canUseFeatures,
+    };
+  },
+});
+
 export const handleWebhookEvent = mutation({
   args: {
     body: v.any(),

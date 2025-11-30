@@ -272,30 +272,22 @@ export default function Campaigns() {
               {/* Campaign Quality Check */}
               <CampaignQualityChecker
                 complianceChecks={validateCampaignCompliance({
-                  tradeType: 'electrical', // TODO: Get from onboarding data
-                  serviceArea: {
+                  tradeType: (onboardingData?.tradeType as 'plumbing' | 'electrical' | 'both') || 'electrical',
+                  serviceArea: onboardingData?.serviceArea || {
                     city: 'London',
                     postcode: 'SW1A 0AA',
                     radius: 24,
                   },
-                  serviceOfferings: ['Emergency Electrical Services', 'Electrical Installation'],
+                  serviceOfferings: onboardingData?.serviceOfferings || ['Emergency Electrical Services', 'Electrical Installation'],
                   adCopy: {
                     headlines: campaign.adGroups[0]?.adCopy.headlines || [],
                     descriptions: campaign.adGroups[0]?.adCopy.descriptions || [],
                   },
                   keywords: campaign.adGroups[0]?.keywords || [],
                 })}
-                optimizationSuggestions={[
-                  'Add location-specific keywords for better local targeting',
-                  'Include "Gas Safe Registered" in headlines for gas services',
-                  'Consider adding negative keywords to reduce irrelevant clicks',
-                  'Increase mobile bid adjustments for emergency services',
-                ]}
-                seasonalRecommendations={[
-                  'Winter: Emphasize emergency heating services',
-                  'Summer: Highlight cooling and maintenance services',
-                  'Spring/Autumn: Focus on seasonal system checks',
-                ]}
+                optimizationSuggestions={campaign.optimizationSuggestions || []}
+                seasonalRecommendations={campaign.seasonalRecommendations || []}
+                adGroups={campaign.adGroups || []}
               />
 
               {/* Compliance Notes */}

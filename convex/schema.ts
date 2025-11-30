@@ -113,6 +113,8 @@ export default defineSchema({
       })
     )),
     complianceNotes: v.array(v.string()),
+    optimizationSuggestions: v.optional(v.array(v.string())),
+    seasonalRecommendations: v.optional(v.array(v.string())),
     status: v.string(), // "ready" | "active" | "paused"
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
