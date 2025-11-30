@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Implementation ~100% complete - All implementation tasks finished, ready for manual testing
+Implementation ~100% complete - Testing in progress, blocker found: truncated words issue
 
 ## Completed
 
@@ -87,18 +87,80 @@ Implementation ~100% complete - All implementation tasks finished, ready for man
   - Files modified: `app/components/campaign/CampaignQualityChecker.tsx`, `app/routes/dashboard/campaigns.tsx`
 
 ### Section 5 - Testing Strategy
-- ⏭️ **Manual testing** (not started)
-  - 5.1: Ad Quality & Generation (plumber/electrician scenarios)
+- ⏭️ **Manual testing** (in progress)
+  - 5.1: Ad Quality & Generation (plumber/electrician scenarios) - ⚠️ Found issues: truncated words, Poor ad strength, missing keywords in headlines, descriptions need uniqueness, missing sitelinks, missing ad for Installation ad group
   - 5.2: Regeneration Limits & Cooldown (trial/paid flows)
   - 5.3: Dashboard Behavior (no campaign vs with campaign)
+- ⏭️ **Debug missing Installation ad group**
+  - Check Convex logs for Installation ad group during Google Ads push
+  - Identify validation failures (headlines < 3, descriptions < 2, invalid URL)
+  - Check for API errors or phone number detection blocking ad creation
+  - Verify adGroup.adCopy data structure exists and is valid
+- ⏭️ **Fix truncated words issue**
+  - Update `sanitizeAdText` to use word-boundary truncation
+  - Remove redundant truncation in `createResponsiveSearchAd`
+  - Improve `validateAndFixHeadline` fallback handling
+  - Test with long city names (Birmingham, Stoke-on-Trent) to verify fix
+- ⏭️ **Fix Google Ads Ad Strength issues**
+  - Increase headline count from 12 to 15 per ad group (Google Ads maximum)
+  - Ensure headlines include popular keywords from ad group keyword list
+  - Generate more unique/varied descriptions (currently may be too similar)
+  - Add sitelink extensions to campaigns (currently missing)
+  - Update AI prompt to generate 15 headlines instead of 12
+  - Update validation to ensure 15 headlines per ad group
 
 ## Blockers
 
-- ⚠️ None
+- ⚠️ **Truncated words in headlines** (Found during testing)
+  - **Issue:** Headlines are being truncated mid-word during Google Ads push (e.g., "Birmingham" → "Birm", "London" → "Londo")
+  - **Impact:** Violates PRD requirement of 0% headlines with truncated words, causes "Poor" ad strength in Google Ads
+  - **Root causes:**
+    - `sanitizeAdText` function uses `substring(0, maxLength)` which can truncate mid-word
+    - `createResponsiveSearchAd` has redundant `substring(0, 30)` truncation
+    - `validateAndFixHeadline` fallback can truncate mid-word in edge cases
+  - **Documented in:** `feature-ad-quality-plan.md` Section 6 (Risks & Mitigations)
+  - **Status:** Needs fix before production
+
+- ⚠️ **Google Ads Ad Strength: Poor** (Found during testing)
+  - **Issue:** Google Ads shows "Poor" ad strength with multiple quality issues
+  - **Google Ads suggestions:**
+    - ✅ "Add more headlines" - Currently only 12 headlines (Google recommends 15)
+    - ⚠️ "Include popular keywords in your headlines" - Headlines missing popular/keyword-rich terms
+    - ✅ "Make your headlines more unique" - Addressed
+    - ⚠️ "Make your descriptions more unique" - Descriptions lack variety/uniqueness
+    - ⚠️ "Add more sitelinks" - Missing sitelink extensions
+  - **Impact:** Poor ad strength reduces ad performance, lower quality scores, potentially higher costs
+  - **Mitigation needed:**
+    - Increase headline count from 12 to 15 per ad group (Google Ads maximum)
+    - Ensure headlines include popular keywords from the ad group's keyword list
+    - Generate more unique/varied descriptions
+    - Add sitelink extensions to campaigns
+  - **Status:** Needs fix to improve ad quality and meet Google Ads best practices
+
+- ⚠️ **Missing ad for Installation ad group** (Found during testing)
+  - **Issue:** Installation ad group was created in Google Ads but no ad was created for it
+  - **Impact:** Ad group exists but cannot serve ads, effectively non-functional
+  - **Possible root causes (needs debugging):**
+    - Validation failure: Insufficient headlines (< 3) or descriptions (< 2) after sanitization
+    - Invalid final URL format causing ad group to be skipped
+    - Phone number detection blocking ad creation
+    - Google Ads API error during ad creation (caught but logged)
+    - Missing `adGroup.adCopy` data structure
+  - **Where to check:** Convex function logs for Installation ad group:
+    - Look for: `🎯 Creating ad group X/Y: Installation`
+    - Check: `📋 Ad content validation for Installation` (headlines/descriptions counts)
+    - Look for: `❌ Insufficient valid headlines` or `❌ Ad creation for Installation failed`
+  - **Status:** Needs debugging to identify root cause, then fix
 
 ## Next Steps
 
-1. Run manual testing per test matrix in plan (Section 5)
+1. **Debug missing Installation ad group** (see Blockers section)
+   - Check Convex logs for Installation ad group validation/creation errors
+   - Identify root cause (validation failure, API error, or data issue)
+2. Fix truncated words blocker (see Blockers section)
+3. Fix Google Ads Ad Strength issues (see Blockers section)
+4. Continue manual testing per test matrix in plan (Section 5)
+5. Re-test ad quality after fixes to verify improvements
 
 ## Key Decisions
 

@@ -327,6 +327,30 @@ We will rely on **manual testing** for this feature initially, using the followi
   - **Mitigation:** Log regeneration decisions (allowed/blocked + reason) and test all edge cases manually.
 - **Risk:** Google Ads API failures during push.
   - **Mitigation:** Preserve robust error handling & logging already present in `googleAdsCampaigns.ts`, surface friendly error messages in UI.
+- **Risk:** Headlines may be truncated mid-word during Google Ads push, causing words like "Birmingham" to become "Birm" or "London" to become "Londo".
+  - **Issue:** Current implementation has gaps in word-boundary truncation:
+    - `sanitizeAdText` function in `googleAdsCampaigns.ts` uses `substring(0, maxLength)` which can truncate mid-word.
+    - `createResponsiveSearchAd` function has redundant `substring(0, 30)` truncation that can cut words.
+    - `validateAndFixHeadline` fallback (line 1539) can truncate mid-word if first word exceeds 30 chars.
+  - **Impact:** Truncated words reduce ad quality, violate PRD requirements (0% headlines with truncated words), and can cause Google Ads to show "Poor" ad strength.
+  - **Mitigation needed:** 
+    - Update `sanitizeAdText` to use word-boundary truncation instead of `substring()`.
+    - Remove redundant truncation in `createResponsiveSearchAd` (headlines already validated).
+    - Improve `validateAndFixHeadline` fallback to handle edge cases without mid-word truncation.
+    - Add logging to track truncation points during Google Ads push for debugging.
+- **Risk:** Ad groups may be created in Google Ads without corresponding ads, making them non-functional.
+  - **Issue:** Ad creation can fail silently or be skipped due to validation failures:
+    - Insufficient headlines (< 3) or descriptions (< 2) after sanitization causes ad group to be skipped.
+    - Invalid final URL format causes ad group to be skipped.
+    - Phone number detection in ad copy blocks ad creation.
+    - Google Ads API errors during ad creation are caught but don't prevent ad group creation.
+    - Missing or malformed `adGroup.adCopy` data structure.
+  - **Impact:** Ad groups exist but cannot serve ads, wasting ad group slots and reducing campaign effectiveness.
+  - **Mitigation needed:**
+    - Improve error handling to surface ad creation failures more clearly.
+    - Add validation before ad group creation to ensure ad copy is valid.
+    - Add logging to track which ad groups fail ad creation and why.
+    - Consider rolling back ad group creation if ad creation fails (or mark ad group as failed).
 
 ---
 
