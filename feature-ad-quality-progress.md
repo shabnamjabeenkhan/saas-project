@@ -64,8 +64,9 @@ Implementation ~100% complete - Testing in progress, blocker found: truncated wo
 
 ## Current Work
 
-- ✅ All implementation tasks complete
-- 🔄 Ready for manual testing
+- 🔄 **Post-Implementation Bug Fixing - Fix Truncated Words Issue**
+  - ✅ Strengthened AI prompt in `buildCampaignPrompt` to enforce no truncated words
+  - ⏭️ Next: Update code-level truncation functions (sanitizeAdText, validateAndFixHeadline)
 
 ## Remaining Tasks
 
@@ -96,11 +97,24 @@ Implementation ~100% complete - Testing in progress, blocker found: truncated wo
   - Identify validation failures (headlines < 3, descriptions < 2, invalid URL)
   - Check for API errors or phone number detection blocking ad creation
   - Verify adGroup.adCopy data structure exists and is valid
-- ⏭️ **Fix truncated words issue**
-  - Update `sanitizeAdText` to use word-boundary truncation
-  - Remove redundant truncation in `createResponsiveSearchAd`
-  - Improve `validateAndFixHeadline` fallback handling
-  - Test with long city names (Birmingham, Stoke-on-Trent) to verify fix
+- ✅ **Fix truncated words issue** (COMPLETED)
+  - ✅ Updated AI prompt in `buildCampaignPrompt` to enforce ≤30 char headlines without truncated words
+    - Added explicit examples of forbidden truncations ("Birm", "Londo", "Stoke-")
+    - Added 5-step priority order for shortening headlines
+    - Added verification checklist before outputting headlines
+    - Strengthened JSON schema description to emphasize no truncated words
+    - Added critical requirements section with city name examples
+  - ✅ Updated `sanitizeAdText` to use word-boundary truncation
+    - Created `truncateAtWordBoundary` helper function
+    - Replaced `substring(0, maxLength)` with word-boundary-aware truncation
+  - ✅ Removed redundant truncation in `createResponsiveSearchAd`
+    - Removed `substring(0, 30)` and `substring(0, 90)` calls (headlines/descriptions already sanitized)
+    - Updated logging to show text length instead of truncated previews
+  - ✅ Improved `validateAndFixHeadline` fallback handling
+    - Fixed edge case where single long word exceeds maxLength
+    - Added warning log for edge cases
+    - Improved word-boundary truncation logic
+  - ⏭️ Test with long city names (Birmingham, Stoke-on-Trent) to verify fix
 - ⏭️ **Fix Google Ads Ad Strength issues**
   - Increase headline count from 12 to 15 per ad group (Google Ads maximum)
   - Ensure headlines include popular keywords from ad group keyword list
@@ -111,15 +125,16 @@ Implementation ~100% complete - Testing in progress, blocker found: truncated wo
 
 ## Blockers
 
-- ⚠️ **Truncated words in headlines** (Found during testing)
+- ✅ **Truncated words in headlines** (FIXED)
   - **Issue:** Headlines are being truncated mid-word during Google Ads push (e.g., "Birmingham" → "Birm", "London" → "Londo")
   - **Impact:** Violates PRD requirement of 0% headlines with truncated words, causes "Poor" ad strength in Google Ads
   - **Root causes:**
-    - `sanitizeAdText` function uses `substring(0, maxLength)` which can truncate mid-word
-    - `createResponsiveSearchAd` has redundant `substring(0, 30)` truncation
-    - `validateAndFixHeadline` fallback can truncate mid-word in edge cases
+    - AI prompt needed stronger instructions (✅ FIXED - strengthened prompt with explicit examples and verification steps)
+    - `sanitizeAdText` function uses `substring(0, maxLength)` which can truncate mid-word (✅ FIXED - now uses word-boundary truncation)
+    - `createResponsiveSearchAd` has redundant `substring(0, 30)` truncation (✅ FIXED - removed redundant truncation)
+    - `validateAndFixHeadline` fallback can truncate mid-word in edge cases (✅ FIXED - improved word-boundary logic)
   - **Documented in:** `feature-ad-quality-plan.md` Section 6 (Risks & Mitigations)
-  - **Status:** Needs fix before production
+  - **Status:** All fixes complete ✅ - Ready for testing
 
 - ⚠️ **Google Ads Ad Strength: Poor** (Found during testing)
   - **Issue:** Google Ads shows "Poor" ad strength with multiple quality issues

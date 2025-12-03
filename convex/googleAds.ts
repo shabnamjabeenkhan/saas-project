@@ -153,9 +153,25 @@ export const exchangeCodeForTokens = action({
         body: params.toString(),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error_description || errorData.error || `HTTP ${response.status}`;
+        console.error('Token exchange error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData.error,
+          error_description: errorData.error_description,
+        });
+        throw new Error(`Token exchange failed: ${errorMsg}`);
+      }
+
       const tokenData = await response.json();
 
       if (tokenData.error) {
+        console.error('Token exchange error in response:', {
+          error: tokenData.error,
+          error_description: tokenData.error_description,
+        });
         throw new Error(tokenData.error_description || tokenData.error);
       }
 

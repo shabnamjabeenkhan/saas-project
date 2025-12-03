@@ -1142,18 +1142,28 @@ ${availableThemes.map(({ theme, services }) => `   - ${theme.charAt(0).toUpperCa
    IMPORTANT: Only create ad groups for themes listed above. Do NOT create ad groups for themes with no matching services.
 
 2. Generate exactly 12 headlines per ad group:
-   - Each headline MUST be ≤ 30 characters (count spaces and punctuation)
-   - NO truncated words allowed (e.g., "Londo" instead of "London" is FORBIDDEN)
+   - Each headline MUST be ≤ 30 characters (count spaces and punctuation) - VERIFY BEFORE OUTPUTTING
+   - 🚨 CRITICAL: NO truncated words allowed - this is a hard requirement
+     ❌ FORBIDDEN: "Birm" (from Birmingham), "Londo" (from London), "Stoke-" (from Stoke-on-Trent)
+     ❌ FORBIDDEN: Any word cut mid-character (e.g., "Emergen" instead of "Emergency")
+     ✅ REQUIRED: All words must be complete and readable
    - Headlines must cover five styles:
-     a) Keyword + city (e.g., "Plumber ${city}")
+     a) Keyword + city (e.g., "Plumber ${city}" - ensure city name fits or use abbreviation)
      b) Local benefit (e.g., "Local Expert Service")
      c) Value/offer (e.g., "Free Quotes Today")
      d) Trust indicator (e.g., "Gas Safe Certified")
      e) Action/CTA (e.g., "Call Now - 24/7")
-   - If a headline exceeds 30 chars, shorten it by:
-     * Removing less important words (e.g., "professional", "local")
-     * Using abbreviations: "installation" → "install", "emergency" → "urgent"
-     * Only as last resort: truncate at full-word boundary (never mid-word)
+   - If a headline exceeds 30 chars, shorten it using this EXACT priority order:
+     1. Remove less important words: "professional", "local", "expert", "trusted", "qualified", "certified"
+     2. Use abbreviations: "installation" → "install", "emergency" → "urgent", "certified" → "cert"
+     3. Shorten city names if needed: "Birmingham" → "B'ham" (only if absolutely necessary)
+     4. Remove articles: "the", "a", "an" (if safe to do so)
+     5. LAST RESORT ONLY: Truncate at full-word boundary (find last space before 30 chars, never cut mid-word)
+   - Before outputting each headline, verify:
+     * Character count ≤ 30 (use string.length)
+     * No words are cut mid-character
+     * All words are complete and readable
+     * Example check: "Birmingham Plumber" (20 chars) ✅ vs "Birm Plumber" (13 chars) ❌
 
 3. Generate 2-4 descriptions per ad group (max 90 chars each)
 
@@ -1248,7 +1258,7 @@ Return ONLY a valid JSON object with this exact structure:
       "name": "string (theme name: Emergency/Installation/Maintenance/Repair)",
       "keywords": ["8-10 keywords derived from theme's services"],
       "adCopy": {
-        "headlines": ["EXACTLY 12 headlines, each ≤ 30 chars, no truncated words"],
+        "headlines": ["EXACTLY 12 headlines, each ≤ 30 chars, NO truncated words - verify each word is complete"],
         "descriptions": ["2-4 descriptions, each ≤ 90 chars"],
         "finalUrl": "string"
       }
@@ -1260,7 +1270,14 @@ Return ONLY a valid JSON object with this exact structure:
   "seasonalRecommendations": ["array"]
 }
 
-CRITICAL: Each ad group MUST have exactly 12 headlines. If you generate fewer, the system will add filler headlines, which reduces ad quality.
+CRITICAL REQUIREMENTS:
+1. Each ad group MUST have exactly 12 headlines. If you generate fewer, the system will add filler headlines, which reduces ad quality.
+2. Each headline MUST be ≤ 30 characters with NO truncated words. Test with long city names like "Birmingham" (11 chars) or "Stoke-on-Trent" (14 chars).
+3. Before outputting, verify every headline:
+   - Character count ≤ 30
+   - All words are complete (no "Birm", "Londo", "Emergen")
+   - Readable and professional
+4. If a city name is too long, use abbreviations or remove it rather than truncating (e.g., "B'ham" or "Local Plumber" instead of "Birm Plumber").
 
 Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers.
 `;
@@ -1530,13 +1547,30 @@ function validateAndFixHeadline(headline: string, maxLength: number = 30): strin
     const words = shortened.split(' ');
     let result = '';
     for (const word of words) {
-      if ((result + ' ' + word).length <= maxLength) {
-        result = result ? result + ' ' + word : word;
+      const candidate = result ? result + ' ' + word : word;
+      if (candidate.length <= maxLength) {
+        result = candidate;
       } else {
         break;
       }
     }
-    return result || shortened.substring(0, maxLength).trim();
+    
+    // If we have a result from word-boundary truncation, return it
+    if (result && result.length > 0) {
+      return result.trim();
+    }
+    
+    // Edge case: single word exceeds maxLength - truncate at maxLength
+    // This should rarely happen if AI follows instructions, but handle gracefully
+    const firstWord = words[0] || '';
+    if (firstWord.length > maxLength) {
+      // For single long words (like city names), truncate but log warning
+      console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - truncating (should be avoided)`);
+      return firstWord.substring(0, maxLength).trim();
+    }
+    
+    // Fallback: return empty string if we can't fit anything
+    return '';
   }
 
   return shortened;

@@ -340,6 +340,26 @@ function sanitizePhoneNumbersFromText(text: string): string {
     .trim();
 }
 
+// Helper function to truncate at word boundary (prevents mid-word truncation)
+function truncateAtWordBoundary(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  
+  // Try to truncate at word boundary
+  const truncated = text.substring(0, maxLength);
+  const lastSpaceIndex = truncated.lastIndexOf(' ');
+  
+  // If we found a space and it's not at the very beginning, truncate there
+  if (lastSpaceIndex > 0) {
+    return truncated.substring(0, lastSpaceIndex).trim();
+  }
+  
+  // If no space found (single very long word), truncate at maxLength
+  // This is edge case - ideally AI should avoid generating such headlines
+  return truncated.trim();
+}
+
 // Helper function to sanitize and validate text content
 function sanitizeAdText(text: string, maxLength: number): string | null {
   if (!text || typeof text !== 'string') {
@@ -348,11 +368,13 @@ function sanitizeAdText(text: string, maxLength: number): string | null {
   // First remove phone numbers, then trim and validate
   const phoneSanitized = sanitizePhoneNumbersFromText(text);
   // Trim whitespace and remove invalid characters
-  const sanitized = phoneSanitized
+  const cleaned = phoneSanitized
     .trim()
-    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
-    .substring(0, maxLength)
-    .trim();
+    .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+  
+  // Truncate at word boundary to prevent mid-word truncation
+  const sanitized = truncateAtWordBoundary(cleaned, maxLength).trim();
+  
   // Return null if empty after sanitization
   return sanitized.length > 0 ? sanitized : null;
 }
@@ -1157,10 +1179,10 @@ async function createResponsiveSearchAd(
         final_urls: [finalUrl],
         responsive_search_ad: {
             headlines: headlines.map((headline: string) => ({
-              text: headline.substring(0, 30) // Max 30 chars per headline
+              text: headline // Already sanitized to ≤30 chars with word-boundary truncation
             })),
             descriptions: descriptions.map((description: string) => ({
-              text: description.substring(0, 90) // Max 90 chars per description
+              text: description // Already sanitized to ≤90 chars with word-boundary truncation
             }))
           }
         }
@@ -1173,8 +1195,8 @@ async function createResponsiveSearchAd(
     
     console.log('🔍 PRE-SEND PAYLOAD INSPECTION (helper function):');
     console.log('📋 Full payload:', payloadString);
-    console.log('📋 Headlines being sent:', headlines.map((h: string) => h.substring(0, 30)));
-    console.log('📋 Descriptions being sent:', descriptions.map((d: string) => d.substring(0, 90)));
+    console.log('📋 Headlines being sent:', headlines.map((h: string) => ({ text: h, length: h.length })));
+    console.log('📋 Descriptions being sent:', descriptions.map((d: string) => ({ text: d, length: d.length })));
     console.log('📋 Final URL:', finalUrl);
     
     // Check for contaminated number

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -14,14 +14,30 @@ export default function GoogleAdsCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const processedRef = useRef<string | null>(null); // Track processed OAuth code
+  const hasSucceededRef = useRef(false); // Track if we've successfully connected
 
   const saveGoogleAdsTokens = useMutation(api.googleAds.saveTokens);
   const exchangeCodeForTokens = useAction(api.googleAds.exchangeCodeForTokens);
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Check for error in URL params
+      // Get authorization code first to use as processing key
+      const code = searchParams.get('code');
       const error = searchParams.get('error');
+      
+      // Prevent duplicate processing: if we've already processed this code, skip
+      if (processedRef.current === code) {
+        console.log('⏭️ OAuth callback already processed, skipping duplicate execution');
+        return;
+      }
+      
+      // If we're processing a code, mark it as processed immediately to prevent race conditions
+      if (code) {
+        processedRef.current = code;
+      }
+      
+      // Check for error in URL params
       if (error) {
         setStatus('error');
         setErrorMessage(`OAuth error: ${error}`);
@@ -30,7 +46,6 @@ export default function GoogleAdsCallback() {
       }
 
       // Get authorization code
-      const code = searchParams.get('code');
       if (!code) {
         setStatus('error');
         setErrorMessage('No authorization code received');
@@ -53,6 +68,7 @@ export default function GoogleAdsCallback() {
             });
 
             setStatus('success');
+            hasSucceededRef.current = true;
             toast.success('Google Ads connected successfully! (Development Mode)');
 
             // Redirect after short delay
@@ -84,6 +100,7 @@ export default function GoogleAdsCallback() {
           });
 
           setStatus('success');
+          hasSucceededRef.current = true;
           toast.success('Google Ads connected successfully!');
 
           // Redirect after short delay
@@ -95,15 +112,31 @@ export default function GoogleAdsCallback() {
         }
 
       } catch (error) {
-        setStatus('error');
-        setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred');
-        toast.error('Failed to connect Google Ads');
-        console.error('OAuth callback error:', error);
+        // Only update error state if we haven't already succeeded
+        // (prevents showing error after successful connection)
+        if (!hasSucceededRef.current) {
+          setStatus('error');
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+          setErrorMessage(errorMsg);
+          
+          // Check if this is a "code already used" error (common with duplicate executions)
+          if (errorMsg.includes('Bad Request') || errorMsg.includes('invalid_grant') || errorMsg.includes('code already used')) {
+            toast.error('OAuth code already used. Connection may have already succeeded.');
+          } else {
+            toast.error('Failed to connect Google Ads');
+          }
+          console.error('OAuth callback error:', error);
+        } else {
+          // Silently ignore errors if we've already succeeded
+          console.log('⚠️ OAuth callback error after successful connection (likely duplicate execution):', error);
+        }
       }
     };
 
     handleCallback();
-  }, [searchParams, navigate, saveGoogleAdsTokens, exchangeCodeForTokens]);
+    // Only depend on searchParams - other dependencies are stable Convex hooks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleRetry = () => {
     navigate('/dashboard/campaigns', { replace: true });
