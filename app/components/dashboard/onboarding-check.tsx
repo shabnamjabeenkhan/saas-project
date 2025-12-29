@@ -20,8 +20,10 @@ export function OnboardingCheck() {
   const isAdmin = userEmail ? isAdminEmail(userEmail) : false;
 
   useEffect(() => {
-    // Skip if already on onboarding page
+    // Skip if already on onboarding page - allow users to manually navigate there
     if (location.pathname === "/onboarding") {
+      // Reset redirect flag when on onboarding page so they can complete it
+      hasRedirected.current = false;
       return;
     }
 
@@ -30,14 +32,15 @@ export function OnboardingCheck() {
       return;
     }
 
-    // Skip admin users - they don't need onboarding
-    if (isAdmin) {
-      console.log('🔑 OnboardingCheck: Admin user detected, skipping onboarding');
+    // Wait for proper query result structure
+    if (!onboardingStatus || typeof onboardingStatus !== 'object') {
       return;
     }
 
-    // Wait for proper query result structure
-    if (!onboardingStatus || typeof onboardingStatus !== 'object') {
+    // Admin users must still complete onboarding on first signup
+    // Only skip onboarding check if admin has already completed onboarding
+    if (isAdmin && onboardingStatus.isComplete) {
+      console.log('🔑 OnboardingCheck: Admin user with completed onboarding detected, skipping onboarding check');
       return;
     }
 
@@ -46,6 +49,7 @@ export function OnboardingCheck() {
     // 2. User is signed in
     // 3. Query has returned (either with or without data)
     // 4. Onboarding is not complete (including new users with no data)
+    // This applies to ALL users (including admins) who haven't completed onboarding
     const shouldRedirectToOnboarding = isLoaded && isSignedIn && (
       !onboardingStatus.hasData || // New user with no onboarding record
       (onboardingStatus.hasData && !onboardingStatus.isComplete) // Existing user who hasn't completed

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useNavigate } from "react-router";
@@ -115,6 +115,7 @@ export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<OnboardingData>({});
   const navigate = useNavigate();
+  const hasCheckedCompleteRef = useRef(false);
 
   const { user } = useUser();
 
@@ -124,31 +125,35 @@ export default function OnboardingWizard() {
   const updateOnboardingAndRegenerate = useAction(api.onboarding.updateOnboardingAndRegenerate);
   const existingData = useQuery(api.onboarding.getOnboardingData);
 
-  // Check if user is admin and bypass onboarding
+  // Admin users must still complete onboarding on first signup
+  // Only redirect if they've already completed onboarding
   useEffect(() => {
-    if (user?.emailAddresses?.[0]?.emailAddress) {
+    if (user?.emailAddresses?.[0]?.emailAddress && existingData) {
       const userEmail = user.emailAddresses[0].emailAddress;
-      if (isAdminEmail(userEmail)) {
-        console.log("Admin user detected, redirecting to dashboard...");
+      if (isAdminEmail(userEmail) && existingData.isComplete) {
+        console.log("Admin user with completed onboarding detected, redirecting to dashboard...");
         navigate("/dashboard", { replace: true });
         return;
       }
     }
-  }, [user, navigate]);
+  }, [user, existingData, navigate]);
 
 
   // Load existing data when available
   useEffect(() => {
-    if (existingData) {
+    if (existingData && !hasCheckedCompleteRef.current) {
       console.log("Existing onboarding data:", existingData);
 
       // If onboarding is already complete, redirect to dashboard
+      // Only check once on initial load to prevent redirects during manual navigation
       if (existingData.isComplete) {
         console.log("Onboarding is complete, redirecting to dashboard...");
+        hasCheckedCompleteRef.current = true;
         navigate("/dashboard", { replace: true });
         return;
       } else {
         console.log("Onboarding not complete, staying on onboarding page");
+        hasCheckedCompleteRef.current = true; // Mark as checked even if not complete
       }
 
       const mappedData: OnboardingData = {};

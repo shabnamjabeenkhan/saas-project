@@ -1011,21 +1011,67 @@ async function createAdGroupsWithAdsAndKeywords(
       // Create Responsive Search Ad for this ad group
       if (adGroup.adCopy) {
         try {
-            const adResult = await createResponsiveSearchAd(adGroup.adCopy, customer, adGroupResourceName);
+          console.log(`📝 Attempting to create ad for "${adGroup.name}"...`);
+          const adResult = await createResponsiveSearchAd(adGroup.adCopy, customer, adGroupResourceName);
           if (adResult?.success) {
             console.log(`✅ Ad created successfully for ${adGroup.name}`);
+          } else {
+            console.error(`❌ Ad creation for "${adGroup.name}" returned unsuccessful result:`, JSON.stringify(adResult, null, 2));
           }
-        } catch (adError) {
+        } catch (adError: any) {
+          // Better error logging for SDK errors
+          let errorMessage = 'Unknown error';
+          let errorDetails: any = {};
+          
+          if (adError instanceof Error) {
+            errorMessage = adError.message;
+            errorDetails = { message: adError.message, stack: adError.stack };
+          } else if (adError?.error) {
+            // SDK error structure
+            errorDetails = adError.error;
+            errorMessage = adError.error?.message || JSON.stringify(adError.error);
+          } else if (typeof adError === 'object') {
+            errorMessage = JSON.stringify(adError, null, 2);
+            errorDetails = adError;
+          } else {
+            errorMessage = String(adError);
+          }
+          
           console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
-            error: adError instanceof Error ? adError.message : String(adError),
-            adGroupName: adGroup.name
+            errorMessage,
+            errorDetails: JSON.stringify(errorDetails, null, 2),
+            adGroupName: adGroup.name,
+            adCopy: {
+              headlinesCount: adGroup.adCopy?.headlines?.length || 0,
+              descriptionsCount: adGroup.adCopy?.descriptions?.length || 0,
+              finalUrl: adGroup.adCopy?.finalUrl || 'MISSING'
+            }
           });
           // Continue processing other ad groups even if one fails
         }
         }
       } catch (error: any) {
+        // Better error logging for SDK errors
+        let errorMessage = 'Unknown error';
+        let errorDetails: any = {};
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          errorDetails = { message: error.message, stack: error.stack };
+        } else if (error?.error) {
+          // SDK error structure
+          errorDetails = error.error;
+          errorMessage = error.error?.message || JSON.stringify(error.error);
+        } else if (typeof error === 'object') {
+          errorMessage = JSON.stringify(error, null, 2);
+          errorDetails = error;
+        } else {
+          errorMessage = String(error);
+        }
+        
         console.error('❌ Ad group creation failed:', {
-          error: error?.message || String(error),
+          errorMessage,
+          errorDetails: JSON.stringify(errorDetails, null, 2),
           adGroupName: adGroup.name
         });
         continue;
