@@ -47,14 +47,10 @@ export default function Pricing() {
   };
 
   const features = [
-    "2 AI campaign generations per month",
-    "4 targeted ads per campaign",
+    "3 campaign regenerations per month",
+    "Service-specific keywords",
+    "Targeted ads for your services",
     "UK trade compliance built-in",
-    "Seasonal intelligence",
-    "Performance tracking",
-    "Monthly optimization",
-    "Emergency templates",
-    "Estimated ROI reporting",
   ];
 
   return (
@@ -108,7 +104,7 @@ export default function Pricing() {
             <div className="flex flex-col px-[6px] mt-2 gap-4">
               <div className="flex flex-col text-center">
                 <span className="text-xs sm:text-xs lg:text-sm text-gray-400 font-medium">Starting from</span>
-                <span className="text-[24px] sm:text-[28px] lg:text-[36px] font-bold leading-[28px] sm:leading-[34px] lg:leading-[42px] text-white">$59/mo</span>
+                <span className="text-[24px] sm:text-[28px] lg:text-[36px] font-bold leading-[28px] sm:leading-[34px] lg:leading-[42px] text-white">$39/mo</span>
               </div>
 
               {/* Error message */}

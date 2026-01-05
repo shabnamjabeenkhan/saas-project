@@ -1,13 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import AnimatedGenerateButton from "~/components/ui/animated-generate-button";
 import {
   Zap,
-  Sparkles,
   Loader2,
-  Clock,
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,7 +23,6 @@ export function CampaignHeaderControls({
 }: CampaignHeaderControlsProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const navigate = useNavigate();
 
   const generateCampaign = useAction(api.campaigns.generateCampaign);
@@ -43,24 +40,6 @@ export function CampaignHeaderControls({
     campaign?.userId ? { userId: campaign.userId } : "skip"
   );
 
-  // Update cooldown timer every second
-  useEffect(() => {
-    if (regenerationLimits?.cooldownSecondsRemaining && regenerationLimits.cooldownSecondsRemaining > 0) {
-      setCooldownSeconds(regenerationLimits.cooldownSecondsRemaining);
-      const interval = setInterval(() => {
-        setCooldownSeconds((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      setCooldownSeconds(0);
-    }
-  }, [regenerationLimits?.cooldownSecondsRemaining]);
 
   const handleGenerateCampaign = async () => {
     if (!onboardingData?.isComplete) {
@@ -81,7 +60,13 @@ export function CampaignHeaderControls({
 
     // Check regeneration limits
     if (regenerationLimits && !regenerationLimits.allowed) {
-      toast.error((regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed');
+      const reason = (regenerationLimits as { reason?: string }).reason;
+      // Show user-friendly message for limit reached
+      if (reason?.includes('limit reached') || reason?.includes('Trial limit')) {
+        toast.error(reason);
+      } else {
+        toast.error('Regeneration limit reached. Upgrade to continue.');
+      }
       return;
     }
 
@@ -263,19 +248,14 @@ export function CampaignHeaderControls({
                         <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center" style={{backgroundColor: "#0f2419", border: "1px solid #22c55e", color: "#22c55e"}}>
                           Testing mode - unlimited regenerations
                         </div>
-                      ) : regenerationLimits.allowed && cooldownSeconds === 0 ? (
+                      ) : regenerationLimits.allowed ? (
                         <div className="text-xs text-gray-400 text-center py-1">
-                          {regenerationLimits.remaining}/3 regenerations remaining this month
-                        </div>
-                      ) : cooldownSeconds > 0 ? (
-                        <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-1" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b", color: "#f59e0b"}}>
-                          <Clock className="w-3 h-3" />
-                          <span>Please wait {cooldownSeconds}s</span>
+                          {3 - regenerationLimits.remaining}/3 regenerations used
                         </div>
                       ) : (
                         <div className="rounded-full px-3 sm:px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-1" style={{backgroundColor: "#2d1b0d", border: "1px solid #f59e0b", color: "#f59e0b"}}>
-                          <Clock className="w-3 h-3" />
-                          <span className="hidden sm:inline">{(regenerationLimits as { reason?: string }).reason || 'Regeneration not allowed'}</span>
+                          <AlertCircle className="w-3 h-3" />
+                          <span className="hidden sm:inline">{(regenerationLimits as { reason?: string }).reason || 'Regeneration limit reached'}</span>
                           <span className="sm:hidden">Limit reached</span>
                         </div>
                       )}
@@ -291,7 +271,7 @@ export function CampaignHeaderControls({
                     generating={isGenerating}
                     highlightHueDeg={160}
                     onClick={handleGenerateCampaign}
-                    disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && (!regenerationLimits.allowed || cooldownSeconds > 0)) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
+                    disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
                     className="w-full sm:w-auto font-semibold pb-4"
                   />
                   {/* Upgrade Plan CTA when trial expired or subscription inactive */}
@@ -319,7 +299,7 @@ export function CampaignHeaderControls({
                 generating={isGenerating}
                 highlightHueDeg={160}
                 onClick={handleGenerateCampaign}
-                disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && (!regenerationLimits.allowed || cooldownSeconds > 0)) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
+                disabled={isGenerating || !onboardingData?.isComplete || (regenerationLimits && !regenerationLimits.allowed) || subscriptionState?.isTrialExpired || subscriptionState?.isCancelledPeriodEnded}
                 className="w-full sm:w-auto max-w-xs sm:max-w-none font-semibold"
               />
               {/* Upgrade Plan CTA when trial expired or subscription inactive */}

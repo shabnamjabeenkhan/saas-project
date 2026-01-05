@@ -21,8 +21,8 @@ const MIN_DESCRIPTIONS_PER_AD_GROUP = 2;
 /** Maximum descriptions per ad group */
 const MAX_DESCRIPTIONS_PER_AD_GROUP = 4;
 
-/** Cooldown between regenerations in milliseconds (60 seconds) */
-const REGENERATION_COOLDOWN_MS = 60 * 1000;
+/** Cooldown between regenerations in milliseconds (disabled - set to 0) */
+const REGENERATION_COOLDOWN_MS = 0;
 
 /** Trial duration in milliseconds (3 days) */
 const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
@@ -228,19 +228,8 @@ export const checkRegenerationLimits = query({
       ? (now - onboardingData.completedAt) < TRIAL_DURATION_MS
       : false;
 
-    // Check cooldown (60 seconds between regenerations)
-    if (campaign?.lastRegeneration) {
-      const timeSinceLastRegen = now - campaign.lastRegeneration;
-      if (timeSinceLastRegen < REGENERATION_COOLDOWN_MS) {
-        const cooldownSeconds = Math.ceil((REGENERATION_COOLDOWN_MS - timeSinceLastRegen) / 1000);
-        return {
-          allowed: false,
-          remaining: 0,
-          cooldownSecondsRemaining: cooldownSeconds,
-          reason: `Please wait ${cooldownSeconds} second${cooldownSeconds !== 1 ? 's' : ''} before regenerating again.`,
-        };
-      }
-    }
+    // Cooldown disabled - users can regenerate immediately
+    // (keeping lastRegeneration tracking for analytics purposes only)
 
     // Trial logic: 1 initial + 2 regenerations = 3 total within trial period
     if (isTrialActive) {

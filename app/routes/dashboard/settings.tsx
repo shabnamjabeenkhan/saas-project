@@ -37,7 +37,6 @@ export default function Page() {
   const canRegenerate = regenerationLimits?.allowed ?? false;
   const isTrialExpired = subscriptionState?.isTrialExpired ?? false;
   const isCancelledPeriodEnded = subscriptionState?.isCancelledPeriodEnded ?? false;
-  const isCooldown = regenerationLimits && regenerationLimits.cooldownSecondsRemaining > 0;
   
   // Allow editing if:
   // - Can regenerate AND not trial expired AND not cancelled period ended
