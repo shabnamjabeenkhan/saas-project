@@ -398,12 +398,15 @@ export const handleWebhookEvent = mutation({
       case "subscription.created":
         console.log("📝 Creating new subscription record for userId:", args.body.data.metadata.userId);
         // Insert new subscription
+        const subscriptionUserId = args.body.data.metadata.userId;
+        const subscriptionStartTime = new Date(args.body.data.started_at).getTime();
+        
         await ctx.db.insert("subscriptions", {
           polarId: args.body.data.id,
           polarPriceId: args.body.data.price_id,
           currency: args.body.data.currency,
           interval: args.body.data.recurring_interval,
-          userId: args.body.data.metadata.userId,
+          userId: subscriptionUserId,
           status: args.body.data.status,
           currentPeriodStart: new Date(
             args.body.data.current_period_start
@@ -413,7 +416,7 @@ export const handleWebhookEvent = mutation({
           ).getTime(),
           cancelAtPeriodEnd: args.body.data.cancel_at_period_end,
           amount: args.body.data.amount,
-          startedAt: new Date(args.body.data.started_at).getTime(),
+          startedAt: subscriptionStartTime,
           endedAt: args.body.data.ended_at
             ? new Date(args.body.data.ended_at).getTime()
             : undefined,
@@ -429,6 +432,21 @@ export const handleWebhookEvent = mutation({
           customerId: args.body.data.customer_id,
         });
         console.log("✅ Subscription record created successfully");
+        
+        // Reset regeneration count for new paid subscribers
+        // This gives them a fresh 3 regenerations per month starting from subscription date
+        const userCampaign = await ctx.db
+          .query("campaigns")
+          .withIndex("userId", (q) => q.eq("userId", subscriptionUserId))
+          .first();
+        
+        if (userCampaign) {
+          await ctx.db.patch(userCampaign._id, {
+            monthlyRegenCount: 0,
+            monthlyRegenResetDate: subscriptionStartTime,
+          });
+          console.log("✅ Reset regeneration count for new subscriber:", subscriptionUserId);
+        }
         break;
 
       case "subscription.updated":

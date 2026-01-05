@@ -263,11 +263,8 @@ export const checkRegenerationLimits = query({
       const remainingPaidRegens = Math.max(0, MAX_REGENERATIONS_PER_PERIOD - currentMonthlyCount);
 
       if (currentMonthlyCount >= MAX_REGENERATIONS_PER_PERIOD) {
-        // Calculate next reset date (first day of next month)
-        const resetDate = new Date(lastResetDate);
-        resetDate.setMonth(resetDate.getMonth() + 1);
-        resetDate.setDate(1);
-        resetDate.setHours(0, 0, 0, 0);
+        // Calculate next reset date (30 days from last reset)
+        const resetDate = new Date(lastResetDate + MONTHLY_RESET_MS);
 
         return {
           allowed: false,
@@ -347,6 +344,41 @@ export const updateRegenerationTracking = mutation({
       monthlyRegenResetDate: newResetDate,
       updatedAt: now,
     });
+  },
+});
+
+// Admin helper to reset regeneration count for a user (use when subscription starts)
+export const adminResetRegenerationCount = mutation({
+  args: {
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const campaign = await ctx.db
+      .query("campaigns")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+    
+    if (!campaign) {
+      return { success: false, message: "No campaign found for user" };
+    }
+    
+    // Get subscription to use its start date
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .first();
+    
+    const resetDate = subscription?.startedAt || Date.now();
+    
+    await ctx.db.patch(campaign._id, {
+      monthlyRegenCount: 0,
+      monthlyRegenResetDate: resetDate,
+    });
+    
+    return { 
+      success: true, 
+      message: `Reset regeneration count for user. Next reset: ${new Date(resetDate + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}` 
+    };
   },
 });
 
@@ -1107,7 +1139,7 @@ function buildCampaignPrompt(onboardingData: any, isRegeneration: boolean = fals
 **REGENERATION VARIATION REQUIREMENTS:**
 IMPORTANT: This is a regeneration request. Create subtle variations of the existing campaign while maintaining the same structure and intent:
 
-1. PRESERVE: Same 4 ad groups, same daily budget, same business info, same target location
+1. PRESERVE: Same ${serviceOfferings.length} ad groups (one per service), same daily budget, same business info, same target location
 2. VARY: Headlines and descriptions using synonyms, alternative phrasing, different emphasis
 3. SHUFFLE: Keyword order and include mild variations (e.g., "plumber London" vs "London plumber")
 4. MAINTAIN: Core business intent, compliance requirements, and service offerings
@@ -1155,33 +1187,38 @@ ${variationInstructions}
 - The phone number in businessInfo.phone and callExtensions MUST match the exact number from onboarding: ${phone}
 
 **CAMPAIGN REQUIREMENTS:**
-1. Create ad groups ONLY for themes that have matching services from the user's selected serviceOfferings:
-${availableThemes.map(({ theme, services }) => `   - ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme: ${services.join(', ')}`).join('\n')}
-   IMPORTANT: Only create ad groups for themes listed above. Do NOT create ad groups for themes with no matching services.
+1. Create exactly ${serviceOfferings.length} ad groups - ONE ad group for EACH service the user selected:
+${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}" - Create an ad group specifically for this service`).join('\n')}
+   🚨 CRITICAL: You MUST create exactly ${serviceOfferings.length} ad groups. Each ad group name should include the service name (e.g., "Boiler Repair ${city}", "Emergency Plumbing ${city}").
+   DO NOT group services together. Each service = 1 separate ad group.
 
 2. Generate exactly 12 headlines per ad group:
    - Each headline MUST be ≤ 30 characters (count spaces and punctuation) - VERIFY BEFORE OUTPUTTING
-   - 🚨 CRITICAL: NO truncated words allowed - this is a hard requirement
-     ❌ FORBIDDEN: "Birm" (from Birmingham), "Londo" (from London), "Stoke-" (from Stoke-on-Trent)
-     ❌ FORBIDDEN: Any word cut mid-character (e.g., "Emergen" instead of "Emergency")
-     ✅ REQUIRED: All words must be complete and readable
+   - 🚨 CRITICAL HEADLINE RULES:
+     a) ONE IDEA PER HEADLINE - each headline must be standalone, natural language, expressing a single concept
+     b) NO DASHES or chaining multiple ideas (e.g., ❌ "Boiler Fix - Birmingham" → ✅ "Boiler Repair Birmingham")
+     c) NO ABBREVIATIONS for city names (e.g., ❌ "B'ham", "M'cr" → ✅ "Birmingham", "Manchester")
+     d) NO REPEATED CITY in same headline (e.g., ❌ "B'ham Birmingham" → ✅ "Birmingham")
+     e) NO TRUNCATED WORDS (e.g., ❌ "Birm", "Londo" → ✅ full words only)
+     f) CITY USAGE: Only 2-3 headlines per ad group should include the city name
    - Headlines must cover five styles:
-     a) Keyword + city (e.g., "Plumber ${city}" - ensure city name fits or use abbreviation)
+     a) Keyword + city (e.g., "Boiler Repair ${city}")
      b) Local benefit (e.g., "Local Expert Service")
      c) Value/offer (e.g., "Free Quotes Today")
-     d) Trust indicator (e.g., "Gas Safe Certified")
-     e) Action/CTA (e.g., "Call Now - 24/7")
+     d) Trust indicator (e.g., "Gas Safe Engineers")
+     e) Action/CTA (e.g., "Call Now 24/7")
    - If a headline exceeds 30 chars, shorten it using this EXACT priority order:
      1. Remove less important words: "professional", "local", "expert", "trusted", "qualified", "certified"
-     2. Use abbreviations: "installation" → "install", "emergency" → "urgent", "certified" → "cert"
-     3. Shorten city names if needed: "Birmingham" → "B'ham" (only if absolutely necessary)
-     4. Remove articles: "the", "a", "an" (if safe to do so)
-     5. LAST RESORT ONLY: Truncate at full-word boundary (find last space before 30 chars, never cut mid-word)
+     2. Use shorter synonyms: "installation" → "install", "emergency" → "urgent"
+     3. Remove articles: "the", "a", "an"
+     4. Simplify phrase (e.g., "Emergency Boiler Repair Service" → "Emergency Boiler Repair")
+     5. LAST RESORT: Remove city from this headline (other headlines will include it)
+   - ❌ NEVER use city abbreviations like B'ham, M'cr, Notts - always use full city name or omit
    - Before outputting each headline, verify:
-     * Character count ≤ 30 (use string.length)
-     * No words are cut mid-character
-     * All words are complete and readable
-     * Example check: "Birmingham Plumber" (20 chars) ✅ vs "Birm Plumber" (13 chars) ❌
+     * Character count ≤ 30
+     * Single standalone idea (no dashes combining concepts)
+     * Full city name or no city (never abbreviated)
+     * Natural, readable language
 
 3. Generate 2-4 descriptions per ad group (max 90 chars each)
 
@@ -1541,6 +1578,27 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
   // Clean up whitespace first
   let cleaned = headline.replace(/\s+/g, ' ').trim();
   
+  // Step 1: Replace ALL city abbreviations with full city names (we never want abbreviations)
+  for (const [city, abbrev] of Object.entries(CITY_ABBREVIATIONS)) {
+    // Escape special regex characters in abbreviation (e.g., B'ham has apostrophe)
+    const escapedAbbrev = abbrev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const abbrevPattern = new RegExp(escapedAbbrev, 'gi');
+    // Capitalize first letter of city for replacement
+    const capitalizedCity = city.charAt(0).toUpperCase() + city.slice(1);
+    cleaned = cleaned.replace(abbrevPattern, capitalizedCity).replace(/\s+/g, ' ').trim();
+  }
+  
+  // Step 2: Fix duplicate city names (e.g., "Birmingham Birmingham" → "Birmingham")
+  for (const [city] of Object.entries(CITY_ABBREVIATIONS)) {
+    const capitalizedCity = city.charAt(0).toUpperCase() + city.slice(1);
+    // Pattern: "Birmingham Birmingham" - remove duplicate
+    const duplicatePattern = new RegExp(`${capitalizedCity}\\s+${capitalizedCity}`, 'gi');
+    cleaned = cleaned.replace(duplicatePattern, capitalizedCity).replace(/\s+/g, ' ').trim();
+  }
+  
+  // Step 3: Remove dashes that chain ideas (e.g., "Boiler Fix - Birmingham" → "Boiler Fix Birmingham")
+  cleaned = cleaned.replace(/\s*-\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  
   if (cleaned.length <= maxLength) {
     return cleaned;
   }
@@ -1579,12 +1637,12 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
     }
   }
 
-  // Strategy 3: Abbreviate known city names
-  for (const [city, abbrev] of Object.entries(CITY_ABBREVIATIONS)) {
+  // Strategy 3: Remove city name entirely if still too long (other headlines will have it)
+  for (const [city] of Object.entries(CITY_ABBREVIATIONS)) {
     const regex = new RegExp(`\\b${city}\\b`, 'gi');
-    shortened = shortened.replace(regex, abbrev).replace(/\s+/g, ' ').trim();
-    if (shortened.length <= maxLength) {
-      return shortened;
+    const withoutCity = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
+    if (withoutCity.length <= maxLength && withoutCity.length > 5) { // Ensure we don't remove too much
+      return withoutCity;
     }
   }
 
@@ -1695,6 +1753,68 @@ function generateFallbackHeadlines(
   }
 
   return fallbacks;
+}
+
+// Generate a complete fallback ad group for a specific service
+function generateFallbackAdGroup(
+  serviceName: string,
+  tradeType: string,
+  city: string,
+  websiteUrl: string
+): any {
+  const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical';
+  const credential = tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe Registered' : 'Part P Certified';
+  
+  // Generate service-specific headlines
+  const headlines = [
+    validateAndFixHeadline(`${serviceName} ${city}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${city} ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${serviceName} Experts`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Professional ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${serviceName} Service`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Fast ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Local ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`24/7 ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Call Now Free Quote`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Same Day Service`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`No Hidden Fees`, MAX_HEADLINE_CHARS),
+  ].filter(h => h.length > 0 && h.length <= MAX_HEADLINE_CHARS);
+  
+  // Ensure we have exactly TARGET_HEADLINES_PER_AD_GROUP headlines
+  while (headlines.length < TARGET_HEADLINES_PER_AD_GROUP) {
+    const fallbacks = generateFallbackHeadlines(serviceName, tradeType, city, headlines, TARGET_HEADLINES_PER_AD_GROUP);
+    headlines.push(...fallbacks);
+    if (headlines.length >= TARGET_HEADLINES_PER_AD_GROUP) break;
+  }
+  
+  // Generate service-specific descriptions
+  const descriptions = [
+    `Professional ${serviceName.toLowerCase()} services in ${city}. ${credential}. Free quotes, no hidden fees.`,
+    `Need ${serviceName.toLowerCase()}? Our expert team provides fast, reliable service. Call today!`,
+  ].filter(d => d.length <= MAX_DESCRIPTION_CHARS);
+  
+  // Generate service-specific keywords
+  const keywords = [
+    `${serviceName.toLowerCase()} ${city.toLowerCase()}`,
+    `${city.toLowerCase()} ${serviceName.toLowerCase()}`,
+    `${serviceName.toLowerCase()} near me`,
+    `local ${serviceName.toLowerCase()}`,
+    `${serviceName.toLowerCase()} service`,
+    `best ${serviceName.toLowerCase()} ${city.toLowerCase()}`,
+    `emergency ${serviceName.toLowerCase()}`,
+    `${serviceName.toLowerCase()} experts`,
+  ];
+  
+  return {
+    name: `${serviceName} ${city}`,
+    keywords: keywords.slice(0, 10),
+    adCopy: {
+      headlines: headlines.slice(0, TARGET_HEADLINES_PER_AD_GROUP),
+      descriptions: descriptions.slice(0, MAX_DESCRIPTIONS_PER_AD_GROUP),
+      finalUrl: websiteUrl
+    }
+  };
 }
 
 // Validate ad group content matches serviceOfferings
@@ -1889,6 +2009,36 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
   }
 
   console.log('✅ Phone validation passed - all phone numbers match onboarding:', phone);
+  
+  // 🔒 VALIDATE AD GROUP COUNT: Ensure we have one ad group per service
+  const expectedAdGroupCount = serviceOfferings.length;
+  const actualAdGroupCount = validatedData.adGroups.length;
+  
+  if (actualAdGroupCount < expectedAdGroupCount) {
+    console.warn(`⚠️ AD GROUP COUNT MISMATCH: Expected ${expectedAdGroupCount} ad groups (one per service), got ${actualAdGroupCount}`);
+    console.warn(`   Services selected: ${serviceOfferings.join(', ')}`);
+    console.warn(`   Ad groups created: ${validatedData.adGroups.map((ag: any) => ag.name).join(', ')}`);
+    
+    // Generate missing ad groups for services not covered
+    const existingAdGroupNames = validatedData.adGroups.map((ag: any) => ag.name.toLowerCase());
+    
+    for (const service of serviceOfferings) {
+      const serviceLower = service.toLowerCase();
+      // Check if any existing ad group covers this service
+      const isCovered = existingAdGroupNames.some((name: string) => 
+        name.includes(serviceLower) || serviceLower.split(' ').some((word: string) => name.includes(word))
+      );
+      
+      if (!isCovered) {
+        console.log(`📝 Generating fallback ad group for missing service: ${service}`);
+        const fallbackAdGroup = generateFallbackAdGroup(service, tradeType, city, websiteUrl);
+        validatedData.adGroups.push(fallbackAdGroup);
+      }
+    }
+    
+    console.log(`✅ After fallback generation: ${validatedData.adGroups.length} ad groups`);
+  }
+  
   return validatedData;
 }
 
@@ -1899,36 +2049,34 @@ function createFallbackCampaignData(_aiResponse: string, onboardingData: any): a
   const phone = onboardingData.phone;
   const tradeType = onboardingData.tradeType;
   const websiteUrl = onboardingData.websiteUrl || "https://example.com";
+  const serviceOfferings = onboardingData.serviceOfferings || [];
+  const city = serviceArea?.city || 'UK';
 
   // 🔍 DEBUG: Log phone number in fallback
   console.log('🔍 FALLBACK DEBUG: Using phone from onboarding:', phone);
   console.log('🔍 FALLBACK DEBUG: Using website URL from onboarding:', websiteUrl);
+  console.log('🔍 FALLBACK DEBUG: Services selected:', serviceOfferings);
 
   // 🔒 VALIDATION: Ensure we have required data from onboarding
   if (!phone) {
     throw new Error('Missing phone number from onboarding data in fallback');
   }
 
+  // Generate one ad group per service
+  const adGroups = serviceOfferings.length > 0
+    ? serviceOfferings.map((service: string) => generateFallbackAdGroup(service, tradeType, city, websiteUrl))
+    : [generateFallbackAdGroup(`Emergency ${tradeType}`, tradeType, city, websiteUrl)];
+
   return {
     campaignName: `${businessName} - ${tradeType} Services`,
     dailyBudget: Math.round((onboardingData.acquisitionGoals?.monthlyBudget || 300) / 30),
-    targetLocation: `${serviceArea?.city}, UK`,
+    targetLocation: `${city}, UK`,
     businessInfo: {
       businessName: businessName,
       phone: phone,
-      serviceArea: `${serviceArea?.city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
+      serviceArea: `${city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
     },
-    adGroups: [
-      {
-        name: `Emergency ${tradeType}`,
-        keywords: [`emergency ${tradeType}`, `24/7 ${tradeType}`, `urgent ${tradeType}`],
-        adCopy: {
-          headlines: [`Fast Emergency ${tradeType}`, "Available 24/7", "Call Now - No Fees"],
-          descriptions: [`Professional ${tradeType} services in ${serviceArea?.city}`, "Call today for immediate assistance"],
-          finalUrl: websiteUrl,
-        },
-      },
-    ],
+    adGroups: adGroups,
     callExtensions: [phone],
     complianceNotes: [
       "Generated campaign requires manual review",

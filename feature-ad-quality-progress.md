@@ -1,7 +1,7 @@
 # Progress: Ad Quality Improvements
 
 ## Current Status
-Implementation phase - core changes complete
+Implementation phase - fixing headline duplication and Google Ads push issues
 
 ## Completed
 - ✅ Centralized length constants in `convex/campaigns.ts`:
@@ -50,6 +50,10 @@ Implementation phase - core changes complete
 
 ## Blockers
 - ⚠️ None currently
+
+## Recently Fixed (This Session)
+- ✅ **"B'ham Birmingham" duplication** - Added detection for duplicate city references in headlines
+- ✅ **Only 2 ad groups in Google Ads** - Fixed DUPLICATE_ADGROUP_NAME error by checking for existing ad groups before creating
 
 ## Next Steps
 - ⏭️ Run `npm run typecheck` to verify changes

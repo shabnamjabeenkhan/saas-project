@@ -978,30 +978,91 @@ async function createAdGroupsWithAdsAndKeywords(
     console.log(`🎯🎯 PROCESSING Ad Group ${i + 1}/${campaignData.adGroups.length}: ${adGroup.name}`);
 
     try {
-      // Create Ad Group using SDK
-      console.log('📡 Creating ad group via SDK...');
+      // First, check if an ad group with this name already exists in this campaign
+      console.log('🔍 Checking if ad group already exists...');
+      let adGroupResourceName: string | null = null;
+      
       try {
-        // Use same status logic as main flow (default to PAUSED for safety)
-        const adGroupStatus = 'PAUSED'; // Default to paused in helper function
+        const existingAdGroups = await customer.query(`
+          SELECT ad_group.resource_name, ad_group.name 
+          FROM ad_group 
+          WHERE ad_group.campaign = '${campaignResourceName}'
+          AND ad_group.name = '${adGroup.name}'
+          AND ad_group.status != 'REMOVED'
+        `);
         
-        const adGroupResult = await customer.adGroups.create([
-          {
-              name: adGroup.name || 'Default Ad Group',
-              campaign: campaignResourceName,
-            status: adGroupStatus,
-              type: 'SEARCH_STANDARD',
-            cpc_bid_micros: 1000000 // £1.00 default bid
-          }
-        ]);
-
-        const adGroupResourceName = adGroupResult.results[0]?.resource_name;
-        if (!adGroupResourceName) {
-          throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
+        if (existingAdGroups && existingAdGroups.length > 0) {
+          adGroupResourceName = existingAdGroups[0].ad_group?.resource_name ?? null;
+          console.log('✅ Found existing ad group:', {
+            name: adGroup.name,
+            resourceName: adGroupResourceName
+          });
         }
-      console.log('✅ Ad group created successfully:', {
-        name: adGroup.name,
-          resourceName: adGroupResourceName
-      });
+      } catch (queryError) {
+        console.log('⚠️ Could not query existing ad groups, will try to create new one');
+      }
+      
+      // If ad group doesn't exist, create it
+      if (!adGroupResourceName) {
+        console.log('📡 Creating ad group via SDK...');
+        try {
+          // Use same status logic as main flow (default to PAUSED for safety)
+          const adGroupStatus = 'PAUSED'; // Default to paused in helper function
+          
+          const adGroupResult = await customer.adGroups.create([
+            {
+                name: adGroup.name || 'Default Ad Group',
+                campaign: campaignResourceName,
+              status: adGroupStatus,
+                type: 'SEARCH_STANDARD',
+              cpc_bid_micros: 1000000 // £1.00 default bid
+            }
+          ]);
+
+          adGroupResourceName = adGroupResult.results[0]?.resource_name || null;
+          if (!adGroupResourceName) {
+            throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
+          }
+          console.log('✅ Ad group created successfully:', {
+            name: adGroup.name,
+            resourceName: adGroupResourceName
+          });
+        } catch (createError: any) {
+          // If duplicate name error, try to find the existing one
+          if (createError?.errors?.[0]?.error_code?.ad_group_error === 'DUPLICATE_ADGROUP_NAME' ||
+              (typeof createError === 'string' && createError.includes('DUPLICATE_ADGROUP_NAME')) ||
+              (createError?.message && createError.message.includes('DUPLICATE_ADGROUP_NAME'))) {
+            console.log('⚠️ Ad group already exists (duplicate name), attempting to find it...');
+            
+            try {
+              const existingAdGroups = await customer.query(`
+                SELECT ad_group.resource_name, ad_group.name 
+                FROM ad_group 
+                WHERE ad_group.campaign = '${campaignResourceName}'
+                AND ad_group.name = '${adGroup.name}'
+                AND ad_group.status != 'REMOVED'
+              `);
+              
+              if (existingAdGroups && existingAdGroups.length > 0) {
+                adGroupResourceName = existingAdGroups[0].ad_group?.resource_name ?? null;
+                console.log('✅ Found existing ad group after duplicate error:', {
+                  name: adGroup.name,
+                  resourceName: adGroupResourceName
+                });
+              }
+            } catch (findError) {
+              console.error('❌ Could not find existing ad group after duplicate error:', findError);
+              throw createError; // Re-throw original error
+            }
+          } else {
+            throw createError;
+          }
+        }
+      }
+      
+      if (!adGroupResourceName) {
+        throw new Error(`Could not create or find ad group "${adGroup.name}"`);
+      }
 
       // Create Keywords for this ad group
       if (adGroup.keywords && adGroup.keywords.length > 0) {
@@ -1049,34 +1110,7 @@ async function createAdGroupsWithAdsAndKeywords(
           });
           // Continue processing other ad groups even if one fails
         }
-        }
-      } catch (error: any) {
-        // Better error logging for SDK errors
-        let errorMessage = 'Unknown error';
-        let errorDetails: any = {};
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-          errorDetails = { message: error.message, stack: error.stack };
-        } else if (error?.error) {
-          // SDK error structure
-          errorDetails = error.error;
-          errorMessage = error.error?.message || JSON.stringify(error.error);
-        } else if (typeof error === 'object') {
-          errorMessage = JSON.stringify(error, null, 2);
-          errorDetails = error;
-        } else {
-          errorMessage = String(error);
-        }
-        
-        console.error('❌ Ad group creation failed:', {
-          errorMessage,
-          errorDetails: JSON.stringify(errorDetails, null, 2),
-          adGroupName: adGroup.name
-        });
-        continue;
       }
-
     } catch (error) {
       console.error(`❌ Error creating ad group ${adGroup.name}:`, {
         error: error instanceof Error ? error.message : String(error),
