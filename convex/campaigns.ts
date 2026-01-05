@@ -2,6 +2,39 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
 
+// ============================================================================
+// CENTRALIZED CONSTANTS (PRD Section 4.1)
+// ============================================================================
+
+/** Maximum characters allowed for a Google Ads headline */
+const MAX_HEADLINE_CHARS = 30;
+
+/** Maximum characters allowed for a Google Ads description */
+const MAX_DESCRIPTION_CHARS = 90;
+
+/** Target number of headlines per ad group */
+const TARGET_HEADLINES_PER_AD_GROUP = 12;
+
+/** Minimum descriptions per ad group */
+const MIN_DESCRIPTIONS_PER_AD_GROUP = 2;
+
+/** Maximum descriptions per ad group */
+const MAX_DESCRIPTIONS_PER_AD_GROUP = 4;
+
+/** Cooldown between regenerations in milliseconds (60 seconds) */
+const REGENERATION_COOLDOWN_MS = 60 * 1000;
+
+/** Trial duration in milliseconds (3 days) */
+const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
+
+/** Monthly reset period in milliseconds (30 days) */
+const MONTHLY_RESET_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Maximum regenerations allowed per period (trial or monthly) */
+const MAX_REGENERATIONS_PER_PERIOD = 3;
+
+// ============================================================================
+
 // Helper function to get current user's token identifier
 async function getCurrentUserToken(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
@@ -170,9 +203,6 @@ export const checkRegenerationLimits = query({
   }),
   handler: async (ctx, args) => {
     const now = Date.now();
-    const oneMinute = 60 * 1000; // 1 minute cooldown
-    const threeDays = 3 * 24 * 60 * 60 * 1000; // 3 days for trial
-    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days for monthly reset
 
     // Get subscription status
     const subscription = await ctx.db
@@ -195,14 +225,14 @@ export const checkRegenerationLimits = query({
     // Determine if user is on trial or paid
     const isPaidActive = subscription?.status === "active";
     const isTrialActive = !isPaidActive && onboardingData?.completedAt 
-      ? (now - onboardingData.completedAt) < threeDays
+      ? (now - onboardingData.completedAt) < TRIAL_DURATION_MS
       : false;
 
-    // Check cooldown (1 minute between regenerations)
+    // Check cooldown (60 seconds between regenerations)
     if (campaign?.lastRegeneration) {
       const timeSinceLastRegen = now - campaign.lastRegeneration;
-      if (timeSinceLastRegen < oneMinute) {
-        const cooldownSeconds = Math.ceil((oneMinute - timeSinceLastRegen) / 1000);
+      if (timeSinceLastRegen < REGENERATION_COOLDOWN_MS) {
+        const cooldownSeconds = Math.ceil((REGENERATION_COOLDOWN_MS - timeSinceLastRegen) / 1000);
         return {
           allowed: false,
           remaining: 0,
@@ -212,17 +242,17 @@ export const checkRegenerationLimits = query({
       }
     }
 
-    // Trial logic: 1 initial + 2 regenerations = 3 total within 3 days
+    // Trial logic: 1 initial + 2 regenerations = 3 total within trial period
     if (isTrialActive) {
       const totalGenerations = campaign?.regenerationCount || 0; // Already includes initial campaign
-      const remainingTrialRegens = Math.max(0, 3 - totalGenerations);
+      const remainingTrialRegens = Math.max(0, MAX_REGENERATIONS_PER_PERIOD - totalGenerations);
 
-      if (totalGenerations >= 3) {
+      if (totalGenerations >= MAX_REGENERATIONS_PER_PERIOD) {
         return {
           allowed: false,
           remaining: 0,
           cooldownSecondsRemaining: 0,
-          reason: "Trial limit reached (3 total generations). Upgrade to continue regenerating campaigns.",
+          reason: `Trial limit reached (${MAX_REGENERATIONS_PER_PERIOD} total generations). Upgrade to continue regenerating campaigns.`,
         };
       }
 
@@ -233,17 +263,17 @@ export const checkRegenerationLimits = query({
       };
     }
 
-    // Paid logic: 3 regenerations per calendar month
+    // Paid logic: 3 regenerations per ~30 days
     if (isPaidActive) {
-      // Check if we need to reset monthly count (new calendar month)
+      // Check if we need to reset monthly count
       const lastResetDate = campaign?.monthlyRegenResetDate || campaign?.createdAt || now;
-      const daysSinceReset = (now - lastResetDate) / (24 * 60 * 60 * 1000);
-      const shouldResetMonthly = daysSinceReset >= 30; // Calendar month reset
+      const msSinceReset = now - lastResetDate;
+      const shouldResetMonthly = msSinceReset >= MONTHLY_RESET_MS;
 
       const currentMonthlyCount = shouldResetMonthly ? 0 : (campaign?.monthlyRegenCount || 0);
-      const remainingPaidRegens = Math.max(0, 3 - currentMonthlyCount);
+      const remainingPaidRegens = Math.max(0, MAX_REGENERATIONS_PER_PERIOD - currentMonthlyCount);
 
-      if (currentMonthlyCount >= 3) {
+      if (currentMonthlyCount >= MAX_REGENERATIONS_PER_PERIOD) {
         // Calculate next reset date (first day of next month)
         const resetDate = new Date(lastResetDate);
         resetDate.setMonth(resetDate.getMonth() + 1);
@@ -291,7 +321,6 @@ export const updateRegenerationTracking = mutation({
     }
 
     const now = Date.now();
-    const oneMonth = 30 * 24 * 60 * 60 * 1000; // 30 days
 
     // Check subscription status to determine if monthly reset applies
     const subscription = await ctx.db
@@ -301,15 +330,15 @@ export const updateRegenerationTracking = mutation({
 
     const isPaidActive = subscription?.status === "active";
 
-    // For paid users: reset monthly count if it's a new calendar month
+    // For paid users: reset monthly count if it's a new period
     // For trial users: just increment total count
     let newMonthlyCount = campaign.monthlyRegenCount || 0;
     let newResetDate = campaign.monthlyRegenResetDate || now;
 
     if (isPaidActive) {
       const lastResetDate = campaign.monthlyRegenResetDate || campaign.createdAt || now;
-      const daysSinceReset = (now - lastResetDate) / (24 * 60 * 60 * 1000);
-      const shouldResetMonthly = daysSinceReset >= 30; // Calendar month reset
+      const msSinceReset = now - lastResetDate;
+      const shouldResetMonthly = msSinceReset >= MONTHLY_RESET_MS;
 
       if (shouldResetMonthly) {
         newMonthlyCount = 1;
@@ -1507,15 +1536,29 @@ function sanitizePhoneNumbers(campaignData: any): any {
   return sanitized;
 }
 
-// Validate and fix headline length (≤ 30 chars, no truncated words)
-function validateAndFixHeadline(headline: string, maxLength: number = 30): string {
-  if (headline.length <= maxLength) {
-    return headline;
+// Known city name abbreviations to avoid truncated city names
+const CITY_ABBREVIATIONS: Record<string, string> = {
+  'birmingham': "B'ham",
+  'manchester': "M'cr",
+  'nottingham': "Notts",
+  'southampton': "S'ton",
+  'stoke-on-trent': 'Stoke',
+  'newcastle upon tyne': 'Newcastle',
+  'kingston upon hull': 'Hull',
+};
+
+// Validate and fix headline length (≤ MAX_HEADLINE_CHARS chars, no truncated words)
+function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLINE_CHARS): string {
+  // Clean up whitespace first
+  let cleaned = headline.replace(/\s+/g, ' ').trim();
+  
+  if (cleaned.length <= maxLength) {
+    return cleaned;
   }
 
-  // Strategy 1: Remove less important words
-  const lessImportantWords = ['professional', 'local', 'expert', 'trusted', 'qualified', 'certified'];
-  let shortened = headline;
+  // Strategy 1: Remove less important words (in order of importance to remove)
+  const lessImportantWords = ['professional', 'local', 'expert', 'trusted', 'qualified', 'certified', 'reliable', 'experienced'];
+  let shortened = cleaned;
   for (const word of lessImportantWords) {
     const regex = new RegExp(`\\b${word}\\b`, 'gi');
     shortened = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
@@ -1531,18 +1574,39 @@ function validateAndFixHeadline(headline: string, maxLength: number = 30): strin
     'professional': 'pro',
     'certified': 'cert',
     'qualified': 'qual',
+    'services': 'svc',
+    'service': 'svc',
+    'available': 'avail',
+    'immediate': 'fast',
+    'assistance': 'help',
   };
 
-  shortened = headline;
+  shortened = cleaned;
   for (const [long, short] of Object.entries(replacements)) {
     const regex = new RegExp(`\\b${long}\\b`, 'gi');
-    shortened = shortened.replace(regex, short);
+    shortened = shortened.replace(regex, short).replace(/\s+/g, ' ').trim();
     if (shortened.length <= maxLength) {
       return shortened;
     }
   }
 
-  // Strategy 3: Truncate at full-word boundary (last resort)
+  // Strategy 3: Abbreviate known city names
+  for (const [city, abbrev] of Object.entries(CITY_ABBREVIATIONS)) {
+    const regex = new RegExp(`\\b${city}\\b`, 'gi');
+    shortened = shortened.replace(regex, abbrev).replace(/\s+/g, ' ').trim();
+    if (shortened.length <= maxLength) {
+      return shortened;
+    }
+  }
+
+  // Strategy 4: Remove articles
+  shortened = shortened.replace(/\b(the|a|an)\b/gi, '').replace(/\s+/g, ' ').trim();
+  if (shortened.length <= maxLength) {
+    return shortened;
+  }
+
+  // Strategy 5: Truncate at full-word boundary (last resort)
+  // CRITICAL: Never truncate mid-word to avoid "Birm", "Londo", etc.
   if (shortened.length > maxLength) {
     const words = shortened.split(' ');
     let result = '';
@@ -1560,13 +1624,20 @@ function validateAndFixHeadline(headline: string, maxLength: number = 30): strin
       return result.trim();
     }
     
-    // Edge case: single word exceeds maxLength - truncate at maxLength
-    // This should rarely happen if AI follows instructions, but handle gracefully
+    // Edge case: single word exceeds maxLength
+    // Instead of truncating mid-word (which creates "Birm", "Londo"), 
+    // try to abbreviate or return a safe fallback
     const firstWord = words[0] || '';
     if (firstWord.length > maxLength) {
-      // For single long words (like city names), truncate but log warning
-      console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - truncating (should be avoided)`);
-      return firstWord.substring(0, maxLength).trim();
+      // Check if it's a known city that can be abbreviated
+      const lowerWord = firstWord.toLowerCase();
+      if (CITY_ABBREVIATIONS[lowerWord]) {
+        return CITY_ABBREVIATIONS[lowerWord];
+      }
+      
+      // Log warning and return a generic fallback instead of truncating mid-word
+      console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - using fallback (truncation avoided)`);
+      return 'Quality Service';
     }
     
     // Fallback: return empty string if we can't fit anything
@@ -1576,37 +1647,48 @@ function validateAndFixHeadline(headline: string, maxLength: number = 30): strin
   return shortened;
 }
 
-// Generate fallback headlines if AI returns fewer than 12
+// Generate fallback headlines if AI returns fewer than TARGET_HEADLINES_PER_AD_GROUP
 function generateFallbackHeadlines(
   adGroupName: string,
   tradeType: string,
   city: string,
   existingHeadlines: string[],
-  targetCount: number = 12
+  targetCount: number = TARGET_HEADLINES_PER_AD_GROUP
 ): string[] {
   const fallbacks: string[] = [];
   const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumber' : 'Electrician';
-  const bothTerm = tradeType === 'both' ? 'Tradesperson' : tradeTerm;
   
+  // Use abbreviated city if the full name is too long
+  const cityLower = city.toLowerCase();
+  const shortCity = CITY_ABBREVIATIONS[cityLower] || city;
+  const useShortCity = city.length > 10; // Use abbreviation for long city names
+  const displayCity = useShortCity ? shortCity : city;
+  
+  // Templates designed to stay under MAX_HEADLINE_CHARS (30 chars)
+  // Each template is crafted to work with both short and long city names
   const templates = [
-    `Local ${tradeTerm} ${city}`,
-    `${tradeTerm} ${city}`,
-    `Certified ${tradeTerm}`,
-    `24/7 ${tradeTerm} Service`,
-    `Expert ${tradeTerm} ${city}`,
-    `Trusted ${tradeTerm}`,
-    `Qualified ${tradeTerm} ${city}`,
-    `${city} ${tradeTerm}`,
-    `Fast ${tradeTerm} Service`,
-    `Reliable ${tradeTerm} ${city}`,
-    `Professional ${tradeTerm}`,
-    `${tradeTerm} Near Me`,
+    `${tradeTerm} ${displayCity}`,           // e.g., "Plumber London" (14 chars)
+    `${displayCity} ${tradeTerm}`,           // e.g., "London Plumber" (14 chars)
+    `Local ${tradeTerm}`,                    // e.g., "Local Plumber" (13 chars)
+    `Certified ${tradeTerm}`,                // e.g., "Certified Plumber" (17 chars)
+    `24/7 ${tradeTerm}`,                     // e.g., "24/7 Plumber" (12 chars)
+    `Trusted ${tradeTerm}`,                  // e.g., "Trusted Plumber" (15 chars)
+    `Expert ${tradeTerm}`,                   // e.g., "Expert Plumber" (14 chars)
+    `Fast ${tradeTerm} Service`,             // e.g., "Fast Plumber Service" (20 chars)
+    `${tradeTerm} Near Me`,                  // e.g., "Plumber Near Me" (15 chars)
+    `Call Now - Free Quote`,                 // Generic CTA (21 chars)
+    `Gas Safe Registered`,                   // Trust indicator (19 chars) - plumbing
+    `Part P Certified`,                      // Trust indicator (16 chars) - electrical
+    `No Call Out Fee`,                       // Value proposition (15 chars)
+    `Same Day Service`,                      // Urgency (16 chars)
+    `Free Estimates`,                        // Value (14 chars)
+    `Quality Guaranteed`,                    // Trust (18 chars)
   ];
 
   // Filter out templates that match existing headlines too closely
   const existingLower = existingHeadlines.map(h => h.toLowerCase());
   for (const template of templates) {
-    const candidate = validateAndFixHeadline(template, 30);
+    const candidate = validateAndFixHeadline(template, MAX_HEADLINE_CHARS);
     const candidateLower = candidate.toLowerCase();
     
     // Skip if too similar to existing headline
@@ -1615,7 +1697,7 @@ function generateFallbackHeadlines(
       candidateLower.includes(existing.substring(0, 10))
     );
     
-    if (!isSimilar && candidate.length > 0) {
+    if (!isSimilar && candidate.length > 0 && candidate.length <= MAX_HEADLINE_CHARS) {
       fallbacks.push(candidate);
       if (fallbacks.length >= targetCount - existingHeadlines.length) {
         break;
@@ -1745,39 +1827,50 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       // Validate ad group services match serviceOfferings
       validateAdGroupServices(adGroup, serviceOfferings, servicesByTheme);
 
-      // Validate and fix headlines
-      const headlines = (adGroup.adCopy?.headlines || []).map((h: string) => validateAndFixHeadline(h, 30));
+      // Validate and fix headlines using centralized constants
+      const headlines = (adGroup.adCopy?.headlines || [])
+        .map((h: string) => validateAndFixHeadline(h, MAX_HEADLINE_CHARS))
+        .filter((h: string) => h.length > 0); // Remove empty headlines from failed validation
       
-      // Ensure exactly 12 headlines
-      if (headlines.length < 12) {
-        console.warn(`⚠️ Ad group "${adGroup.name}" has only ${headlines.length} headlines, generating ${12 - headlines.length} fallback headlines`);
-        const fallbacks = generateFallbackHeadlines(adGroup.name, tradeType, city, headlines, 12);
+      // Ensure exactly TARGET_HEADLINES_PER_AD_GROUP headlines
+      if (headlines.length < TARGET_HEADLINES_PER_AD_GROUP) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has only ${headlines.length} headlines, generating ${TARGET_HEADLINES_PER_AD_GROUP - headlines.length} fallback headlines`);
+        const fallbacks = generateFallbackHeadlines(adGroup.name, tradeType, city, headlines, TARGET_HEADLINES_PER_AD_GROUP);
         headlines.push(...fallbacks);
-      } else if (headlines.length > 12) {
-        console.warn(`⚠️ Ad group "${adGroup.name}" has ${headlines.length} headlines, truncating to 12`);
-        headlines.splice(12);
+      } else if (headlines.length > TARGET_HEADLINES_PER_AD_GROUP) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has ${headlines.length} headlines, truncating to ${TARGET_HEADLINES_PER_AD_GROUP}`);
+        headlines.splice(TARGET_HEADLINES_PER_AD_GROUP);
       }
 
-      // Validate descriptions (2-4, max 90 chars)
+      // Final validation: ensure all headlines are valid length and no truncated words
+      const validatedHeadlines = headlines.map((h: string) => {
+        if (h.length > MAX_HEADLINE_CHARS) {
+          console.warn(`⚠️ Headline "${h}" still exceeds ${MAX_HEADLINE_CHARS} chars after processing, re-validating`);
+          return validateAndFixHeadline(h, MAX_HEADLINE_CHARS);
+        }
+        return h;
+      }).filter((h: string) => h.length > 0);
+
+      // Validate descriptions (MIN_DESCRIPTIONS_PER_AD_GROUP to MAX_DESCRIPTIONS_PER_AD_GROUP, max MAX_DESCRIPTION_CHARS chars)
       let descriptions = adGroup.adCopy?.descriptions || [];
-      descriptions = descriptions.filter((d: string) => d && d.length <= 90);
-      if (descriptions.length < 2) {
-        console.warn(`⚠️ Ad group "${adGroup.name}" has fewer than 2 descriptions, adding fallback`);
+      descriptions = descriptions.filter((d: string) => d && d.length <= MAX_DESCRIPTION_CHARS);
+      if (descriptions.length < MIN_DESCRIPTIONS_PER_AD_GROUP) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has fewer than ${MIN_DESCRIPTIONS_PER_AD_GROUP} descriptions, adding fallback`);
         descriptions.push(
           `Professional ${tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical'} services in ${city}`,
           `Call today for immediate assistance`
         );
       }
-      if (descriptions.length > 4) {
-        descriptions.splice(4);
+      if (descriptions.length > MAX_DESCRIPTIONS_PER_AD_GROUP) {
+        descriptions.splice(MAX_DESCRIPTIONS_PER_AD_GROUP);
       }
 
       return {
         ...adGroup,
         adCopy: {
           ...adGroup.adCopy,
-          headlines: headlines.slice(0, 12), // Ensure exactly 12
-          descriptions: descriptions.slice(0, 4), // Max 4
+          headlines: validatedHeadlines.slice(0, TARGET_HEADLINES_PER_AD_GROUP), // Ensure exactly TARGET_HEADLINES_PER_AD_GROUP
+          descriptions: descriptions.slice(0, MAX_DESCRIPTIONS_PER_AD_GROUP), // Max MAX_DESCRIPTIONS_PER_AD_GROUP
           finalUrl: websiteUrl // Use onboarding website URL or fallback to example.com
         }
       };

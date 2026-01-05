@@ -50,25 +50,32 @@ export function CampaignQualityChecker({
 
   const overallScore = complianceChecks.length > 0 ? Math.round((passed.length / complianceChecks.length) * 100) : 0;
 
+  // Target headlines per ad group (matches backend constant)
+  const TARGET_HEADLINES_PER_AD_GROUP = 12;
+
   // Calculate Ad Strength based on compliance checks and headline count
   const calculateAdStrength = () => {
     // Factor 1: Compliance score (0-100)
     const complianceScore = overallScore;
     
     // Factor 2: Headline completeness (0-100)
-    // Check if all ad groups have exactly 12 headlines
+    // Check if all ad groups have exactly TARGET_HEADLINES_PER_AD_GROUP headlines
     let headlineScore = 100;
+    let headlineDetails = { complete: 0, total: 0 };
+    
     if (adGroups.length > 0) {
-      const groupsWith12Headlines = adGroups.filter(ag => 
-        ag.adCopy?.headlines?.length === 12
+      const groupsWithCompleteHeadlines = adGroups.filter(ag => 
+        ag.adCopy?.headlines?.length === TARGET_HEADLINES_PER_AD_GROUP
       ).length;
-      headlineScore = Math.round((groupsWith12Headlines / adGroups.length) * 100);
+      headlineScore = Math.round((groupsWithCompleteHeadlines / adGroups.length) * 100);
+      headlineDetails = { complete: groupsWithCompleteHeadlines, total: adGroups.length };
     } else {
       // No ad groups = 0 score
       headlineScore = 0;
     }
     
     // Weighted average: 70% compliance, 30% headline completeness
+    // This correlates with Google's "Good/Excellent" Ad Strength behavior
     const adStrengthScore = Math.round((complianceScore * 0.7) + (headlineScore * 0.3));
     
     return {
@@ -82,6 +89,9 @@ export function CampaignQualityChecker({
       badgeColor: adStrengthScore >= 90 ? 'bg-green-600' :
                   adStrengthScore >= 75 ? 'bg-blue-600' :
                   adStrengthScore >= 60 ? 'bg-yellow-600' : 'bg-red-600',
+      headlineDetails,
+      complianceScore,
+      headlineScore,
     };
   };
 
@@ -114,6 +124,10 @@ export function CampaignQualityChecker({
             <CardDescription>
               Compliance validation and optimization recommendations
             </CardDescription>
+            <p className="text-xs text-muted-foreground mt-2">
+              Ad Strength is based on UK compliance rules (70%) and headline completeness (30%). 
+              Target: ≥75% (Good) or ≥90% (Excellent) before pushing to Google Ads.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -124,6 +138,9 @@ export function CampaignQualityChecker({
               <Badge className={`${adStrength.badgeColor} text-white mt-1`}>
                 {adStrength.level}
               </Badge>
+              <div className="text-xs text-muted-foreground mt-2">
+                {adStrength.headlineDetails.complete}/{adStrength.headlineDetails.total} ad groups complete
+              </div>
             </div>
           </div>
         </div>
