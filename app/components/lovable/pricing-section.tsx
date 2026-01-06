@@ -15,18 +15,16 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
   const plans = [
     {
       name: 'Standard',
-      price: '$59',
+      price: '$39',
       period: 'mo',
       description: 'Perfect for growing businesses',
       features: [
-        { label: '2 AI campaign generations per month'},
-        { label: '4 targeted ads per campaign'},
+        { label: '3 campaign generations per month'},
+        { label: 'Targeted ads per service'},
         { label: 'UK trade compliance built-in'},
         { label: 'Seasonal intelligence'},
-        { label: 'Performance tracking'},
         { label: 'Monthly optimization'},
-        { label: 'Emergency templates' },
-        { label: 'Estimated ROI reporting' },
+
       ],
       buttonText: 'Get Started',
       isPopular: false,
@@ -119,7 +117,7 @@ export const LovablePricingSection = ({ isSignedIn = false }: LovablePricingSect
           </div>
 
           <p className="text-center text-muted-foreground mt-8">
-            Start your 7-day free trial today · Cancel anytime
+            Start your 3-day free trial today · Cancel anytime
           </p>
         </div>
       </section>

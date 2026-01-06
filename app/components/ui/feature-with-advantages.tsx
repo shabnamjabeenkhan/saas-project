@@ -39,7 +39,7 @@ function Feature() {
                 </p>
               </div>
             </div>
-            <div className="flex flex-row gap-6 items-start">
+            {/* <div className="flex flex-row gap-6 items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
                 <p className="font-semibold">Track Real Results</p>
@@ -47,7 +47,7 @@ function Feature() {
                   See exactly how many calls, jobs, and revenue your ads generate. Full ROI visibility
                 </p>
               </div>
-            </div>
+            </div> */}
             <div className="flex flex-row gap-6 w-full items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
@@ -69,9 +69,9 @@ function Feature() {
             <div className="flex flex-row gap-6 items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
-                <p className="font-semibold">4 Targeted Ads Per Campaign</p>
+                <p className="font-semibold">Service-Specific Ads</p>
                 <p className="text-muted-foreground text-sm">
-                  Emergency customers see emergency ads, boiler customers see boiler ads. Perfect targeting automatically
+                Select your services during setup, get tailored ads for each one. Boiler repair? Drain cleaning? Done automatically
                 </p>
               </div>
             </div>
@@ -163,7 +163,7 @@ function Feature() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-400 mt-1">•</span>
-                    <span><strong>Self-optimizing</strong> campaigns improve automatically</span>
+                    <span><strong>Instant regeneration</strong> - one click to refresh your campaign copy</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-400 mt-1">•</span>
@@ -188,17 +188,17 @@ function Feature() {
             <div className="mt-16 pt-12 border-t border-border">
               <div className="text-center mb-10">
                 <h3 className="text-xl md:text-2xl font-bold mb-3">
-                  4 Targeted Ads Per Campaign = 4x More Customer Coverage
+                  Custom Ads For Every Service You Offer
                 </h3>
                 <p className="text-muted-foreground max-w-3xl mx-auto mb-6">
-                  Each campaign creates 4 specialized ads targeting different customer needs. When someone searches "boiler repair near me" at 11pm, they see your boiler-focused ad. When someone searches "emergency plumber", they see your emergency-focused ad. Same business, perfect targeting.
+                  Select the services you offer during onboarding and we'll generate tailored ads for each one. Boiler repairs, drain cleaning, emergency callouts - each service gets its own optimized campaign.
                 </p>
               </div>
 
-              {/* 4 Ads Example */}
+              {/* Service Ads Example */}
               <div className="mb-12 max-w-6xl mx-auto">
                 <h4 className="font-semibold text-xl mb-6 text-center text-white">
-                  How Your 4 Ads Target Different Customer Types
+                  Ads Tailored To Your Services
                 </h4>
                 <HoverEffect
                   items={[
