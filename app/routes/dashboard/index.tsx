@@ -1,5 +1,4 @@
 "use client";
-import { SimpleSyncStatus } from "~/components/dashboard/simple-sync-status";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Link, useNavigate } from "react-router";
@@ -111,7 +110,7 @@ export default function Page() {
                     </div>
                     <div className="pt-4 border-t border-gray-700">
                       <Link to="/dashboard/campaigns">
-                        <Button className="w-full">View Campaign</Button>
+                        <Button className="w-full bg-white text-black hover:bg-gray-100">View Campaign</Button>
                       </Link>
                     </div>
                   </div>
@@ -119,13 +118,6 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Sync Status */}
-            <div className="mt-6">
-              <div className="bg-white/5 border border-gray-800/50 rounded-xl p-6 hover:border-gray-700/50 transition-all duration-200">
-                <h3 className="text-lg font-medium text-white mb-4">Sync Status</h3>
-                <SimpleSyncStatus />
-              </div>
-            </div>
           </div>
         </div>
       </div>

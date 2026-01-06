@@ -598,261 +598,15 @@ export const createGoogleAdsCampaign = action({
         throw new Error(`Campaign creation failed: ${errorMessage}`);
       }
 
-      // Step 7: Create Ad Groups
-      console.log('🎯 Creating ad groups...');
-      const adGroupResourceNames: string[] = [];
-
-      for (let i = 0; i < campaignData.adGroups.length; i++) {
-        const adGroup = campaignData.adGroups[i];
-        console.log(`🎯 Creating ad group ${i + 1}/${campaignData.adGroups.length}: ${adGroup.name}`);
-
-        try {
-          // Create ad group using SDK
-          const adGroupResult = await customer.adGroups.create([
-            {
-                name: adGroup.name,
-                campaign: campaignResourceName,
-              status: adGroupStatus,
-                type: 'SEARCH_STANDARD',
-              cpc_bid_micros: 1000000 // £1.00 default bid in micros
-            }
-          ]);
-
-          const adGroupResourceName = adGroupResult.results[0]?.resource_name;
-          if (!adGroupResourceName) {
-            throw new Error(`Ad group "${adGroup.name}" creation succeeded but resource_name is missing`);
-          }
-          adGroupResourceNames.push(adGroupResourceName);
-          results.adGroupsCreated++;
-
-          console.log(`✅ Ad group created: ${adGroup.name} -> ${adGroupResourceName}`);
-
-          // Step 8: Add keywords to the ad group using SDK
-          console.log(`🔑 Adding ${adGroup.keywords.length} keywords to ${adGroup.name}...`);
-
-          try {
-            // SDK supports batch creation
-            const keywordCreates = adGroup.keywords.slice(0, 10).map((keyword: string) => ({
-              ad_group: adGroupResourceName,
-              status: 'ENABLED',
-              keyword: {
-                text: keyword,
-                match_type: 'BROAD'
-              },
-              cpc_bid_micros: 1500000 // £1.50 default bid
-            }));
-
-            // Create keywords in batch
-            await Promise.all(
-              keywordCreates.map((keywordData: any) => 
-                customer.adGroupCriteria.create(keywordData)
-              )
-            );
-
-            console.log(`✅ Added ${keywordCreates.length} keywords to ${adGroup.name}`);
-          } catch (keywordError: any) {
-            console.error(`❌ Keywords for ${adGroup.name} failed:`, keywordError);
-            results.errors.push(`Keywords for "${adGroup.name}" creation failed: ${keywordError?.message || 'Unknown error'}`);
-          }
-
-          // Step 9: Create ads in the ad group
-          console.log(`📝 Creating ads for ${adGroup.name}...`);
-
-          // 🔒 SECURITY: Use shared sanitization function (defined above)
-          const sanitizeText = (text: string, maxLength: number): string | null => {
-            return sanitizeAdText(text, maxLength);
-          };
-
-          // Validate and sanitize headlines (min 3 required, max 30 chars each)
-          const rawHeadlines = adGroup.adCopy.headlines || [];
-          const headlines = rawHeadlines
-            .map((h: string) => sanitizeText(h, 30))
-            .filter((h: string | null): h is string => h !== null)
-            .slice(0, 15); // Google Ads allows up to 15 headlines, we'll use first 15 valid ones
-
-          // Validate and sanitize descriptions (min 2 required, max 90 chars each)
-          const rawDescriptions = adGroup.adCopy.descriptions || [];
-          const descriptions = rawDescriptions
-            .map((d: string) => sanitizeText(d, 90))
-            .filter((d: string | null): d is string => d !== null)
-            .slice(0, 4); // Google Ads allows up to 4 descriptions, we'll use first 4 valid ones
-
-          // Log validation results for debugging
-          console.log(`📋 Ad content validation for ${adGroup.name}:`, {
-            rawHeadlinesCount: rawHeadlines.length,
-            validHeadlinesCount: headlines.length,
-            rawDescriptionsCount: rawDescriptions.length,
-            validDescriptionsCount: descriptions.length,
-            headlines: headlines.map((h: string) => ({ text: h, length: h.length })),
-            descriptions: descriptions.map((d: string) => ({ text: d, length: d.length })),
-            finalUrl: adGroup.adCopy.finalUrl || 'https://example.com'
-          });
-
-          // Google Ads requires minimum 3 headlines and 2 descriptions for Responsive Search Ads
-          if (headlines.length < 3) {
-            const errorMsg = `Insufficient valid headlines for "${adGroup.name}": ${headlines.length}/3 required. Raw headlines: ${JSON.stringify(rawHeadlines)}`;
-            console.error(`❌ ${errorMsg}`);
-            results.errors.push(errorMsg);
-            continue; // Skip this ad group
-          }
-
-          if (descriptions.length < 2) {
-            const errorMsg = `Insufficient valid descriptions for "${adGroup.name}": ${descriptions.length}/2 required. Raw descriptions: ${JSON.stringify(rawDescriptions)}`;
-            console.error(`❌ ${errorMsg}`);
-            results.errors.push(errorMsg);
-            continue; // Skip this ad group
-          }
-
-          // Validate final URL
-          const finalUrl = adGroup.adCopy.finalUrl?.trim() || 'https://example.com';
-          if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-            const errorMsg = `Invalid final URL for "${adGroup.name}": ${finalUrl}`;
-            console.error(`❌ ${errorMsg}`);
-            results.errors.push(errorMsg);
-            continue; // Skip this ad group
-          }
-
-          // Create responsive search ad using SDK
-          try {
-            // 🔍 ULTRA-VERBOSE PAYLOAD LOGGING: Capture exact content being sent to Google Ads
-            const adPayloadData = {
-              ad_group: adGroupResourceName,
-              status: adStatus,
-              ad: {
-                type: 'RESPONSIVE_SEARCH_AD',
-                final_urls: [finalUrl],
-                responsive_search_ad: {
-                  headlines: headlines.map((headline: string) => ({
-                    text: headline
-                  })),
-                  descriptions: descriptions.map((description: string) => ({
-                    text: description
-                  }))
-                }
-              }
-            };
-
-            // 🔍 PHONE CONTAMINATION CHECK: Verify no phone numbers in payload
-            const payloadString = JSON.stringify(adPayloadData);
-            const contaminatedPhoneRegex = /077\s?684\s?7429|0776847429/i;
-            const ukPhoneRegex = /(\+44\s?|0)7\d{2}\s?\d{3}\s?\d{4}|(\+44\s?|0)7\d{9}/g;
-            
-            console.log('🔍 PRE-SEND PAYLOAD INSPECTION for', adGroup.name, ':');
-            console.log('📋 Full payload:', payloadString);
-            console.log('📋 Headlines being sent:', headlines);
-            console.log('📋 Descriptions being sent:', descriptions);
-            console.log('📋 Final URL:', finalUrl);
-            
-            // Check for contaminated number
-            if (contaminatedPhoneRegex.test(payloadString)) {
-              console.error('🚨 CRITICAL: Contaminated phone number FOUND in ad payload!');
-              console.error('🚨 Payload contains 077 684 7429 - BLOCKING SEND');
-              throw new Error('Contaminated phone number detected in ad payload - aborting send');
-            }
-            
-            // Check for any UK phone numbers
-            const phoneMatches = payloadString.match(ukPhoneRegex);
-            if (phoneMatches && phoneMatches.length > 0) {
-              console.error('🚨 CRITICAL: Phone numbers detected in ad payload:', phoneMatches);
-              console.error('🚨 Ad text should NEVER contain phone numbers - BLOCKING SEND');
-              throw new Error(`Phone numbers detected in ad content: ${phoneMatches.join(', ')}`);
-            }
-            
-            console.log('✅ Payload validation passed - no phone numbers detected');
-
-            const adResult = await customer.adGroupAds.create([adPayloadData as any]);
-
-            results.adsCreated++;
-            console.log(`✅ Created ad for ${adGroup.name}:`, adResult.results[0]?.resource_name || 'Success');
-          } catch (adError: any) {
-            console.error(`❌ Ad creation for ${adGroup.name} failed:`, adError);
-            
-            // SDK provides structured error objects
-            let errorMessage = `Ad creation for "${adGroup.name}" failed`;
-            
-            if (adError?.message) {
-              errorMessage += `: ${adError.message}`;
-            } else if (adError?.error) {
-              // Handle SDK error structure
-              const errorDetails = adError.error;
-              if (errorDetails?.message) {
-                errorMessage += `: ${errorDetails.message}`;
-              }
-              // Check for policy violations in SDK error format
-              if (errorDetails?.details) {
-                const violations = errorDetails.details
-                  .filter((d: any) => d['@type']?.includes('GoogleAdsFailure'))
-                  .flatMap((d: any) => d.errors || [])
-                  .filter((e: any) => e.errorCode?.policyFindingError)
-                  .map((e: any) => {
-                    const policyDetails = e.details?.policyFindingDetails;
-                    if (policyDetails?.policyTopicEntries) {
-                      return policyDetails.policyTopicEntries
-                        .map((entry: any) => entry.topic || 'Policy violation')
-                        .join(', ');
-                    }
-                    return 'Policy violation';
-                  });
-                
-                if (violations.length > 0) {
-              errorMessage += `: ${violations.join('; ')}`;
-                }
-              }
-            }
-            
-            results.errors.push(errorMessage);
-          }
-
-        } catch (adGroupError) {
-          console.error(`❌ Error processing ad group ${adGroup.name}:`, adGroupError);
-          results.errors.push(`Ad group "${adGroup.name}" processing failed: ${adGroupError}`);
-        }
-      }
-
-      // Step 10: Call extensions are now created via createAdExtensions helper function
-      // This ensures proper validation and prevents duplicate creation
-      // Call extensions will be created in Step 8 via createAdExtensions()
-
-      // Final validation
-      const success = results.campaignCreated && results.adGroupsCreated > 0 && results.adsCreated > 0;
-
-      console.log('📊 Campaign creation summary:', {
-        success,
-        campaignCreated: results.campaignCreated,
-        adGroupsCreated: results.adGroupsCreated,
-        adsCreated: results.adsCreated,
-        extensionsCreated: results.extensionsCreated,
-        errors: results.errors
-      });
-
-      if (!success) {
-        throw new Error(`Incomplete campaign creation: ${results.errors.join(', ')}`);
-      }
-
-      console.log('🔄 Campaign creation completed, now proceeding to ad groups...');
-
-      // CRITICAL DEBUGGING - Show what we actually have in campaign data
-      console.log('🔍 CAMPAIGN DATA INSPECTION:', {
-        hasCampaignData: !!campaignData,
-        campaignKeys: campaignData ? Object.keys(campaignData) : 'No campaignData',
-        hasAdGroups: !!campaignData?.adGroups,
-        adGroupsLength: campaignData?.adGroups?.length || 0,
-        adGroupsType: typeof campaignData?.adGroups,
-        campaignName: campaignData?.campaignName
-      });
-
-      // Log first few characters of campaign data to see structure
-      if (campaignData) {
-        console.log('🔍 Campaign data sample:', JSON.stringify(campaignData).substring(0, 500) + '...');
-      }
-
       // Step 7: Create Ad Groups with Keywords and Ads
+      // NOTE: All ad group, keyword, and ad creation is handled by createAdGroupsWithAdsAndKeywords()
+      // This prevents duplicate creation that was happening before
+      
       console.log('🎯 About to create ad groups, keywords, and ads...');
 
       // Critical validation with proper error handling
       if (!campaignData?.adGroups || campaignData.adGroups.length === 0) {
         console.error('🚨 FATAL: Campaign has no ad groups - cannot create ads/keywords!');
-        console.error('🚨 FATAL: This explains missing titles, descriptions, phone numbers!');
         console.error('🚨 FATAL: Campaign structure:', {
           hasData: !!campaignData,
           hasAdGroups: !!campaignData?.adGroups,
@@ -860,7 +614,7 @@ export const createGoogleAdsCampaign = action({
           availableKeys: campaignData ? Object.keys(campaignData) : []
         });
         return {
-          success: false, // FIX: Return failure when no ad content can be created
+          success: false,
           error: 'Campaign missing ad groups - no ads/keywords can be created',
           googleCampaignId: undefined,
           resourceName: undefined
@@ -872,12 +626,16 @@ export const createGoogleAdsCampaign = action({
         adGroupNames: campaignData.adGroups.map((ag: any) => ag.name)
       });
 
-      // Process ad groups with comprehensive tracking
+      // Process ad groups with comprehensive tracking (SINGLE creation point)
       try {
         console.log('🎯 DEBUG: Starting ad groups, keywords, and ads creation...');
         console.log('🎯 DEBUG: Will process', campaignData.adGroups.length, 'ad groups');
 
-        await createAdGroupsWithAdsAndKeywords(campaignData, customer, campaignResourceName);
+        const adGroupResults = await createAdGroupsWithAdsAndKeywords(campaignData, customer, campaignResourceName);
+        
+        // Update results from the helper function
+        results.adGroupsCreated = campaignData.adGroups.length;
+        results.adsCreated = campaignData.adGroups.length; // One ad per ad group
 
         console.log('✅ DEBUG: Ad groups creation process completed');
       } catch (error) {

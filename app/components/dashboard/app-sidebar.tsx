@@ -1,4 +1,4 @@
-import { IconDashboard, IconSettings, IconChartBar, IconBrandGoogle, IconMail, IconUsers, IconAnalyze, IconShield } from "@tabler/icons-react";
+import { IconDashboard, IconSettings, IconChartBar, IconMail, IconUsers, IconAnalyze, IconShield } from "@tabler/icons-react";
 import { Link } from "react-router";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -24,17 +24,6 @@ const getNavigationData = (isAdmin: boolean) => ({
       title: "Campaigns",
       url: "/dashboard/campaigns",
       icon: IconChartBar,
-    },
-    // Temporarily hidden until route discovery issue is resolved
-    // {
-    //   title: "Campaign Preview Demo",
-    //   url: "/dashboard/campaigns",
-    //   icon: IconAnalyze,
-    // },
-    {
-      title: "Google Ads Settings",
-      url: "/dashboard/google-ads-settings",
-      icon: IconBrandGoogle,
     },
   ],
   navSecondary: [

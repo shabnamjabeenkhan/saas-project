@@ -1,4 +1,3 @@
-import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -25,19 +24,6 @@ import { CampaignHeaderControls } from "~/components/campaign/CampaignHeaderCont
 import { AdGroupsPanel } from "~/components/campaign/AdGroupsPanel";
 import { validateCampaignCompliance } from "~/lib/ukComplianceRules";
 
-// Conditionally import mock data for development
-let mockCampaignScenarios: any = null;
-
-async function loadMockData() {
-  if (process.env.NODE_ENV === 'development') {
-    try {
-      const mockModule = await import("~/lib/mockCampaignData");
-      mockCampaignScenarios = mockModule.mockCampaignScenarios;
-    } catch (e) {
-      console.warn('Mock components not available in production');
-    }
-  }
-}
 import type { Route } from "./+types/campaigns";
 
 export function meta({}: Route.MetaArgs) {
@@ -52,16 +38,6 @@ export default function Campaigns() {
 
   const campaign = useQuery(api.campaigns.getCampaign, {});
   const onboardingData = useQuery(api.onboarding.getOnboardingData);
-
-  // Load mock data in development
-  React.useEffect(() => {
-    loadMockData();
-  }, []);
-
-  // Mock campaigns for development (simple display, no approval workflow)
-  const mockCampaigns = process.env.NODE_ENV === 'development' && mockCampaignScenarios
-    ? Object.values(mockCampaignScenarios)
-    : [];
 
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -86,46 +62,6 @@ export default function Campaigns() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Mock Campaign Previews - Development Only */}
-        {process.env.NODE_ENV === 'development' && mockCampaigns.length > 0 && (
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-              <h2 className="text-lg sm:text-xl font-semibold text-white text-center sm:text-left">Development Mock Data</h2>
-              <Badge variant="outline" className="text-gray-400 text-xs sm:text-sm mx-auto sm:mx-0">
-                {mockCampaigns.length} test scenarios
-              </Badge>
-            </div>
-
-            <div className="p-3 sm:p-4 bg-blue-900/20 border border-blue-500/20 rounded-lg mb-4">
-              <p className="text-blue-300 text-xs sm:text-sm text-center sm:text-left">
-                <strong>Note:</strong> These are mock campaign scenarios used for development testing.
-                Real users generate campaigns automatically after onboarding.
-              </p>
-            </div>
-
-            {/* Show simplified campaign preview cards */}
-            <div className="space-y-4">
-              {mockCampaigns.map((mockCampaign: any) => (
-                <Card key={mockCampaign.id} className="bg-[#1a1a1a] border-gray-800">
-                  <CardHeader className="pb-3 sm:pb-4">
-                    <CardTitle className="text-white text-base sm:text-lg text-center sm:text-left">{mockCampaign.campaignName}</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm text-center sm:text-left">
-                      Mock scenario: {mockCampaign.businessInfo.businessName} - Quality Score: {mockCampaign.qualityScore || 'N/A'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm text-gray-300">
-                      <span className="text-center sm:text-left">Budget: £{mockCampaign.dailyBudget}/day</span>
-                      <span className="text-center sm:text-left">Ad Groups: {mockCampaign.adGroups.length}</span>
-                      <span className="text-center sm:text-left">Keywords: {mockCampaign.adGroups.reduce((sum: number, ag: any) => sum + ag.keywords.length, 0)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
         )}
 
         {campaign ? (
