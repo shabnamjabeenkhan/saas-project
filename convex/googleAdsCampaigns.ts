@@ -1177,9 +1177,10 @@ async function createResponsiveSearchAd(
   });
 
   // 🔒 SECURITY: Sanitize headlines to remove any phone numbers
+  // Using 25 char limit (not 30) to prevent truncation - AI should generate within this limit
   const rawHeadlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name'];
   const sanitizedHeadlines = rawHeadlines
-    .map((h: string) => sanitizeAdText(h, 30))
+    .map((h: string) => sanitizeAdText(h, 25))
     .filter((h: string | null): h is string => h !== null);
   
   // 🔧 FIX: Deduplicate headlines within this ad group
@@ -1231,9 +1232,10 @@ async function createResponsiveSearchAd(
   }
 
   // 🔒 SECURITY: Sanitize descriptions to remove any phone numbers
+  // Using 80 char limit (not 90) to prevent truncation - AI should generate within this limit
   const rawDescriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust'];
   const sanitizedDescriptions = rawDescriptions
-    .map((d: string) => sanitizeAdText(d, 90))
+    .map((d: string) => sanitizeAdText(d, 80))
     .filter((d: string | null): d is string => d !== null);
   
   // 🔧 FIX: Deduplicate descriptions within this ad group
@@ -1330,12 +1332,14 @@ async function createResponsiveSearchAd(
   });
   
   // 🚨 CRITICAL: Check if any headlines exceed 30 chars BEFORE sending to Google Ads
+  // Note: We target 25 chars in AI prompt, but Google allows up to 30, so we check against 30 here
   const overLimitHeadlines = headlines.filter((h: string) => h.length > 30);
   if (overLimitHeadlines.length > 0) {
     console.error('🚨 CRITICAL: Headlines exceed 30 char limit!', overLimitHeadlines);
     throw new Error(`Headlines exceed 30 character limit: ${overLimitHeadlines.map((h: string) => `"${h}" (${h.length} chars)`).join(', ')}`);
   }
   
+  // Note: We target 80 chars in AI prompt, but Google allows up to 90, so we check against 90 here
   const overLimitDescriptions = descriptions.filter((d: string) => d.length > 90);
   if (overLimitDescriptions.length > 0) {
     console.error('🚨 CRITICAL: Descriptions exceed 90 char limit!', overLimitDescriptions);

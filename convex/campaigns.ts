@@ -1009,8 +1009,44 @@ const REQUIRED_TRADE_PHRASES = {
   both: ['plumber', 'electrician', 'plumbing', 'electrical', 'heating', 'wiring', 'boiler', 'fuse'],
 };
 
+// 🚨 GOOGLE ADS POLICY COMPLIANCE: Mapping of problematic terms to compliant alternatives
+// Avoid "Certificate" terminology which triggers POLICY_FINDING violations
+const POLICY_COMPLIANT_TRANSFORMATIONS: Record<string, string> = {
+  // Gas services - avoid "certificates" which implies issuing official documents
+  'Gas Safety Certificates': 'Gas Safety Checks',
+  'Gas Safety Certificate': 'Gas Safety Check',
+  'gas safety certificates': 'gas safety checks',
+  'gas safety certificate': 'gas safety check',
+  'Gas Certificate': 'Gas Safety Check',
+  'CP12 Certificate': 'CP12 Gas Check',
+  'Landlord Gas Certificate': 'Landlord Gas Safety',
+  
+  // Electrical services - same issue
+  'Electrical Safety Certificates': 'Electrical Safety Testing',
+  'Electrical Safety Certificate': 'Electrical Safety Test',
+  'electrical safety certificates': 'electrical safety testing',
+  'electrical safety certificate': 'electrical safety test',
+  'EICR Certificate': 'EICR Testing',
+  'Electrical Certificate': 'Electrical Testing',
+};
+
+// Function to sanitize ad content for Google Ads policy compliance
+function sanitizeForGoogleAdsPolicy(text: string): string {
+  let sanitized = text;
+  
+  // Apply all transformations (case-insensitive where needed)
+  for (const [problematic, compliant] of Object.entries(POLICY_COMPLIANT_TRANSFORMATIONS)) {
+    // Create case-insensitive regex for matching
+    const regex = new RegExp(problematic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    sanitized = sanitized.replace(regex, compliant);
+  }
+  
+  return sanitized;
+}
+
 // Service-to-theme mapping for ad group creation
 // Maps service names from onboarding to one of four themes: emergency, installation, maintenance, repair
+// NOTE: Using policy-compliant service names to avoid Google Ads violations
 const SERVICE_TO_THEME_MAP: Record<string, 'emergency' | 'installation' | 'maintenance' | 'repair'> = {
   // Plumbing services
   'Emergency Plumbing': 'emergency',
@@ -1020,7 +1056,8 @@ const SERVICE_TO_THEME_MAP: Record<string, 'emergency' | 'installation' | 'maint
   'Bathroom Installation': 'installation',
   'Leak Repair': 'repair',
   'Drainage': 'repair',
-  'Gas Safety Certificates': 'maintenance',
+  'Gas Safety Checks': 'maintenance', // ✅ Policy-compliant (was "Gas Safety Certificates")
+  'Gas Safety Certificates': 'maintenance', // Legacy support - will be transformed
   
   // Electrical services
   'Emergency Electrical': 'emergency',
@@ -1029,7 +1066,8 @@ const SERVICE_TO_THEME_MAP: Record<string, 'emergency' | 'installation' | 'maint
   'Socket Installation': 'installation',
   'Lighting Installation': 'installation',
   'Electric Vehicle Charging': 'installation',
-  'Electrical Safety Certificates': 'maintenance',
+  'Electrical Safety Testing': 'maintenance', // ✅ Policy-compliant (was "Electrical Safety Certificates")
+  'Electrical Safety Certificates': 'maintenance', // Legacy support - will be transformed
   'Smart Home Installation': 'installation',
 };
 
@@ -1189,6 +1227,15 @@ ${variationInstructions}
 - Violating this rule wastes advertising budget and confuses customers
 - The phone number in businessInfo.phone and callExtensions MUST match the exact number from onboarding: ${phone}
 
+**🚨 GOOGLE ADS POLICY COMPLIANCE - AVOID CERTIFICATE TERMINOLOGY:**
+- ❌ NEVER use "Gas Safety Certificates" or "Electrical Safety Certificates" as ad group names or headlines
+- ❌ NEVER use "Certificate", "Certification", or "Official Certificate" in headlines - this triggers policy violations
+- ✅ USE INSTEAD: "Gas Safety Checks", "Landlord Gas Safety", "CP12 Gas Checks", "Gas Safety Inspections"
+- ✅ USE INSTEAD: "Electrical Testing", "EICR Testing", "Electrical Safety Testing"
+- 🔒 ALWAYS include at least 1-2 headlines with "Gas Safe Registered" or "Gas Safe Engineers" for gas-related services
+- 🔒 If character-limited, "Gas Safe" alone is acceptable as a trust signal
+- The word "Certified" is OK when describing the tradesperson (e.g., "Certified Engineers") but NOT when describing documents
+
 **CAMPAIGN REQUIREMENTS:**
 1. Create exactly ${serviceOfferings.length} ad groups - ONE ad group for EACH service the user selected:
 ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}" - Create an ad group specifically for this service`).join('\n')}
@@ -1196,45 +1243,74 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
    DO NOT group services together. Each service = 1 separate ad group.
 
 2. Generate exactly **15 headlines** per ad group (RSA optimal for Google Ads):
-   - Each headline MUST be ≤ 30 characters (count spaces and punctuation) - VERIFY BEFORE OUTPUTTING
-   - 🚨 CRITICAL HEADLINE RULES:
-     a) ONE IDEA PER HEADLINE - each headline must be standalone, natural language, expressing a single concept
-     b) Each headline must be **unique and meaningfully different** - avoid small wording changes that say the same thing
-     c) NO DASHES or chaining multiple ideas (e.g., ❌ "Boiler Fix - Birmingham" → ✅ "Boiler Repair Birmingham")
-     d) NO ABBREVIATIONS for city names (e.g., ❌ "B'ham", "M'cr" → ✅ "Birmingham", "Manchester")
-     e) NO REPEATED CITY in same headline (e.g., ❌ "B'ham Birmingham" → ✅ "Birmingham")
-     f) NO TRUNCATED WORDS (e.g., ❌ "Birm", "Londo" → ✅ full words only)
-     g) CITY USAGE: Only 2-4 headlines per ad group should include the city name
-   - Headlines MUST cover these five categories across the 15 headlines:
-     a) **Keyword + location** (2-4 headlines): e.g., "Boiler Repair ${city}", "${city} Plumber"
-     b) **Urgency / availability** (2-3 headlines): e.g., "24/7 Service", "Same Day Repairs", "Emergency Help"
-     c) **Trust / credibility** (3-4 headlines): e.g., "Gas Safe Engineers", "Certified Experts", "Fully Insured"
-     d) **Value / pricing** (2-3 headlines): e.g., "Free Quotes Today", "No Hidden Fees", "Upfront Pricing"
-     e) **Action-oriented** (2-3 headlines): e.g., "Call Now", "Book Today", "Get Help Fast"
-   - If a headline exceeds 30 chars, shorten it using this EXACT priority order:
-     1. Remove less important words: "professional", "local", "expert", "trusted", "qualified", "certified"
-     2. Use shorter synonyms: "installation" → "install", "emergency" → "urgent"
-     3. Remove articles: "the", "a", "an"
-     4. Simplify phrase (e.g., "Emergency Boiler Repair Service" → "Emergency Boiler Repair")
-     5. LAST RESORT: Remove city from this headline (other headlines will include it)
-   - ❌ NEVER use city abbreviations like B'ham, M'cr, Notts - always use full city name or omit
-   - ❌ AVOID vague or AI-sounding words: "aid", "rescue", "crisis", "ultimate", "premier"
-   - ✅ USE real search phrasing that sounds like what people actually type into Google
-   - Before outputting each headline, verify:
-     * Character count ≤ 30
-     * Single standalone idea (no dashes combining concepts)
-     * Full city name or no city (never abbreviated)
-     * Natural, readable language
-     * Meaningfully different from other headlines
+   
+   ⚠️ HARD LIMIT: Each headline MUST be ≤ 25 characters (NOT 30!)
+   - Count EVERY character including spaces and punctuation BEFORE outputting
+   - If a headline exceeds 25 characters, DO NOT OUTPUT IT - rewrite it shorter
+   - Headlines are SHORT PHRASES, not full sentences
+   - NEVER truncate words - if it doesn't fit, rewrite completely
+   
+   🚨 CRITICAL HEADLINE RULES:
+     a) SHORT PUNCHY PHRASES - headlines are 3-5 words max, not sentences
+     b) Each headline must be **unique and meaningfully different** - avoid similar wording
+     c) NO DASHES or chaining ideas (e.g., ❌ "Boiler Fix - Birmingham" → ✅ "Boiler Fix ${city}")
+     d) NO ABBREVIATIONS for city names (❌ "B'ham" → ✅ "Birmingham" or omit city)
+     e) NO TRUNCATED WORDS (❌ "Birm", "Emerg" → ✅ full words only)
+     f) CITY USAGE: Only 2-3 headlines per ad group should include the city name (city names use characters!)
+   
+   Headlines MUST cover these five categories across the 15 headlines:
+     a) **Keyword + location** (2-3 headlines): e.g., "Plumber ${city}", "Boiler Fix ${city}"
+     b) **Urgency / availability** (2-3 headlines): e.g., "24/7 Service", "Same Day Repairs"
+     c) **Trust / credibility** (3-4 headlines): e.g., "Gas Safe Engineers", "Fully Insured"
+     d) **Value / pricing** (2-3 headlines): e.g., "Free Quotes", "No Hidden Fees"
+     e) **Action-oriented** (3-4 headlines): e.g., "Call Now", "Book Today", "Get Help Fast"
+   
+   ✅ GOOD HEADLINE EXAMPLES (all ≤25 chars):
+     - "24/7 Plumber ${city}" (if city is short like "London" = 18 chars)
+     - "Emergency Boiler Help" (20 chars)
+     - "Gas Safe Engineers" (18 chars)
+     - "Fast Leak Repairs" (17 chars)
+     - "Free Quotes Today" (17 chars)
+     - "Call Now" (8 chars)
+   
+   ❌ BAD HEADLINE EXAMPLES (too long or truncated):
+     - "Emergency Plumber Service Birmingham" (36 chars - TOO LONG!)
+     - "Professional Gas Safe Registered" (33 chars - TOO LONG!)
+     - "Plumber Birm" (truncated city - NEVER DO THIS)
+   
+   Before outputting EACH headline:
+     1. Count characters (including spaces)
+     2. If > 25 chars, REWRITE shorter or SKIP
+     3. Verify no truncated words
+     4. Verify it's a complete thought (short phrase, not sentence)
 
 3. Generate exactly **4 descriptions** per ad group (RSA optimal):
-   - Each description MUST be ≤ 90 characters
-   - Each description must be **clearly different in role and wording** - no cosmetic rewrites
-   - The 4 descriptions MUST cover these distinct roles:
+   
+   ⚠️ HARD LIMIT: Each description MUST be ≤ 80 characters (NOT 90!)
+   - Descriptions ARE full sentences - write naturally
+   - Each sentence must be COMPLETE and make sense when read alone
+   - NEVER truncate - if it doesn't fit in 80 chars, rewrite the whole sentence
+   
+   The 4 descriptions MUST cover these distinct roles:
      a) **Problem + solution**: Address the customer's need and how you solve it
      b) **Trust / experience**: Highlight credentials, experience, professionalism
      c) **Value / pricing**: Emphasize transparency, free quotes, no hidden fees
      d) **Action / next step**: Clear call-to-action with urgency
+   
+   ✅ GOOD DESCRIPTION EXAMPLES (all ≤80 chars, complete sentences):
+     - "Boiler not working? Our Gas Safe engineers can help today." (58 chars)
+     - "Certified plumbers with 10+ years experience. Fully insured." (61 chars)
+     - "Free quotes with no hidden fees. Transparent pricing always." (60 chars)
+     - "Call now for fast, reliable service. Same day available." (56 chars)
+   
+   ❌ BAD DESCRIPTION EXAMPLES:
+     - "Professional plumber Birmingham. Qualified gas safety inspections. Phone Us." (truncated/choppy)
+     - "We offer professional plumbing services in Birmingham with Gas Safe registered eng..." (cut off!)
+   
+   Before outputting EACH description:
+     1. Count characters (including spaces and punctuation)
+     2. If > 80 chars, REWRITE the entire sentence shorter
+     3. Read it aloud - does it sound natural and complete?
 
 4. Generate 8-10 high-intent keywords per ad group:
    - Keywords MUST derive ONLY from the services in that theme's serviceOfferings
@@ -1630,24 +1706,11 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
     }
   }
 
-  // Strategy 2: Replace longer words with shorter alternatives
-  const replacements: Record<string, string> = {
-    'installation': 'install',
-    'emergency': 'urgent',
-    'professional': 'pro',
-    'certified': 'cert',
-    'qualified': 'qual',
-    'services': 'svc',
-    'service': 'svc',
-    'available': 'avail',
-    'immediate': 'fast',
-    'assistance': 'help',
-  };
-
-  shortened = cleaned;
-  for (const [long, short] of Object.entries(replacements)) {
-    const regex = new RegExp(`\\b${long}\\b`, 'gi');
-    shortened = shortened.replace(regex, short).replace(/\s+/g, ' ').trim();
+  // Strategy 2: Remove additional low-value words (no abbreviations allowed)
+  const additionalRemovableWords = ['installation', 'emergency', 'services', 'service', 'available', 'immediate', 'assistance'];
+  for (const word of additionalRemovableWords) {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    shortened = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
     if (shortened.length <= maxLength) {
       return shortened;
     }
@@ -1689,15 +1752,9 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
     
     // Edge case: single word exceeds maxLength
     // Instead of truncating mid-word (which creates "Birm", "Londo"), 
-    // try to abbreviate or return a safe fallback
+    // return a safe fallback - NO abbreviations allowed
     const firstWord = words[0] || '';
     if (firstWord.length > maxLength) {
-      // Check if it's a known city that can be abbreviated
-      const lowerWord = firstWord.toLowerCase();
-      if (CITY_ABBREVIATIONS[lowerWord]) {
-        return CITY_ABBREVIATIONS[lowerWord];
-      }
-      
       // Log warning and return a generic fallback instead of truncating mid-word
       console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - using fallback (truncation avoided)`);
       return 'Quality Service';
@@ -1722,11 +1779,9 @@ function generateFallbackHeadlines(
   const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumber' : 'Electrician';
   const tradeService = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumbing' : 'Electrical';
   
-  // Use abbreviated city if the full name is too long
-  const cityLower = city.toLowerCase();
-  const shortCity = CITY_ABBREVIATIONS[cityLower] || city;
-  const useShortCity = city.length > 10; // Use abbreviation for long city names
-  const displayCity = useShortCity ? shortCity : city;
+  // Use full city name - no abbreviations allowed
+  // If city is too long, omit it from headline (other headlines will have location)
+  const displayCity = city.length <= 12 ? city : '';
   
   // Extended templates for 15 headlines (RSA optimal)
   // Organized by category: keyword+location, urgency, trust, value, action
@@ -1897,24 +1952,34 @@ function generateFallbackAdGroup(
   city: string,
   websiteUrl: string
 ): any {
+  // 🚨 POLICY COMPLIANCE: Sanitize service name to avoid Google Ads policy violations
+  const sanitizedServiceName = sanitizeForGoogleAdsPolicy(serviceName);
+  
   const credential = tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe Registered' : 'Part P Certified';
+  const shortCredential = tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe' : 'Part P';
+  
+  // 🚨 POLICY COMPLIANCE: For gas-related services, ensure Gas Safe trust signals
+  const isGasRelated = sanitizedServiceName.toLowerCase().includes('gas') || 
+                       sanitizedServiceName.toLowerCase().includes('boiler') ||
+                       sanitizedServiceName.toLowerCase().includes('heating');
   
   // Generate service-specific headlines (15 for RSA optimal)
+  // 🚨 CRITICAL: At least 1-2 headlines MUST include "Gas Safe Registered" or "Gas Safe Engineers"
   const headlines = [
-    // Keyword + Location (4)
-    validateAndFixHeadline(`${serviceName} ${city}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${city} ${serviceName}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${serviceName} Near Me`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`Local ${serviceName}`, MAX_HEADLINE_CHARS),
+    // Keyword + Location (3) - use sanitized name
+    validateAndFixHeadline(`${sanitizedServiceName} ${city}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${city} ${sanitizedServiceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${sanitizedServiceName} Near Me`, MAX_HEADLINE_CHARS),
     // Urgency / Availability (3)
-    validateAndFixHeadline(`24/7 ${serviceName}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`24/7 ${sanitizedServiceName}`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`Same Day Service`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`Fast Response`, MAX_HEADLINE_CHARS),
-    // Trust / Credibility (4)
-    validateAndFixHeadline(`${serviceName} Experts`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS),
+    // Trust / Credibility (5) - MUST include Gas Safe for gas-related services
+    validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS), // "Gas Safe Registered"
+    validateAndFixHeadline(`${shortCredential} Engineers`, MAX_HEADLINE_CHARS), // "Gas Safe Engineers"
+    validateAndFixHeadline(`Certified ${shortCredential}`, MAX_HEADLINE_CHARS), // "Certified Gas Safe"
     validateAndFixHeadline(`Fully Insured`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`Trusted Team`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Trusted Experts`, MAX_HEADLINE_CHARS),
     // Value / Pricing (2)
     validateAndFixHeadline(`No Hidden Fees`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`Free Estimates`, MAX_HEADLINE_CHARS),
@@ -1925,43 +1990,56 @@ function generateFallbackAdGroup(
   
   // Ensure we have exactly TARGET_HEADLINES_PER_AD_GROUP headlines (15)
   while (headlines.length < TARGET_HEADLINES_PER_AD_GROUP) {
-    const fallbacks = generateFallbackHeadlines(serviceName, tradeType, city, headlines, TARGET_HEADLINES_PER_AD_GROUP);
+    const fallbacks = generateFallbackHeadlines(sanitizedServiceName, tradeType, city, headlines, TARGET_HEADLINES_PER_AD_GROUP);
     headlines.push(...fallbacks);
     if (headlines.length >= TARGET_HEADLINES_PER_AD_GROUP) break;
   }
   
+  // 🚨 POLICY COMPLIANCE: Ensure Gas Safe trust signal exists for gas-related services
+  if (isGasRelated) {
+    const hasGasSafe = headlines.some(h => 
+      h.toLowerCase().includes('gas safe') || h.toLowerCase().includes('certified')
+    );
+    if (!hasGasSafe && headlines.length > 0) {
+      // Replace last headline with Gas Safe trust signal
+      headlines[headlines.length - 1] = validateAndFixHeadline('Gas Safe Engineers', MAX_HEADLINE_CHARS);
+    }
+  }
+  
   // Generate service-specific descriptions (4 for RSA optimal, covering different roles)
+  // Use sanitized service name
   let descriptions = [
     // Problem + Solution
-    `Need ${serviceName.toLowerCase()}? Our expert team solves problems fast. Same day service.`,
-    // Trust / Experience
-    `Professional ${serviceName.toLowerCase()} services in ${city}. ${credential}. Fully insured.`,
+    `Need ${sanitizedServiceName.toLowerCase()}? Our expert team solves problems fast. Same day service.`,
+    // Trust / Experience - include certification
+    `Professional ${sanitizedServiceName.toLowerCase()} services in ${city}. ${credential}. Fully insured.`,
     // Value / Pricing
-    `Transparent pricing with no hidden fees. Free quotes on all ${serviceName.toLowerCase()} work.`,
+    `Transparent pricing with no hidden fees. Free quotes on all ${sanitizedServiceName.toLowerCase()} work.`,
     // Action / Next Step
     `Call today for immediate assistance. Fast response times across ${city}.`,
   ].filter(d => d.length <= MAX_DESCRIPTION_CHARS);
   
   // Ensure we have exactly MAX_DESCRIPTIONS_PER_AD_GROUP descriptions (4)
   if (descriptions.length < MAX_DESCRIPTIONS_PER_AD_GROUP) {
-    const fallbackDescs = generateFallbackDescriptions(serviceName, tradeType, city, descriptions, MAX_DESCRIPTIONS_PER_AD_GROUP);
+    const fallbackDescs = generateFallbackDescriptions(sanitizedServiceName, tradeType, city, descriptions, MAX_DESCRIPTIONS_PER_AD_GROUP);
     descriptions.push(...fallbackDescs);
   }
   
-  // Generate service-specific keywords
+  // Generate service-specific keywords - use sanitized name
   const keywords = [
-    `${serviceName.toLowerCase()} ${city.toLowerCase()}`,
-    `${city.toLowerCase()} ${serviceName.toLowerCase()}`,
-    `${serviceName.toLowerCase()} near me`,
-    `local ${serviceName.toLowerCase()}`,
-    `${serviceName.toLowerCase()} service`,
-    `best ${serviceName.toLowerCase()} ${city.toLowerCase()}`,
-    `emergency ${serviceName.toLowerCase()}`,
-    `${serviceName.toLowerCase()} experts`,
+    `${sanitizedServiceName.toLowerCase()} ${city.toLowerCase()}`,
+    `${city.toLowerCase()} ${sanitizedServiceName.toLowerCase()}`,
+    `${sanitizedServiceName.toLowerCase()} near me`,
+    `local ${sanitizedServiceName.toLowerCase()}`,
+    `${sanitizedServiceName.toLowerCase()} service`,
+    `best ${sanitizedServiceName.toLowerCase()} ${city.toLowerCase()}`,
+    `emergency ${sanitizedServiceName.toLowerCase()}`,
+    `${sanitizedServiceName.toLowerCase()} experts`,
   ];
   
+  // 🚨 POLICY COMPLIANCE: Use sanitized name for ad group name
   return {
-    name: `${serviceName} ${city}`,
+    name: `${sanitizedServiceName} ${city}`,
     keywords: keywords.slice(0, 10),
     adCopy: {
       headlines: headlines.slice(0, TARGET_HEADLINES_PER_AD_GROUP),
@@ -2087,11 +2165,15 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       serviceArea: `${serviceArea?.city}${serviceArea?.postcode ? ', ' + serviceArea.postcode : ''}`,
     },
     adGroups: (data.adGroups || []).map((adGroup: any) => {
+      // 🚨 POLICY COMPLIANCE: Sanitize ad group name to avoid Google Ads violations
+      const sanitizedAdGroupName = sanitizeForGoogleAdsPolicy(adGroup.name || 'Service');
+      
       // Validate ad group services match serviceOfferings
-      validateAdGroupServices(adGroup, serviceOfferings, servicesByTheme);
+      validateAdGroupServices({ ...adGroup, name: sanitizedAdGroupName }, serviceOfferings, servicesByTheme);
 
-      // Validate and fix headlines using centralized constants
+      // 🚨 POLICY COMPLIANCE: Sanitize all headlines to avoid policy violations
       const headlines = (adGroup.adCopy?.headlines || [])
+        .map((h: string) => sanitizeForGoogleAdsPolicy(h)) // Apply policy transformations first
         .map((h: string) => validateAndFixHeadline(h, MAX_HEADLINE_CHARS))
         .filter((h: string) => h.length > 0); // Remove empty headlines from failed validation
       
@@ -2114,9 +2196,11 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
         return h;
       }).filter((h: string) => h.length > 0);
 
-      // Validate descriptions (exactly MAX_DESCRIPTIONS_PER_AD_GROUP for RSA optimal, max MAX_DESCRIPTION_CHARS chars)
+      // 🚨 POLICY COMPLIANCE: Sanitize descriptions to avoid policy violations
       let descriptions = adGroup.adCopy?.descriptions || [];
-      descriptions = descriptions.filter((d: string) => d && d.length <= MAX_DESCRIPTION_CHARS);
+      descriptions = descriptions
+        .map((d: string) => sanitizeForGoogleAdsPolicy(d)) // Apply policy transformations
+        .filter((d: string) => d && d.length <= MAX_DESCRIPTION_CHARS);
       
       // Generate fallback descriptions to reach exactly 4 (RSA optimal)
       if (descriptions.length < MAX_DESCRIPTIONS_PER_AD_GROUP) {
@@ -2140,11 +2224,28 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
         .filter((k: string) => k && k.length > 0 && k.length <= 80)
         .slice(0, 10);
       
-      console.log(`🔑 Ad group "${adGroup.name}" keywords (${keywords.length}):`, keywords);
+      console.log(`🔑 Ad group "${sanitizedAdGroupName}" keywords (${keywords.length}):`, keywords);
+
+      // 🚨 POLICY COMPLIANCE: Ensure Gas Safe trust signal exists for gas-related services
+      const isGasRelated = sanitizedAdGroupName.toLowerCase().includes('gas') || 
+                           sanitizedAdGroupName.toLowerCase().includes('boiler') ||
+                           sanitizedAdGroupName.toLowerCase().includes('heating');
+      
+      if (isGasRelated && (tradeType === 'plumbing' || tradeType === 'both')) {
+        const hasGasSafe = validatedHeadlines.some((h: string) => 
+          h.toLowerCase().includes('gas safe') || h.toLowerCase().includes('certified')
+        );
+        if (!hasGasSafe && validatedHeadlines.length > 0) {
+          // Replace last headline with Gas Safe trust signal
+          validatedHeadlines[validatedHeadlines.length - 1] = 'Gas Safe Engineers';
+          console.log(`🔒 Added Gas Safe trust signal to "${sanitizedAdGroupName}"`);
+        }
+      }
 
       return {
         ...adGroup,
-        keywords, // Explicitly include validated keywords
+        name: sanitizedAdGroupName, // 🚨 Use sanitized name
+        keywords: keywords.map((k: string) => sanitizeForGoogleAdsPolicy(k)), // Sanitize keywords too
         adCopy: {
           ...adGroup.adCopy,
           headlines: validatedHeadlines.slice(0, TARGET_HEADLINES_PER_AD_GROUP), // Ensure exactly TARGET_HEADLINES_PER_AD_GROUP
