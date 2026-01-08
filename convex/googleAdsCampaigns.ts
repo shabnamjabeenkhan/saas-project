@@ -627,17 +627,25 @@ export const createGoogleAdsCampaign = action({
       });
 
       // Process ad groups with comprehensive tracking (SINGLE creation point)
+      let adGroupResults: AdGroupCreationResults;
       try {
         console.log('🎯 DEBUG: Starting ad groups, keywords, and ads creation...');
         console.log('🎯 DEBUG: Will process', campaignData.adGroups.length, 'ad groups');
 
-        const adGroupResults = await createAdGroupsWithAdsAndKeywords(campaignData, customer, campaignResourceName);
+        adGroupResults = await createAdGroupsWithAdsAndKeywords(campaignData, customer, campaignResourceName);
         
-        // Update results from the helper function
-        results.adGroupsCreated = campaignData.adGroups.length;
-        results.adsCreated = campaignData.adGroups.length; // One ad per ad group
+        // Update results from the ACTUAL creation results (not optimistic)
+        results.adGroupsCreated = adGroupResults.adGroupsCreated;
+        results.adsCreated = adGroupResults.adsCreated;
 
         console.log('✅ DEBUG: Ad groups creation process completed');
+        console.log('📊 Actual results:', {
+          adGroupsCreated: adGroupResults.adGroupsCreated,
+          adsCreated: adGroupResults.adsCreated,
+          keywordsCreated: adGroupResults.keywordsCreated,
+          failedAds: adGroupResults.failedAds.length,
+          failedKeywords: adGroupResults.failedKeywords.length
+        });
       } catch (error) {
         console.error('🚨 FATAL: Ad groups creation failed completely:', {
           error: error instanceof Error ? error.message : String(error),
@@ -656,18 +664,84 @@ export const createGoogleAdsCampaign = action({
         console.log('📱 Creating ad extensions...');
         await createAdExtensions(campaignData, customer, campaignResourceName, ctx);
         console.log('✅ Ad extensions completed');
+        results.extensionsCreated = 1; // Call extension created
       } catch (error) {
         console.error('❌ Ad extensions failed:', error instanceof Error ? error.message : String(error));
         // Continue - extensions are not critical
       }
 
+      // Determine success status based on actual results
+      const expectedAdGroups = campaignData.adGroups.length;
+      const allAdsCreated = adGroupResults.adsCreated === expectedAdGroups;
+      const someAdsCreated = adGroupResults.adsCreated > 0;
+      const noAdsCreated = adGroupResults.adsCreated === 0;
+
+      // Log final status
+      console.log('📊 FINAL CAMPAIGN CREATION STATUS:', {
+        expectedAdGroups,
+        actualAdGroupsCreated: adGroupResults.adGroupsCreated,
+        actualAdsCreated: adGroupResults.adsCreated,
+        actualKeywordsCreated: adGroupResults.keywordsCreated,
+        allAdsCreated,
+        someAdsCreated,
+        noAdsCreated,
+        failedAds: adGroupResults.failedAds,
+        errors: adGroupResults.errors
+      });
+
+      // Return partial success if some ads failed
+      if (noAdsCreated) {
+        return {
+          success: false,
+          partialSuccess: false,
+          error: `No ads were created. Errors: ${adGroupResults.errors.join('; ')}`,
+          googleCampaignId,
+          resourceName: campaignResourceName,
+          adGroupsCreated: adGroupResults.adGroupsCreated,
+          adsCreated: adGroupResults.adsCreated,
+          adsExpected: expectedAdGroups,
+          keywordsCreated: adGroupResults.keywordsCreated,
+          extensionsCreated: results.extensionsCreated,
+          failedAdGroups: adGroupResults.failedAdGroups,
+          failedAds: adGroupResults.failedAds,
+          failedKeywords: adGroupResults.failedKeywords,
+          errors: adGroupResults.errors
+        };
+      }
+
+      if (!allAdsCreated) {
+        return {
+          success: false,
+          partialSuccess: true,
+          error: `Only ${adGroupResults.adsCreated}/${expectedAdGroups} ads were created. Some ad groups failed: ${adGroupResults.failedAds.join(', ')}`,
+          googleCampaignId,
+          resourceName: campaignResourceName,
+          adGroupsCreated: adGroupResults.adGroupsCreated,
+          adsCreated: adGroupResults.adsCreated,
+          adsExpected: expectedAdGroups,
+          keywordsCreated: adGroupResults.keywordsCreated,
+          extensionsCreated: results.extensionsCreated,
+          failedAdGroups: adGroupResults.failedAdGroups,
+          failedAds: adGroupResults.failedAds,
+          failedKeywords: adGroupResults.failedKeywords,
+          errors: adGroupResults.errors
+        };
+      }
+
       return {
         success: true,
+        partialSuccess: false,
         googleCampaignId,
         resourceName: campaignResourceName,
-        adGroupsCreated: results.adGroupsCreated,
-        adsCreated: results.adsCreated,
+        adGroupsCreated: adGroupResults.adGroupsCreated,
+        adsCreated: adGroupResults.adsCreated,
+        adsExpected: expectedAdGroups,
+        keywordsCreated: adGroupResults.keywordsCreated,
         extensionsCreated: results.extensionsCreated,
+        failedAdGroups: [],
+        failedAds: [],
+        failedKeywords: adGroupResults.failedKeywords,
+        errors: adGroupResults.errors.length > 0 ? adGroupResults.errors : undefined,
         error: undefined
       };
 
@@ -684,14 +758,41 @@ export const createGoogleAdsCampaign = action({
   }
 });
 
+// Result type for ad group creation
+interface AdGroupCreationResults {
+  adGroupsCreated: number;
+  adsCreated: number;
+  keywordsCreated: number;
+  failedAdGroups: string[];
+  failedAds: string[];
+  failedKeywords: string[];
+  errors: string[];
+}
+
 // Helper function to create ad groups with keywords and ads
 async function createAdGroupsWithAdsAndKeywords(
   campaignData: any,
   customer: Customer,
   campaignResourceName: string
-) {
+): Promise<AdGroupCreationResults> {
   console.log('🚀🚀 ENTERING createAdGroupsWithAdsAndKeywords function');
   console.log('🚀🚀 Function called at:', new Date().toISOString());
+  
+  // 🔧 FIX: Reset the asset cache at the start of each campaign push
+  // This prevents DUPLICATE_ASSET errors when the same headline appears in multiple ad groups
+  resetAssetCache();
+  console.log('🔄 Asset cache reset for new campaign push');
+
+  // Initialize tracking variables
+  const results: AdGroupCreationResults = {
+    adGroupsCreated: 0,
+    adsCreated: 0,
+    keywordsCreated: 0,
+    failedAdGroups: [],
+    failedAds: [],
+    failedKeywords: [],
+    errors: []
+  };
 
   // Validate parameters immediately
   if (!campaignData) {
@@ -711,7 +812,7 @@ async function createAdGroupsWithAdsAndKeywords(
   if (!campaignData.adGroups || campaignData.adGroups.length === 0) {
     console.log('⚠️ No ad groups to create - campaign data missing ad groups');
     console.log('⚠️ Available campaign data keys:', Object.keys(campaignData));
-    return;
+    return results;
   }
 
   console.log('🚀🚀 CONFIRMED: Processing', campaignData.adGroups.length, 'ad groups');
@@ -822,17 +923,25 @@ async function createAdGroupsWithAdsAndKeywords(
         throw new Error(`Could not create or find ad group "${adGroup.name}"`);
       }
 
+      // Track that ad group was created successfully
+      results.adGroupsCreated++;
+
       // Create Keywords for this ad group
       if (adGroup.keywords && adGroup.keywords.length > 0) {
         console.log(`🔑 Creating ${adGroup.keywords.length} keywords for "${adGroup.name}"...`);
         const keywordResult = await createKeywords(adGroup.keywords, customer, adGroupResourceName);
         if (keywordResult.success) {
           console.log(`✅ Keywords created for "${adGroup.name}": ${keywordResult.createdCount}/${adGroup.keywords.length}`);
+          results.keywordsCreated += keywordResult.createdCount;
         } else {
           console.error(`❌ Keywords creation failed for "${adGroup.name}":`, keywordResult.errors);
+          results.failedKeywords.push(adGroup.name);
+          results.errors.push(`Keywords failed for "${adGroup.name}": ${keywordResult.errors.join(', ')}`);
         }
       } else {
         console.warn(`⚠️ No keywords found for ad group "${adGroup.name}" - ad group will have no keywords!`);
+        results.failedKeywords.push(adGroup.name);
+        results.errors.push(`No keywords provided for "${adGroup.name}"`);
       }
 
       // Create Responsive Search Ad for this ad group
@@ -842,21 +951,43 @@ async function createAdGroupsWithAdsAndKeywords(
           const adResult = await createResponsiveSearchAd(adGroup.adCopy, customer, adGroupResourceName);
           if (adResult?.success) {
             console.log(`✅ Ad created successfully for ${adGroup.name}`);
+            results.adsCreated++;
           } else {
             console.error(`❌ Ad creation for "${adGroup.name}" returned unsuccessful result:`, JSON.stringify(adResult, null, 2));
+            results.failedAds.push(adGroup.name);
+            results.errors.push(`Ad creation returned unsuccessful for "${adGroup.name}"`);
           }
         } catch (adError: any) {
-          // Better error logging for SDK errors
+          // Better error logging for SDK errors - extract Google Ads API error details
           let errorMessage = 'Unknown error';
           let errorDetails: any = {};
+          let googleAdsErrorCode = '';
           
           if (adError instanceof Error) {
             errorMessage = adError.message;
             errorDetails = { message: adError.message, stack: adError.stack };
           } else if (adError?.error) {
-            // SDK error structure
+            // SDK error structure - try to extract Google Ads API error code
             errorDetails = adError.error;
             errorMessage = adError.error?.message || JSON.stringify(adError.error);
+            
+            // Try to extract specific Google Ads error codes
+            try {
+              const errorJson = typeof adError.error === 'string' ? JSON.parse(adError.error) : adError.error;
+              const details = errorJson?.details || [];
+              for (const detail of details) {
+                if (detail['@type']?.includes('GoogleAdsFailure')) {
+                  const errors = detail.errors || [];
+                  for (const err of errors) {
+                    if (err.errorCode) {
+                      googleAdsErrorCode = JSON.stringify(err.errorCode);
+                    }
+                  }
+                }
+              }
+            } catch (parseErr) {
+              // Ignore parse errors
+            }
           } else if (typeof adError === 'object') {
             errorMessage = JSON.stringify(adError, null, 2);
             errorDetails = adError;
@@ -866,6 +997,7 @@ async function createAdGroupsWithAdsAndKeywords(
           
           console.error(`❌ Ad creation for "${adGroup.name}" failed:`, {
             errorMessage,
+            googleAdsErrorCode: googleAdsErrorCode || 'Not available',
             errorDetails: JSON.stringify(errorDetails, null, 2),
             adGroupName: adGroup.name,
             adCopy: {
@@ -874,18 +1006,43 @@ async function createAdGroupsWithAdsAndKeywords(
               finalUrl: adGroup.adCopy?.finalUrl || 'MISSING'
             }
           });
+          
+          // Track the failure
+          results.failedAds.push(adGroup.name);
+          results.errors.push(`Ad creation failed for "${adGroup.name}": ${errorMessage}${googleAdsErrorCode ? ` (Google Ads Error: ${googleAdsErrorCode})` : ''}`);
           // Continue processing other ad groups even if one fails
         }
+      } else {
+        console.warn(`⚠️ No adCopy found for ad group "${adGroup.name}" - ad group will have no ads!`);
+        results.failedAds.push(adGroup.name);
+        results.errors.push(`No adCopy provided for "${adGroup.name}"`);
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`❌ Error creating ad group ${adGroup.name}:`, {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMsg,
         stack: error instanceof Error ? error.stack : 'No stack trace',
         adGroupName: adGroup.name,
         adGroupData: JSON.stringify(adGroup, null, 2)
       });
+      results.failedAdGroups.push(adGroup.name);
+      results.errors.push(`Ad group creation failed for "${adGroup.name}": ${errorMsg}`);
     }
   }
+
+  // Log final summary
+  console.log('📊 Ad Groups Creation Summary:', {
+    totalAdGroups: campaignData.adGroups.length,
+    adGroupsCreated: results.adGroupsCreated,
+    adsCreated: results.adsCreated,
+    keywordsCreated: results.keywordsCreated,
+    failedAdGroups: results.failedAdGroups,
+    failedAds: results.failedAds,
+    failedKeywords: results.failedKeywords,
+    totalErrors: results.errors.length
+  });
+
+  return results;
 }
 
 // Helper function to create keywords using SDK
@@ -956,6 +1113,55 @@ async function createKeywords(
   };
 }
 
+// Helper function to deduplicate headlines/descriptions to avoid DUPLICATE_ASSET errors
+function deduplicateAssets(assets: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  
+  for (const asset of assets) {
+    // Normalize for comparison (lowercase, trim)
+    const normalized = asset.toLowerCase().trim();
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      unique.push(asset);
+    }
+  }
+  
+  return unique;
+}
+
+// Track used headlines across all ad groups to avoid DUPLICATE_ASSET errors
+// This is a module-level cache that persists during a single campaign push
+const usedHeadlinesInCampaign = new Set<string>();
+const usedDescriptionsInCampaign = new Set<string>();
+
+// Reset the cache at the start of a new campaign push
+function resetAssetCache() {
+  usedHeadlinesInCampaign.clear();
+  usedDescriptionsInCampaign.clear();
+}
+
+// Filter out headlines that have already been used in this campaign
+function filterAlreadyUsedAssets(assets: string[], usedSet: Set<string>): string[] {
+  const available: string[] = [];
+  
+  for (const asset of assets) {
+    const normalized = asset.toLowerCase().trim();
+    if (!usedSet.has(normalized)) {
+      available.push(asset);
+    }
+  }
+  
+  return available;
+}
+
+// Mark assets as used after successful creation
+function markAssetsAsUsed(assets: string[], usedSet: Set<string>) {
+  for (const asset of assets) {
+    usedSet.add(asset.toLowerCase().trim());
+  }
+}
+
 // Helper function to create responsive search ad using SDK
 async function createResponsiveSearchAd(
   adCopy: any,
@@ -976,9 +1182,53 @@ async function createResponsiveSearchAd(
     .map((h: string) => sanitizeAdText(h, 30))
     .filter((h: string | null): h is string => h !== null);
   
-  const headlines = sanitizedHeadlines.length >= 3 
-    ? sanitizedHeadlines.slice(0, 15)
-    : [...sanitizedHeadlines, ...['Quality Service', 'Professional Work', 'Call Today'].slice(0, 3 - sanitizedHeadlines.length)];
+  // 🔧 FIX: Deduplicate headlines within this ad group
+  const uniqueHeadlines = deduplicateAssets(sanitizedHeadlines);
+  
+  // 🔧 FIX: Filter out headlines already used in other ad groups of this campaign
+  // This prevents DUPLICATE_ASSET errors from Google Ads
+  const availableHeadlines = filterAlreadyUsedAssets(uniqueHeadlines, usedHeadlinesInCampaign);
+  
+  console.log('🔍 Headlines deduplication:', {
+    rawCount: sanitizedHeadlines.length,
+    uniqueCount: uniqueHeadlines.length,
+    availableCount: availableHeadlines.length,
+    alreadyUsedInCampaign: uniqueHeadlines.length - availableHeadlines.length
+  });
+  
+  // If too many headlines were filtered out, we need to generate fallbacks
+  let headlines: string[];
+  if (availableHeadlines.length >= 3) {
+    headlines = availableHeadlines.slice(0, 15);
+  } else {
+    // Not enough unique headlines - add service-specific fallbacks
+    const adGroupName = adGroupResourceName.split('/').pop() || 'Service';
+    const fallbackHeadlines = [
+      `${adGroupName.substring(0, 20)} Expert`,
+      `Call Now - ${adGroupName.substring(0, 15)}`,
+      `${adGroupName.substring(0, 15)} Today`,
+      `Best ${adGroupName.substring(0, 18)}`,
+      `Local ${adGroupName.substring(0, 17)}`
+    ].filter(h => h.length <= 30 && !usedHeadlinesInCampaign.has(h.toLowerCase().trim()));
+    
+    headlines = [...availableHeadlines, ...fallbackHeadlines].slice(0, 15);
+    
+    // If still not enough, use generic fallbacks with timestamp to ensure uniqueness
+    if (headlines.length < 3) {
+      const timestamp = Date.now().toString().slice(-4);
+      const genericFallbacks = [
+        `Quality Service ${timestamp}`,
+        `Professional Work ${timestamp}`,
+        `Call Today ${timestamp}`
+      ];
+      headlines = [...headlines, ...genericFallbacks].slice(0, 15);
+    }
+    
+    console.warn('⚠️ Had to add fallback headlines due to duplicates:', {
+      originalCount: availableHeadlines.length,
+      finalCount: headlines.length
+    });
+  }
 
   // 🔒 SECURITY: Sanitize descriptions to remove any phone numbers
   const rawDescriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust'];
@@ -986,9 +1236,36 @@ async function createResponsiveSearchAd(
     .map((d: string) => sanitizeAdText(d, 90))
     .filter((d: string | null): d is string => d !== null);
   
-  const descriptions = sanitizedDescriptions.length >= 2
-    ? sanitizedDescriptions.slice(0, 4)
-    : [...sanitizedDescriptions, ...['Reliable professional service', 'Contact us for a quote'].slice(0, 2 - sanitizedDescriptions.length)];
+  // 🔧 FIX: Deduplicate descriptions within this ad group
+  const uniqueDescriptions = deduplicateAssets(sanitizedDescriptions);
+  
+  // 🔧 FIX: Filter out descriptions already used in other ad groups of this campaign
+  const availableDescriptions = filterAlreadyUsedAssets(uniqueDescriptions, usedDescriptionsInCampaign);
+  
+  console.log('🔍 Descriptions deduplication:', {
+    rawCount: sanitizedDescriptions.length,
+    uniqueCount: uniqueDescriptions.length,
+    availableCount: availableDescriptions.length,
+    alreadyUsedInCampaign: uniqueDescriptions.length - availableDescriptions.length
+  });
+  
+  // If too many descriptions were filtered out, generate fallbacks
+  let descriptions: string[];
+  if (availableDescriptions.length >= 2) {
+    descriptions = availableDescriptions.slice(0, 4);
+  } else {
+    const timestamp = Date.now().toString().slice(-4);
+    const fallbackDescriptions = [
+      `Reliable professional service. Call now for assistance ${timestamp}.`,
+      `Contact us today for a free quote. Quality guaranteed ${timestamp}.`
+    ];
+    descriptions = [...availableDescriptions, ...fallbackDescriptions].slice(0, 4);
+    
+    console.warn('⚠️ Had to add fallback descriptions due to duplicates:', {
+      originalCount: availableDescriptions.length,
+      finalCount: descriptions.length
+    });
+  }
 
   // 🔍 Log sanitization results for debugging
   console.log('🔒 Phone sanitization applied to ad content:', {
@@ -1033,11 +1310,37 @@ async function createResponsiveSearchAd(
     console.log(`⚠️ URL validation had issues, but allowing ad creation (Google Ads will validate): ${finalUrl}`);
   }
 
+  // 🔍 CRITICAL: Log ALL headlines with their lengths to debug truncation
   console.log('📝 Final ad content validation:', {
     headlines: headlines.length,
     descriptions: descriptions.length,
-    finalUrl: finalUrl
+    finalUrl: finalUrl,
+    headlinesWithLengths: headlines.map((h: string, i: number) => ({
+      index: i,
+      text: h,
+      length: h.length,
+      isOverLimit: h.length > 30
+    })),
+    descriptionsWithLengths: descriptions.map((d: string, i: number) => ({
+      index: i,
+      text: d,
+      length: d.length,
+      isOverLimit: d.length > 90
+    }))
   });
+  
+  // 🚨 CRITICAL: Check if any headlines exceed 30 chars BEFORE sending to Google Ads
+  const overLimitHeadlines = headlines.filter((h: string) => h.length > 30);
+  if (overLimitHeadlines.length > 0) {
+    console.error('🚨 CRITICAL: Headlines exceed 30 char limit!', overLimitHeadlines);
+    throw new Error(`Headlines exceed 30 character limit: ${overLimitHeadlines.map((h: string) => `"${h}" (${h.length} chars)`).join(', ')}`);
+  }
+  
+  const overLimitDescriptions = descriptions.filter((d: string) => d.length > 90);
+  if (overLimitDescriptions.length > 0) {
+    console.error('🚨 CRITICAL: Descriptions exceed 90 char limit!', overLimitDescriptions);
+    throw new Error(`Descriptions exceed 90 character limit: ${overLimitDescriptions.map((d: string) => `"${d}" (${d.length} chars)`).join(', ')}`);
+  }
 
   // Create responsive search ad using SDK
   try {
@@ -1096,26 +1399,92 @@ async function createResponsiveSearchAd(
       adGroupResourceName,
       resourceName: adResult.results[0]?.resource_name
     });
+    
+    // 🔧 FIX: Mark these headlines and descriptions as used so future ad groups don't reuse them
+    markAssetsAsUsed(headlines, usedHeadlinesInCampaign);
+    markAssetsAsUsed(descriptions, usedDescriptionsInCampaign);
+    console.log('📝 Marked assets as used:', {
+      headlinesMarked: headlines.length,
+      descriptionsMarked: descriptions.length,
+      totalHeadlinesUsed: usedHeadlinesInCampaign.size,
+      totalDescriptionsUsed: usedDescriptionsInCampaign.size
+    });
+    
     return { success: true, resourceName: adResult.results[0]?.resource_name };
   } catch (adError: any) {
-    console.error('❌ Ad creation failed:', {
-      error: adError?.message || String(adError),
-      adGroupResourceName
-    });
-
-    // SDK provides structured error objects
+    // Extract detailed error information from Google Ads API
     let errorMessage = 'Ad creation failed';
+    let googleAdsErrorDetails = '';
+    let policyViolationInfo = '';
     
-    if (adError?.message) {
-      errorMessage += `: ${adError.message}`;
-    } else if (adError?.error) {
-      const errorDetails = adError.error;
-      if (errorDetails?.message) {
-        errorMessage += `: ${errorDetails.message}`;
+    // Log the raw error object structure for debugging
+    console.error('🔍 RAW ERROR INSPECTION:', {
+      errorType: typeof adError,
+      errorConstructor: adError?.constructor?.name,
+      hasMessage: !!adError?.message,
+      hasError: !!adError?.error,
+      hasErrors: !!adError?.errors,
+      keys: adError ? Object.keys(adError) : [],
+      fullError: JSON.stringify(adError, Object.getOwnPropertyNames(adError), 2).substring(0, 2000)
+    });
+    
+    try {
+      // Google Ads SDK errors often have an 'errors' array
+      if (adError?.errors && Array.isArray(adError.errors)) {
+        const errorDetails = adError.errors.map((e: any) => {
+          const errorCode = e.error_code ? JSON.stringify(e.error_code) : 'unknown';
+          const message = e.message || 'No message';
+          return `${errorCode}: ${message}`;
+        }).join('; ');
+        errorMessage = errorDetails || errorMessage;
+        googleAdsErrorDetails = JSON.stringify(adError.errors, null, 2);
       }
+      // Try to parse the error for Google Ads API specific details
+      else if (adError?.message) {
+        // Check if the error message contains JSON (Google Ads API errors often do)
+        const jsonMatch = adError.message.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsedError = parseGoogleAdsError(jsonMatch[0]);
+          errorMessage = parsedError.message;
+          if (parsedError.isPolicyViolation && parsedError.policyDetails) {
+            policyViolationInfo = parsedError.policyDetails.map(p => `${p.topic}: ${p.reason}`).join('; ');
+          }
+        } else {
+          errorMessage = adError.message;
+        }
+      } else if (adError?.error) {
+        const errorDetails = adError.error;
+        if (typeof errorDetails === 'string') {
+          const parsedError = parseGoogleAdsError(errorDetails);
+          errorMessage = parsedError.message;
+          if (parsedError.isPolicyViolation && parsedError.policyDetails) {
+            policyViolationInfo = parsedError.policyDetails.map(p => `${p.topic}: ${p.reason}`).join('; ');
+          }
+        } else if (errorDetails?.message) {
+          errorMessage = errorDetails.message;
+        }
+        googleAdsErrorDetails = JSON.stringify(errorDetails, null, 2);
+      }
+    } catch (parseErr) {
+      // Ignore parse errors, use original error
+      errorMessage = adError?.message || String(adError);
+      console.error('⚠️ Error parsing failed:', parseErr);
     }
     
-    throw new Error(errorMessage);
+    console.error('❌ Ad creation failed with detailed error:', {
+      errorMessage,
+      policyViolationInfo: policyViolationInfo || 'None',
+      googleAdsErrorDetails: googleAdsErrorDetails || 'Not available',
+      adGroupResourceName,
+      rawError: String(adError).substring(0, 500)
+    });
+    
+    // Include policy violation info in the error message if present
+    const fullErrorMessage = policyViolationInfo 
+      ? `Ad creation failed: ${errorMessage}. Policy violations: ${policyViolationInfo}`
+      : `Ad creation failed: ${errorMessage}`;
+    
+    throw new Error(fullErrorMessage);
   }
 }
 
