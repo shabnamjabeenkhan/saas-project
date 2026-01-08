@@ -22,7 +22,7 @@ import { isAdminEmail } from "~/utils/admin";
 
 // Step schemas
 const step1Schema = z.object({
-  tradeType: z.enum(["plumbing", "electrical", "both"]),
+  tradeType: z.enum(["plumbing", "electrical"]),
 });
 
 const step2Schema = z.object({
@@ -159,7 +159,7 @@ export default function OnboardingWizard() {
       const mappedData: OnboardingData = {};
 
       if (existingData.tradeType) {
-        mappedData.step1 = { tradeType: existingData.tradeType as "plumbing" | "electrical" | "both" };
+        mappedData.step1 = { tradeType: existingData.tradeType as "plumbing" | "electrical" };
       }
 
       if (existingData.businessName || existingData.contactName || existingData.email || existingData.phone) {
@@ -502,19 +502,6 @@ function Step1Form({ onNext, defaultValues }: { onNext: (data: Step1Data) => voi
               <div>
                 <div className="font-medium text-white">Electrical</div>
                 <div className="text-sm text-muted-foreground">Wiring, consumer units, certificates, smart homes</div>
-              </div>
-            </Label>
-          </div>
-          <div className="flex items-center space-x-3 p-4 border border-gray-700 rounded-lg hover:border-primary">
-            <RadioGroupItem value="both" id="both" />
-            <Label htmlFor="both" className="flex items-center gap-2 cursor-pointer flex-1 text-white">
-              <div className="flex gap-1">
-                <Wrench className="w-5 h-5 text-blue-500" />
-                <Zap className="w-5 h-5 text-yellow-500" />
-              </div>
-              <div>
-                <div className="font-medium text-white">Both Plumbing & Electrical</div>
-                <div className="text-sm text-muted-foreground">Multi-trade services</div>
               </div>
             </Label>
           </div>
@@ -1151,12 +1138,6 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
             <div className="flex items-center gap-2">
               {formData.step1.tradeType === "plumbing" && <Wrench className="w-4 h-4 text-blue-500" />}
               {formData.step1.tradeType === "electrical" && <Zap className="w-4 h-4 text-yellow-500" />}
-              {formData.step1.tradeType === "both" && (
-                <>
-                  <Wrench className="w-4 h-4 text-blue-500" />
-                  <Zap className="w-4 h-4 text-yellow-500" />
-                </>
-              )}
               <span className="capitalize text-white">{formData.step1.tradeType}</span>
             </div>
           </div>
