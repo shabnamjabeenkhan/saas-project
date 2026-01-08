@@ -47,8 +47,6 @@ const step5Schema = z.object({
   workingHours: z.string().min(1, "Working hours are required"),
   emergencyCallouts: z.boolean(),
   weekendWork: z.boolean(),
-  monthlyLeads: z.number().min(1, "Monthly leads target is required"),
-  averageJobValue: z.number().min(1, "Average job value is required"),
   monthlyBudget: z.number().min(50, "Minimum budget is £50"),
 });
 
@@ -189,8 +187,6 @@ export default function OnboardingWizard() {
           workingHours: existingData.availability?.workingHours || "",
           emergencyCallouts: existingData.availability?.emergencyCallouts || false,
           weekendWork: existingData.availability?.weekendWork || false,
-          monthlyLeads: existingData.acquisitionGoals?.monthlyLeads || 0,
-          averageJobValue: existingData.acquisitionGoals?.averageJobValue || 0,
           monthlyBudget: existingData.acquisitionGoals?.monthlyBudget || 0,
         };
       }
@@ -287,8 +283,8 @@ export default function OnboardingWizard() {
         weekendWork: allData.step5.weekendWork,
       };
       convexData.acquisitionGoals = {
-        monthlyLeads: allData.step5.monthlyLeads,
-        averageJobValue: allData.step5.averageJobValue,
+        monthlyLeads: 10, // Default value - not collected from user
+        averageJobValue: 250, // Default value - not collected from user
         monthlyBudget: allData.step5.monthlyBudget,
       };
     }
@@ -338,8 +334,8 @@ export default function OnboardingWizard() {
           weekendWork: allData.step5.weekendWork,
         };
         convexData.acquisitionGoals = {
-          monthlyLeads: allData.step5.monthlyLeads,
-          averageJobValue: allData.step5.averageJobValue,
+          monthlyLeads: 10, // Default value - not collected from user
+          averageJobValue: 250, // Default value - not collected from user
           monthlyBudget: allData.step5.monthlyBudget,
         };
       }
@@ -763,7 +759,7 @@ function Step4Form({ onNext, onPrevious, defaultValues, availableServices }: {
 function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5Data) => void; onPrevious: () => void; defaultValues?: Step5Data }) {
   const form = useForm<Step5Data>({
     resolver: zodResolver(step5Schema),
-    defaultValues: defaultValues || { emergencyCallouts: false, weekendWork: false },
+    defaultValues: defaultValues || { emergencyCallouts: false, weekendWork: false, monthlyBudget: 300 },
   });
 
   return (
@@ -806,35 +802,7 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
         </div>
 
         <div className="space-y-4">
-          <h3 className="font-medium text-white">Business Goals</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="monthlyLeads" className="text-white">Monthly Leads Target *</Label>
-              <Input
-                id="monthlyLeads"
-                type="number"
-                {...form.register("monthlyLeads", { valueAsNumber: true })}
-                placeholder="10"
-                className="bg-[#0A0A0A] border-gray-700 text-white"
-              />
-              {form.formState.errors.monthlyLeads && (
-                <p className="text-sm text-red-500">{form.formState.errors.monthlyLeads.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="averageJobValue" className="text-white">Average Job Value (£) *</Label>
-              <Input
-                id="averageJobValue"
-                type="number"
-                {...form.register("averageJobValue", { valueAsNumber: true })}
-                placeholder="250"
-                className="bg-[#0A0A0A] border-gray-700 text-white"
-              />
-              {form.formState.errors.averageJobValue && (
-                <p className="text-sm text-red-500">{form.formState.errors.averageJobValue.message}</p>
-              )}
-            </div>
-          </div>
+          <h3 className="font-medium text-white">Advertising Budget</h3>
           <div className="space-y-2">
             <Label htmlFor="monthlyBudget" className="text-white">Monthly Advertising Budget (£) *</Label>
             <Input
@@ -845,7 +813,7 @@ function Step5Form({ onNext, onPrevious, defaultValues }: { onNext: (data: Step5
               className="bg-[#0A0A0A] border-gray-700 text-white"
             />
             <p className="text-xs text-muted-foreground">
-              Minimum £50/month. We recommend 5-10% of your monthly revenue.
+              Minimum £50/month. This is your Google Ads spend limit.
             </p>
             {form.formState.errors.monthlyBudget && (
               <p className="text-sm text-red-500">{form.formState.errors.monthlyBudget.message}</p>
@@ -1240,14 +1208,6 @@ function SummaryStep({ formData, onNext, onPrevious, onEdit }: {
               <div>
                 <span className="text-muted-foreground">Working Hours:</span>
                 <p className="text-white">{formData.step5.workingHours}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Monthly Lead Target:</span>
-                <p className="text-white">{formData.step5.monthlyLeads} leads</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Average Job Value:</span>
-                <p className="text-white">£{formData.step5.averageJobValue}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Monthly Budget:</span>

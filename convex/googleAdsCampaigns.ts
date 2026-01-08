@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { GoogleAdsApi, Customer } from "google-ads-api";
+import { GoogleAdsApi, Customer, enums } from "google-ads-api";
 
 // Helper function to get current user's token identifier
 async function getCurrentUserToken(ctx: any) {
@@ -824,7 +824,15 @@ async function createAdGroupsWithAdsAndKeywords(
 
       // Create Keywords for this ad group
       if (adGroup.keywords && adGroup.keywords.length > 0) {
-          await createKeywords(adGroup.keywords, customer, adGroupResourceName);
+        console.log(`🔑 Creating ${adGroup.keywords.length} keywords for "${adGroup.name}"...`);
+        const keywordResult = await createKeywords(adGroup.keywords, customer, adGroupResourceName);
+        if (keywordResult.success) {
+          console.log(`✅ Keywords created for "${adGroup.name}": ${keywordResult.createdCount}/${adGroup.keywords.length}`);
+        } else {
+          console.error(`❌ Keywords creation failed for "${adGroup.name}":`, keywordResult.errors);
+        }
+      } else {
+        console.warn(`⚠️ No keywords found for ad group "${adGroup.name}" - ad group will have no keywords!`);
       }
 
       // Create Responsive Search Ad for this ad group
@@ -885,39 +893,67 @@ async function createKeywords(
   keywords: string[],
   customer: Customer,
   adGroupResourceName: string
-) {
+): Promise<{ success: boolean; createdCount: number; errors: string[] }> {
   console.log('🔑 Creating keywords for ad group:', {
     keywords: keywords,
     keywordCount: keywords.length,
     adGroupResourceName: adGroupResourceName
   });
 
-  try {
-    // Create keywords in batch using SDK
-    const keywordCreates = keywords.slice(0, 10).map(keyword => ({ // Limit to 10 keywords
-      ad_group: adGroupResourceName,
-      status: 'ENABLED',
-      keyword: {
-        text: keyword,
-        match_type: 'BROAD' // Can be EXACT, PHRASE, or BROAD
-      },
-      cpc_bid_micros: 1500000 // £1.50 keyword bid
-    }));
+  const errors: string[] = [];
+  let createdCount = 0;
 
-    await Promise.all(
-      keywordCreates.map((keywordData: any) => 
-        customer.adGroupCriteria.create(keywordData)
-      )
-    );
+  // Filter and sanitize keywords
+  const sanitizedKeywords = keywords
+    .slice(0, 10) // Limit to 10 keywords per ad group
+    .map(kw => kw.trim())
+    .filter(kw => kw.length > 0 && kw.length <= 80); // Google Ads keyword max length
 
-    console.log('✅ Keywords created successfully:', {
-      keywordCount: keywordCreates.length
-    });
-  } catch (error: any) {
-    console.error('❌ Keywords creation failed:', {
-      error: error?.message || String(error)
-    });
+  if (sanitizedKeywords.length === 0) {
+    console.warn('⚠️ No valid keywords to create after sanitization');
+    return { success: false, createdCount: 0, errors: ['No valid keywords after sanitization'] };
   }
+
+  console.log('🔑 Sanitized keywords:', sanitizedKeywords);
+
+  // Create keywords one by one for better error handling
+  for (const keywordText of sanitizedKeywords) {
+    try {
+      const keywordData = {
+        ad_group: adGroupResourceName,
+        status: enums.AdGroupCriterionStatus.ENABLED,
+        keyword: {
+          text: keywordText,
+          match_type: enums.KeywordMatchType.BROAD
+        },
+        cpc_bid_micros: 1500000 // £1.50 keyword bid
+      };
+
+      console.log(`🔑 Creating keyword: "${keywordText}"`);
+      // SDK expects an array of keyword objects
+      await customer.adGroupCriteria.create([keywordData]);
+      createdCount++;
+      console.log(`✅ Keyword created: "${keywordText}"`);
+    } catch (error: any) {
+      const errorMsg = error?.message || String(error);
+      console.error(`❌ Failed to create keyword "${keywordText}":`, errorMsg);
+      errors.push(`${keywordText}: ${errorMsg}`);
+      // Continue with other keywords even if one fails
+    }
+  }
+
+  console.log('🔑 Keywords creation summary:', {
+    requested: keywords.length,
+    sanitized: sanitizedKeywords.length,
+    created: createdCount,
+    failed: errors.length
+  });
+
+  return {
+    success: createdCount > 0,
+    createdCount,
+    errors
+  };
 }
 
 // Helper function to create responsive search ad using SDK

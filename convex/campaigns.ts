@@ -12,13 +12,16 @@ const MAX_HEADLINE_CHARS = 30;
 /** Maximum characters allowed for a Google Ads description */
 const MAX_DESCRIPTION_CHARS = 90;
 
-/** Target number of headlines per ad group */
-const TARGET_HEADLINES_PER_AD_GROUP = 12;
+/** Target number of headlines per ad group (RSA optimal) */
+const TARGET_HEADLINES_PER_AD_GROUP = 15;
+
+/** Minimum headlines per ad group (RSA minimum) */
+const MIN_HEADLINES_PER_AD_GROUP = 3;
 
 /** Minimum descriptions per ad group */
 const MIN_DESCRIPTIONS_PER_AD_GROUP = 2;
 
-/** Maximum descriptions per ad group */
+/** Maximum descriptions per ad group (RSA optimal) */
 const MAX_DESCRIPTIONS_PER_AD_GROUP = 4;
 
 /** Cooldown between regenerations in milliseconds (disabled - set to 0) */
@@ -1192,21 +1195,22 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
    🚨 CRITICAL: You MUST create exactly ${serviceOfferings.length} ad groups. Each ad group name should include the service name (e.g., "Boiler Repair ${city}", "Emergency Plumbing ${city}").
    DO NOT group services together. Each service = 1 separate ad group.
 
-2. Generate exactly 12 headlines per ad group:
+2. Generate exactly **15 headlines** per ad group (RSA optimal for Google Ads):
    - Each headline MUST be ≤ 30 characters (count spaces and punctuation) - VERIFY BEFORE OUTPUTTING
    - 🚨 CRITICAL HEADLINE RULES:
      a) ONE IDEA PER HEADLINE - each headline must be standalone, natural language, expressing a single concept
-     b) NO DASHES or chaining multiple ideas (e.g., ❌ "Boiler Fix - Birmingham" → ✅ "Boiler Repair Birmingham")
-     c) NO ABBREVIATIONS for city names (e.g., ❌ "B'ham", "M'cr" → ✅ "Birmingham", "Manchester")
-     d) NO REPEATED CITY in same headline (e.g., ❌ "B'ham Birmingham" → ✅ "Birmingham")
-     e) NO TRUNCATED WORDS (e.g., ❌ "Birm", "Londo" → ✅ full words only)
-     f) CITY USAGE: Only 2-3 headlines per ad group should include the city name
-   - Headlines must cover five styles:
-     a) Keyword + city (e.g., "Boiler Repair ${city}")
-     b) Local benefit (e.g., "Local Expert Service")
-     c) Value/offer (e.g., "Free Quotes Today")
-     d) Trust indicator (e.g., "Gas Safe Engineers")
-     e) Action/CTA (e.g., "Call Now 24/7")
+     b) Each headline must be **unique and meaningfully different** - avoid small wording changes that say the same thing
+     c) NO DASHES or chaining multiple ideas (e.g., ❌ "Boiler Fix - Birmingham" → ✅ "Boiler Repair Birmingham")
+     d) NO ABBREVIATIONS for city names (e.g., ❌ "B'ham", "M'cr" → ✅ "Birmingham", "Manchester")
+     e) NO REPEATED CITY in same headline (e.g., ❌ "B'ham Birmingham" → ✅ "Birmingham")
+     f) NO TRUNCATED WORDS (e.g., ❌ "Birm", "Londo" → ✅ full words only)
+     g) CITY USAGE: Only 2-4 headlines per ad group should include the city name
+   - Headlines MUST cover these five categories across the 15 headlines:
+     a) **Keyword + location** (2-4 headlines): e.g., "Boiler Repair ${city}", "${city} Plumber"
+     b) **Urgency / availability** (2-3 headlines): e.g., "24/7 Service", "Same Day Repairs", "Emergency Help"
+     c) **Trust / credibility** (3-4 headlines): e.g., "Gas Safe Engineers", "Certified Experts", "Fully Insured"
+     d) **Value / pricing** (2-3 headlines): e.g., "Free Quotes Today", "No Hidden Fees", "Upfront Pricing"
+     e) **Action-oriented** (2-3 headlines): e.g., "Call Now", "Book Today", "Get Help Fast"
    - If a headline exceeds 30 chars, shorten it using this EXACT priority order:
      1. Remove less important words: "professional", "local", "expert", "trusted", "qualified", "certified"
      2. Use shorter synonyms: "installation" → "install", "emergency" → "urgent"
@@ -1214,13 +1218,23 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
      4. Simplify phrase (e.g., "Emergency Boiler Repair Service" → "Emergency Boiler Repair")
      5. LAST RESORT: Remove city from this headline (other headlines will include it)
    - ❌ NEVER use city abbreviations like B'ham, M'cr, Notts - always use full city name or omit
+   - ❌ AVOID vague or AI-sounding words: "aid", "rescue", "crisis", "ultimate", "premier"
+   - ✅ USE real search phrasing that sounds like what people actually type into Google
    - Before outputting each headline, verify:
      * Character count ≤ 30
      * Single standalone idea (no dashes combining concepts)
      * Full city name or no city (never abbreviated)
      * Natural, readable language
+     * Meaningfully different from other headlines
 
-3. Generate 2-4 descriptions per ad group (max 90 chars each)
+3. Generate exactly **4 descriptions** per ad group (RSA optimal):
+   - Each description MUST be ≤ 90 characters
+   - Each description must be **clearly different in role and wording** - no cosmetic rewrites
+   - The 4 descriptions MUST cover these distinct roles:
+     a) **Problem + solution**: Address the customer's need and how you solve it
+     b) **Trust / experience**: Highlight credentials, experience, professionalism
+     c) **Value / pricing**: Emphasize transparency, free quotes, no hidden fees
+     d) **Action / next step**: Clear call-to-action with urgency
 
 4. Generate 8-10 high-intent keywords per ad group:
    - Keywords MUST derive ONLY from the services in that theme's serviceOfferings
@@ -1310,11 +1324,11 @@ Return ONLY a valid JSON object with this exact structure:
   },
   "adGroups": [
     {
-      "name": "string (theme name: Emergency/Installation/Maintenance/Repair)",
-      "keywords": ["8-10 keywords derived from theme's services"],
+      "name": "string (service name + city, e.g., 'Boiler Repair Birmingham')",
+      "keywords": ["8-10 keywords derived from this specific service"],
       "adCopy": {
-        "headlines": ["EXACTLY 12 headlines, each ≤ 30 chars, NO truncated words - verify each word is complete"],
-        "descriptions": ["2-4 descriptions, each ≤ 90 chars"],
+        "headlines": ["EXACTLY 15 headlines, each ≤ 30 chars, unique and meaningfully different"],
+        "descriptions": ["EXACTLY 4 descriptions, each ≤ 90 chars, covering different roles"],
         "finalUrl": "string"
       }
     }
@@ -1326,13 +1340,15 @@ Return ONLY a valid JSON object with this exact structure:
 }
 
 CRITICAL REQUIREMENTS:
-1. Each ad group MUST have exactly 12 headlines. If you generate fewer, the system will add filler headlines, which reduces ad quality.
-2. Each headline MUST be ≤ 30 characters with NO truncated words. Test with long city names like "Birmingham" (11 chars) or "Stoke-on-Trent" (14 chars).
-3. Before outputting, verify every headline:
+1. Each ad group MUST have exactly 15 headlines. Google Ads RSA performs best with 15 diverse headlines.
+2. Each ad group MUST have exactly 4 descriptions. Each description must serve a different role (problem/solution, trust, value, action).
+3. Each headline MUST be ≤ 30 characters with NO truncated words. Test with long city names like "Birmingham" (11 chars) or "Stoke-on-Trent" (14 chars).
+4. Before outputting, verify every headline:
    - Character count ≤ 30
    - All words are complete (no "Birm", "Londo", "Emergen")
    - Readable and professional
-4. If a city name is too long, use abbreviations or remove it rather than truncating (e.g., "B'ham" or "Local Plumber" instead of "Birm Plumber").
+   - Meaningfully different from other headlines
+5. If a city name is too long, omit it from that headline rather than abbreviating (other headlines will include the city).
 
 Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers.
 `;
@@ -1704,6 +1720,7 @@ function generateFallbackHeadlines(
 ): string[] {
   const fallbacks: string[] = [];
   const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumber' : 'Electrician';
+  const tradeService = tradeType === 'plumbing' || tradeType === 'both' ? 'Plumbing' : 'Electrical';
   
   // Use abbreviated city if the full name is too long
   const cityLower = city.toLowerCase();
@@ -1711,24 +1728,41 @@ function generateFallbackHeadlines(
   const useShortCity = city.length > 10; // Use abbreviation for long city names
   const displayCity = useShortCity ? shortCity : city;
   
-  // Templates designed to stay under MAX_HEADLINE_CHARS (30 chars)
-  // Each template is crafted to work with both short and long city names
+  // Extended templates for 15 headlines (RSA optimal)
+  // Organized by category: keyword+location, urgency, trust, value, action
   const templates = [
+    // Keyword + Location (2-4 headlines)
     `${tradeTerm} ${displayCity}`,           // e.g., "Plumber London" (14 chars)
     `${displayCity} ${tradeTerm}`,           // e.g., "London Plumber" (14 chars)
+    `${tradeService} ${displayCity}`,        // e.g., "Plumbing London" (15 chars)
+    `${tradeTerm} Near Me`,                  // e.g., "Plumber Near Me" (15 chars)
+    
+    // Urgency / Availability (2-3 headlines)
+    `24/7 ${tradeTerm}`,                     // e.g., "24/7 Plumber" (12 chars)
+    `Same Day Service`,                      // Urgency (16 chars)
+    `Emergency ${tradeService}`,             // e.g., "Emergency Plumbing" (18 chars)
+    `Fast Response`,                         // (13 chars)
+    
+    // Trust / Credibility (3-4 headlines)
     `Local ${tradeTerm}`,                    // e.g., "Local Plumber" (13 chars)
     `Certified ${tradeTerm}`,                // e.g., "Certified Plumber" (17 chars)
-    `24/7 ${tradeTerm}`,                     // e.g., "24/7 Plumber" (12 chars)
     `Trusted ${tradeTerm}`,                  // e.g., "Trusted Plumber" (15 chars)
     `Expert ${tradeTerm}`,                   // e.g., "Expert Plumber" (14 chars)
-    `Fast ${tradeTerm} Service`,             // e.g., "Fast Plumber Service" (20 chars)
-    `${tradeTerm} Near Me`,                  // e.g., "Plumber Near Me" (15 chars)
-    `Call Now - Free Quote`,                 // Generic CTA (21 chars)
-    `Gas Safe Registered`,                   // Trust indicator (19 chars) - plumbing
-    `Part P Certified`,                      // Trust indicator (16 chars) - electrical
+    tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe Registered' : 'Part P Certified',
+    `Fully Insured`,                         // (13 chars)
+    `Experienced Team`,                      // (16 chars)
+    
+    // Value / Pricing (2-3 headlines)
     `No Call Out Fee`,                       // Value proposition (15 chars)
-    `Same Day Service`,                      // Urgency (16 chars)
     `Free Estimates`,                        // Value (14 chars)
+    `No Hidden Fees`,                        // (14 chars)
+    `Upfront Pricing`,                       // (15 chars)
+    `Affordable Rates`,                      // (16 chars)
+    
+    // Action-oriented (2-3 headlines)
+    `Call Now Free Quote`,                   // CTA (19 chars)
+    `Book Today`,                            // (10 chars)
+    `Get Help Fast`,                         // (13 chars)
     `Quality Guaranteed`,                    // Trust (18 chars)
   ];
 
@@ -1755,6 +1789,107 @@ function generateFallbackHeadlines(
   return fallbacks;
 }
 
+// Generate fallback descriptions to reach target count (4 for RSA optimal)
+// Generate fallback keywords when AI doesn't provide any
+function generateFallbackKeywords(
+  adGroupName: string,
+  tradeType: string,
+  city: string
+): string[] {
+  const cityLower = city.toLowerCase();
+  const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'plumber' : 'electrician';
+  const tradeService = tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical';
+  
+  // Extract service type from ad group name if possible
+  const nameLower = adGroupName.toLowerCase();
+  let serviceType = tradeService;
+  
+  if (nameLower.includes('emergency')) {
+    serviceType = `emergency ${tradeService}`;
+  } else if (nameLower.includes('boiler')) {
+    serviceType = 'boiler repair';
+  } else if (nameLower.includes('installation')) {
+    serviceType = `${tradeService} installation`;
+  } else if (nameLower.includes('repair')) {
+    serviceType = `${tradeService} repair`;
+  } else if (nameLower.includes('maintenance')) {
+    serviceType = `${tradeService} maintenance`;
+  }
+  
+  // Generate diverse, high-intent keywords
+  const keywords = [
+    `${serviceType} ${cityLower}`,
+    `${cityLower} ${serviceType}`,
+    `${tradeTerm} ${cityLower}`,
+    `${serviceType} near me`,
+    `local ${tradeTerm}`,
+    `${tradeTerm} near me`,
+    `best ${tradeTerm} ${cityLower}`,
+    `${serviceType} service`,
+    `emergency ${tradeTerm}`,
+    `24/7 ${tradeTerm}`,
+  ];
+  
+  console.log(`🔑 Generated ${keywords.length} fallback keywords for "${adGroupName}":`, keywords);
+  return keywords;
+}
+
+function generateFallbackDescriptions(
+  adGroupName: string,
+  tradeType: string,
+  city: string,
+  existingDescriptions: string[],
+  targetCount: number = MAX_DESCRIPTIONS_PER_AD_GROUP
+): string[] {
+  const fallbacks: string[] = [];
+  const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical';
+  const credential = tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe registered' : 'Part P certified';
+  
+  // Templates for 4 descriptions covering different roles
+  const templates = [
+    // Problem + Solution
+    `Need ${tradeTerm} help? Our expert team solves problems fast. Same day service available.`,
+    `${tradeTerm.charAt(0).toUpperCase() + tradeTerm.slice(1)} issue? We fix it right the first time. Fast, reliable service.`,
+    
+    // Trust / Experience
+    `Professional ${tradeTerm} services in ${city}. ${credential.charAt(0).toUpperCase() + credential.slice(1)}. Fully insured.`,
+    `Trusted ${tradeTerm} experts with years of experience. Quality work guaranteed.`,
+    `${credential.charAt(0).toUpperCase() + credential.slice(1)} engineers. Reliable service you can count on.`,
+    
+    // Value / Pricing
+    `Transparent pricing with no hidden fees. Free quotes on all ${tradeTerm} work.`,
+    `Affordable ${tradeTerm} services. No call out charge. Upfront honest pricing.`,
+    `Free estimates on all work. No obligation quotes. Fair competitive rates.`,
+    
+    // Action / Next Step
+    `Call today for immediate assistance. Fast response times across ${city}.`,
+    `Book online or call now. Our friendly team is ready to help you today.`,
+    `Get in touch for a free quote. Available 7 days a week for your convenience.`,
+  ];
+
+  // Filter out templates that match existing descriptions too closely
+  const existingLower = existingDescriptions.map(d => d.toLowerCase());
+  for (const template of templates) {
+    const candidate = template.substring(0, MAX_DESCRIPTION_CHARS);
+    const candidateLower = candidate.toLowerCase();
+    
+    // Skip if too similar to existing description
+    const isSimilar = existingLower.some(existing => 
+      existing.includes(candidateLower.substring(0, 20)) || 
+      candidateLower.includes(existing.substring(0, 20))
+    );
+    
+    if (!isSimilar && candidate.length > 0 && candidate.length <= MAX_DESCRIPTION_CHARS) {
+      fallbacks.push(candidate);
+      if (fallbacks.length >= targetCount - existingDescriptions.length) {
+        break;
+      }
+    }
+  }
+
+  return fallbacks;
+}
+
 // Generate a complete fallback ad group for a specific service
 function generateFallbackAdGroup(
   serviceName: string,
@@ -1762,37 +1897,56 @@ function generateFallbackAdGroup(
   city: string,
   websiteUrl: string
 ): any {
-  const tradeTerm = tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical';
   const credential = tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe Registered' : 'Part P Certified';
   
-  // Generate service-specific headlines
+  // Generate service-specific headlines (15 for RSA optimal)
   const headlines = [
+    // Keyword + Location (4)
     validateAndFixHeadline(`${serviceName} ${city}`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`${city} ${serviceName}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${serviceName} Experts`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`Professional ${serviceName}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${serviceName} Service`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`Fast ${serviceName}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${serviceName} Near Me`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`Local ${serviceName}`, MAX_HEADLINE_CHARS),
+    // Urgency / Availability (3)
     validateAndFixHeadline(`24/7 ${serviceName}`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`Call Now Free Quote`, MAX_HEADLINE_CHARS),
     validateAndFixHeadline(`Same Day Service`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Fast Response`, MAX_HEADLINE_CHARS),
+    // Trust / Credibility (4)
+    validateAndFixHeadline(`${serviceName} Experts`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Fully Insured`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Trusted Team`, MAX_HEADLINE_CHARS),
+    // Value / Pricing (2)
     validateAndFixHeadline(`No Hidden Fees`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Free Estimates`, MAX_HEADLINE_CHARS),
+    // Action-oriented (2)
+    validateAndFixHeadline(`Call Now Free Quote`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`Book Today`, MAX_HEADLINE_CHARS),
   ].filter(h => h.length > 0 && h.length <= MAX_HEADLINE_CHARS);
   
-  // Ensure we have exactly TARGET_HEADLINES_PER_AD_GROUP headlines
+  // Ensure we have exactly TARGET_HEADLINES_PER_AD_GROUP headlines (15)
   while (headlines.length < TARGET_HEADLINES_PER_AD_GROUP) {
     const fallbacks = generateFallbackHeadlines(serviceName, tradeType, city, headlines, TARGET_HEADLINES_PER_AD_GROUP);
     headlines.push(...fallbacks);
     if (headlines.length >= TARGET_HEADLINES_PER_AD_GROUP) break;
   }
   
-  // Generate service-specific descriptions
-  const descriptions = [
-    `Professional ${serviceName.toLowerCase()} services in ${city}. ${credential}. Free quotes, no hidden fees.`,
-    `Need ${serviceName.toLowerCase()}? Our expert team provides fast, reliable service. Call today!`,
+  // Generate service-specific descriptions (4 for RSA optimal, covering different roles)
+  let descriptions = [
+    // Problem + Solution
+    `Need ${serviceName.toLowerCase()}? Our expert team solves problems fast. Same day service.`,
+    // Trust / Experience
+    `Professional ${serviceName.toLowerCase()} services in ${city}. ${credential}. Fully insured.`,
+    // Value / Pricing
+    `Transparent pricing with no hidden fees. Free quotes on all ${serviceName.toLowerCase()} work.`,
+    // Action / Next Step
+    `Call today for immediate assistance. Fast response times across ${city}.`,
   ].filter(d => d.length <= MAX_DESCRIPTION_CHARS);
+  
+  // Ensure we have exactly MAX_DESCRIPTIONS_PER_AD_GROUP descriptions (4)
+  if (descriptions.length < MAX_DESCRIPTIONS_PER_AD_GROUP) {
+    const fallbackDescs = generateFallbackDescriptions(serviceName, tradeType, city, descriptions, MAX_DESCRIPTIONS_PER_AD_GROUP);
+    descriptions.push(...fallbackDescs);
+  }
   
   // Generate service-specific keywords
   const keywords = [
@@ -1960,22 +2114,37 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
         return h;
       }).filter((h: string) => h.length > 0);
 
-      // Validate descriptions (MIN_DESCRIPTIONS_PER_AD_GROUP to MAX_DESCRIPTIONS_PER_AD_GROUP, max MAX_DESCRIPTION_CHARS chars)
+      // Validate descriptions (exactly MAX_DESCRIPTIONS_PER_AD_GROUP for RSA optimal, max MAX_DESCRIPTION_CHARS chars)
       let descriptions = adGroup.adCopy?.descriptions || [];
       descriptions = descriptions.filter((d: string) => d && d.length <= MAX_DESCRIPTION_CHARS);
-      if (descriptions.length < MIN_DESCRIPTIONS_PER_AD_GROUP) {
-        console.warn(`⚠️ Ad group "${adGroup.name}" has fewer than ${MIN_DESCRIPTIONS_PER_AD_GROUP} descriptions, adding fallback`);
-        descriptions.push(
-          `Professional ${tradeType === 'plumbing' || tradeType === 'both' ? 'plumbing' : 'electrical'} services in ${city}`,
-          `Call today for immediate assistance`
-        );
+      
+      // Generate fallback descriptions to reach exactly 4 (RSA optimal)
+      if (descriptions.length < MAX_DESCRIPTIONS_PER_AD_GROUP) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has only ${descriptions.length} descriptions, generating fallbacks to reach ${MAX_DESCRIPTIONS_PER_AD_GROUP}`);
+        const fallbackDescriptions = generateFallbackDescriptions(adGroup.name, tradeType, city, descriptions, MAX_DESCRIPTIONS_PER_AD_GROUP);
+        descriptions.push(...fallbackDescriptions);
       }
       if (descriptions.length > MAX_DESCRIPTIONS_PER_AD_GROUP) {
         descriptions.splice(MAX_DESCRIPTIONS_PER_AD_GROUP);
       }
 
+      // Validate and ensure keywords exist
+      let keywords = adGroup.keywords || [];
+      if (keywords.length === 0) {
+        console.warn(`⚠️ Ad group "${adGroup.name}" has no keywords, generating fallback keywords`);
+        keywords = generateFallbackKeywords(adGroup.name, tradeType, city);
+      }
+      // Sanitize keywords: trim, remove empty, limit to 10
+      keywords = keywords
+        .map((k: string) => k?.trim())
+        .filter((k: string) => k && k.length > 0 && k.length <= 80)
+        .slice(0, 10);
+      
+      console.log(`🔑 Ad group "${adGroup.name}" keywords (${keywords.length}):`, keywords);
+
       return {
         ...adGroup,
+        keywords, // Explicitly include validated keywords
         adCopy: {
           ...adGroup.adCopy,
           headlines: validatedHeadlines.slice(0, TARGET_HEADLINES_PER_AD_GROUP), // Ensure exactly TARGET_HEADLINES_PER_AD_GROUP
