@@ -4,7 +4,7 @@
 
 - Implement `prd-ad-quality-improvements.md` for electricians/plumbers Google Ads campaigns.
 - Focus areas:
-  - Ad quality: 4 themed ad groups, 12 high‑quality headlines each, 30‑char limit without truncation.
+  - Ad quality: 4 themed ad groups, 15 high‑quality headlines each, 25‑char limit without truncation.
   - Truthful ads: only services selected in onboarding are advertised; keywords match selected services.
   - Trial/subscription gating: 3‑day free trial, 3 regenerations/month for paid users, cooldowns.
   - Regeneration UX: onboarding‑based initial campaign + regenerations via button or settings edit.
@@ -100,7 +100,7 @@ Generated campaign structure from Convex `campaigns` should satisfy:
   - Repair
 - But only create themes for which the user has at least one matching service in `serviceOfferings`.
 - Each ad group:
-  - **12 headlines** (service‑ and trade‑specific, varied styles).
+  - **15 headlines** (service‑ and trade‑specific, varied styles).
   - 2–4 descriptions, already phone‑sanitized (server side re‑checks).
   - Keywords derived only from selected services and localized via city/postcode.
 
@@ -122,10 +122,10 @@ Generated campaign structure from Convex `campaigns` should satisfy:
 2. **Update prompt to enforce PRD requirements:**
    - 4 service themes (emergency, installation, maintenance, repair) **conditionally**:
      - Only create an ad group if there is at least one service from `serviceOfferings` mapped to that theme.
-   - 12 headlines per ad group:
-     - Include explicit instruction: “Generate exactly 12 headlines per ad group, each ≤ 30 characters, no truncated words.”
+   - 15 headlines per ad group:
+     - Include explicit instruction: "Generate exactly 15 headlines per ad group, each ≤ 25 characters, no truncated words."
      - Headlines must cover five styles: keyword+city, local benefit, value/offer, trust indicator, action/CTA.
-   - 2–4 descriptions per ad group (max 90 chars).
+   - 2–4 descriptions per ad group (max 80 chars).
    - Strict “no phone numbers in ad copy” (already largely handled).
    - Emphasize that all services & keywords **must** come from onboarding `serviceOfferings`.
 
@@ -138,9 +138,9 @@ Generated campaign structure from Convex `campaigns` should satisfy:
 4. **Post‑processing / validation:**
    - In `parseAIResponse` (in `convex/campaigns.ts`), validate:
      - Each ad group only references services present in at least one of the user’s `serviceOfferings`.
-     - Headline counts per ad group == 12 (fallback: if fewer, auto‑generate safe filler headlines like “Local Certified Electrician”, etc., while keeping within 30 chars).
+     - Headline counts per ad group == 15 (fallback: if fewer, auto‑generate safe filler headlines like "Local Certified Electrician", etc., while keeping within 25 chars).
      - Descriptions: ensure at least 2, max 4.
-   - Enforce a final pass that strips/adjusts headlines > 30 chars **without truncating words**:
+   - Enforce a final pass that strips/adjusts headlines > 25 chars **without truncating words**:
      - Strategy: if > 30 chars, attempt:
        - Remove less important words (e.g. “professional”, “local”).
        - Replace “installation”→“install”, “emergency”→“urgent”, etc.
@@ -231,7 +231,7 @@ This aligns with PRD FR‑32–FR‑34.
 2. Optionally:
    - Show a high‑level “Ad Strength” analogue based on:
      - Passed vs failed compliance checks.
-     - Presence of 12 diverse headlines per group.
+     - Presence of 15 diverse headlines per group.
 3. Keep the primary action as “Regenerate Campaign” which triggers backend regeneration respecting limits.
 
 #### 4.5 Google Ads Push Flow (Safety)
@@ -263,22 +263,22 @@ We will rely on **manual testing** for this feature initially, using the followi
    - Generate campaign:
      - Confirm:
        - Only relevant themes created (e.g., Emergency/Repair).
-       - Each ad group has exactly 12 headlines, all ≤ 30 chars, no truncated words.
+       - Each ad group has exactly 15 headlines, all ≤ 25 chars, no truncated words.
        - Keywords mention only selected services + local variants.
    - Push to Google Ads (using test account):
      - Confirm ad strength in Google Ads is “Good/Excellent” (manual).
 
 2. **Electrician only, all services**
    - Select several electrical services.
-   - Confirm 4 themed ad groups where applicable, 12 varied headlines each.
+   - Confirm 4 themed ad groups where applicable, 15 varied headlines each.
 
 3. **Both trades**
    - Select plumbing + electrical services.
    - Confirm themes include mixed services but still only from selected offerings.
 
 4. **Long city names**
-   - Use “Birmingham” / “Stoke‑on‑Trent”.
-   - Confirm headlines still ≤ 30 chars and readable.
+   - Use "Birmingham" / "Stoke‑on‑Trent".
+   - Confirm headlines still ≤ 25 chars and readable.
 
 #### 5.2 Regeneration Limits & Cooldown
 
@@ -319,7 +319,7 @@ We will rely on **manual testing** for this feature initially, using the followi
 
 ### 6. Risks & Mitigations
 
-- **Risk:** AI returns fewer/malformed headlines or violates 30‑char rule.
+- **Risk:** AI returns fewer/malformed headlines or violates 25‑char rule.
   - **Mitigation:** Add strict server‑side validation + fallback headline generation.
 - **Risk:** Service‑theme mapping drifts from onboarding service labels.
   - **Mitigation:** Centralize mapping in one module and write small unit tests around it (future improvement).
@@ -330,8 +330,8 @@ We will rely on **manual testing** for this feature initially, using the followi
 - **Risk:** Headlines may be truncated mid-word during Google Ads push, causing words like "Birmingham" to become "Birm" or "London" to become "Londo".
   - **Issue:** Current implementation has gaps in word-boundary truncation:
     - `sanitizeAdText` function in `googleAdsCampaigns.ts` uses `substring(0, maxLength)` which can truncate mid-word.
-    - `createResponsiveSearchAd` function has redundant `substring(0, 30)` truncation that can cut words.
-    - `validateAndFixHeadline` fallback (line 1539) can truncate mid-word if first word exceeds 30 chars.
+    - `createResponsiveSearchAd` function has redundant `substring(0, 25)` truncation that can cut words.
+    - `validateAndFixHeadline` fallback can truncate mid-word if first word exceeds 25 chars.
   - **Impact:** Truncated words reduce ad quality, violate PRD requirements (0% headlines with truncated words), and can cause Google Ads to show "Poor" ad strength.
   - **Mitigation needed:** 
     - Update `sanitizeAdText` to use word-boundary truncation instead of `substring()`.

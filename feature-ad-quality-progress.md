@@ -5,9 +5,9 @@ Implementation phase - fixing headline duplication and Google Ads push issues
 
 ## Completed
 - ✅ Centralized length constants in `convex/campaigns.ts`:
-  - `MAX_HEADLINE_CHARS = 30`
-  - `MAX_DESCRIPTION_CHARS = 90`
-  - `TARGET_HEADLINES_PER_AD_GROUP = 12`
+  - `MAX_HEADLINE_CHARS = 25`
+  - `MAX_DESCRIPTION_CHARS = 80`
+  - `TARGET_HEADLINES_PER_AD_GROUP = 15`
   - `MIN_DESCRIPTIONS_PER_AD_GROUP = 2`
   - `MAX_DESCRIPTIONS_PER_AD_GROUP = 4`
   - `REGENERATION_COOLDOWN_MS = 60000` (60 seconds)
@@ -20,10 +20,11 @@ Implementation phase - fixing headline duplication and Google Ads push issues
   - 5-strategy approach: remove filler words → replace long words → abbreviate cities → remove articles → word-boundary truncation
   - **Never truncates mid-word** (no more "Birm", "Londo")
   - Falls back to generic headline instead of truncating
+  - Uses 25-char limit (stricter than Google's 30-char max for safety buffer)
 
 - ✅ Updated `generateFallbackHeadlines`:
   - Uses abbreviated city names for long cities
-  - Templates designed to stay under 30 chars
+  - Templates designed to stay under 25 chars
   - Includes trust indicators (Gas Safe, Part P)
   - Includes CTAs and value propositions
 
@@ -31,7 +32,7 @@ Implementation phase - fixing headline duplication and Google Ads push issues
   - Uses centralized constants throughout
   - Filters empty headlines from failed validation
   - Double-validates headlines after processing
-  - Ensures exactly 12 headlines per ad group
+  - Ensures exactly 15 headlines per ad group
 
 - ✅ Updated regeneration limits:
   - Uses centralized constants for cooldown, trial duration, monthly reset
@@ -59,12 +60,14 @@ Implementation phase - fixing headline duplication and Google Ads push issues
 - ⏭️ Run `npm run typecheck` to verify changes
 - ⏭️ Manual testing with real campaign generation
 - ⏭️ Test with long city names (Birmingham, Stoke-on-Trent)
-- ⏭️ Verify 12 headlines per ad group in generated campaigns
+- ⏭️ Verify 15 headlines per ad group in generated campaigns
 - ⏭️ Test regeneration limits (cooldown, trial, paid)
 
 ## Key Decisions
 - **No mid-word truncation**: Instead of truncating "Birmingham" to "Birm", we use abbreviations or generic fallbacks
-- **City abbreviations**: Long city names get abbreviated (Birmingham → B'ham) to fit 30-char limit
+- **City abbreviations**: Long city names get abbreviated (Birmingham → B'ham) to fit 25-char limit
+- **Stricter limits**: Using 25/80 chars (vs Google's 30/90 max) as safety buffer for display variations
+- **15 headlines per ad group**: RSA optimal for Google Ads performance
 - **Weighted Ad Strength**: 70% compliance + 30% headline completeness (matches PRD)
 - **Constants centralized**: All magic numbers moved to top of `campaigns.ts` for easy maintenance
 

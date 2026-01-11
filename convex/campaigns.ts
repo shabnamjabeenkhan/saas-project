@@ -7,10 +7,10 @@ import { api } from "./_generated/api";
 // ============================================================================
 
 /** Maximum characters allowed for a Google Ads headline */
-const MAX_HEADLINE_CHARS = 30;
+const MAX_HEADLINE_CHARS = 25;
 
 /** Maximum characters allowed for a Google Ads description */
-const MAX_DESCRIPTION_CHARS = 90;
+const MAX_DESCRIPTION_CHARS = 80;
 
 /** Target number of headlines per ad group (RSA optimal) */
 const TARGET_HEADLINES_PER_AD_GROUP = 15;
