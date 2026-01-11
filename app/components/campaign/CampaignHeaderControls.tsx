@@ -135,6 +135,7 @@ export function CampaignHeaderControls({
           `Campaign ID: ${result.googleCampaignId} | Budget: £${result.budget}/day | Status: ${result.status}`;
 
         toast.success(`🎯 ${result.message}`, {
+          id: 'push-to-google-ads',
           description: description,
           duration: 8000,
         });

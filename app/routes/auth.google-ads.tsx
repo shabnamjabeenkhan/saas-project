@@ -69,7 +69,7 @@ export default function GoogleAdsCallback() {
 
             setStatus('success');
             hasSucceededRef.current = true;
-            toast.success('Google Ads connected successfully! (Development Mode)');
+            toast.success('Google Ads connected successfully! (Development Mode)', { id: 'google-ads-connected' });
 
             // Redirect after short delay
             setTimeout(() => {
@@ -101,7 +101,7 @@ export default function GoogleAdsCallback() {
 
           setStatus('success');
           hasSucceededRef.current = true;
-          toast.success('Google Ads connected successfully!');
+          toast.success('Google Ads connected successfully!', { id: 'google-ads-connected' });
 
           // Redirect after short delay
           setTimeout(() => {
