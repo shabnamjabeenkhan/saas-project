@@ -341,26 +341,84 @@ function sanitizePhoneNumbersFromText(text: string): string {
 }
 
 // Helper function to truncate at word boundary (prevents mid-word truncation)
+// 🚨 CRITICAL: Never truncate mid-word - this creates broken text like "Birm" or "Plumb"
 function truncateAtWordBoundary(text: string, maxLength: number): string {
   if (text.length <= maxLength) {
     return text;
   }
   
-  // Try to truncate at word boundary
-  const truncated = text.substring(0, maxLength);
-  const lastSpaceIndex = truncated.lastIndexOf(' ');
+  // Build result word by word to ensure we never cut mid-word
+  const words = text.split(' ');
+  let result = '';
   
-  // If we found a space and it's not at the very beginning, truncate there
-  if (lastSpaceIndex > 0) {
-    return truncated.substring(0, lastSpaceIndex).trim();
+  for (const word of words) {
+    const candidate = result ? result + ' ' + word : word;
+    if (candidate.length <= maxLength) {
+      result = candidate;
+    } else {
+      break;
+    }
   }
   
-  // If no space found (single very long word), truncate at maxLength
-  // This is edge case - ideally AI should avoid generating such headlines
-  return truncated.trim();
+  // If we got at least some content, return it
+  if (result.length > 0) {
+    return result.trim();
+  }
+  
+  // Edge case: first word alone exceeds maxLength
+  // Return empty string to force fallback generation rather than truncating mid-word
+  console.warn(`⚠️ Word "${words[0]}" exceeds ${maxLength} chars - returning empty to force fallback`);
+  return '';
+}
+
+// 🚨 CRITICAL: Shorten descriptions at sentence boundary for complete, readable text
+// This ensures descriptions are never cut mid-word or mid-sentence
+function shortenDescriptionAtSentenceBoundary(description: string, maxLength: number): string {
+  const cleaned = description.replace(/\s+/g, ' ').trim();
+  
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+  
+  // Strategy 1: Try to cut at sentence boundary (period, exclamation, question mark)
+  const sentenceEnders = ['. ', '! ', '? '];
+  let bestCut = -1;
+  
+  for (const ender of sentenceEnders) {
+    let searchStart = 0;
+    while (true) {
+      const enderPos = cleaned.indexOf(ender, searchStart);
+      if (enderPos === -1 || enderPos + 1 > maxLength) break;
+      const cutPos = enderPos + 1;
+      if (cutPos <= maxLength) {
+        bestCut = cutPos;
+      }
+      searchStart = enderPos + 1;
+    }
+  }
+  
+  // Also check for sentence ending at end of string
+  for (const punct of ['.', '!', '?']) {
+    const lastPunct = cleaned.lastIndexOf(punct, maxLength - 1);
+    if (lastPunct > bestCut && lastPunct < maxLength) {
+      const afterPunct = cleaned.charAt(lastPunct + 1);
+      if (afterPunct === ' ' || afterPunct === '' || lastPunct === cleaned.length - 1) {
+        bestCut = lastPunct + 1;
+      }
+    }
+  }
+  
+  if (bestCut > 20) {
+    return cleaned.substring(0, bestCut).trim();
+  }
+  
+  // Strategy 2: Cut at word boundary
+  return truncateAtWordBoundary(cleaned, maxLength);
 }
 
 // Helper function to sanitize and validate text content
+// For headlines: uses word-boundary truncation
+// For descriptions: caller should use shortenDescriptionAtSentenceBoundary for better results
 function sanitizeAdText(text: string, maxLength: number): string | null {
   if (!text || typeof text !== 'string') {
     return null;
@@ -1177,11 +1235,21 @@ async function createResponsiveSearchAd(
   });
 
   // 🔒 SECURITY: Sanitize headlines to remove any phone numbers
-  // Using 25 char limit (not 30) to prevent truncation - AI should generate within this limit
+  // Using 30 char limit - Google Ads allows up to 30 characters for headlines
+  // 🚨 CRITICAL: Filter out headlines containing dashes - Google joins headlines with " - "
+  // so headlines like "Plumber - Birmingham" become unreadable when combined
   const rawHeadlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name'];
   const sanitizedHeadlines = rawHeadlines
-    .map((h: string) => sanitizeAdText(h, 25))
-    .filter((h: string | null): h is string => h !== null);
+    .map((h: string) => sanitizeAdText(h, 30))
+    .filter((h: string | null): h is string => {
+      if (h === null) return false;
+      // 🚨 Reject headlines containing dashes - they break when Google joins headlines
+      if (h.includes('-')) {
+        console.warn(`⚠️ Filtering out headline with dash: "${h}" - Google joins headlines with dashes`);
+        return false;
+      }
+      return true;
+    });
   
   // 🔧 FIX: Deduplicate headlines within this ad group
   const uniqueHeadlines = deduplicateAssets(sanitizedHeadlines);
@@ -1202,27 +1270,59 @@ async function createResponsiveSearchAd(
   if (availableHeadlines.length >= 3) {
     headlines = availableHeadlines.slice(0, 15);
   } else {
-    // Not enough unique headlines - add service-specific fallbacks
-    const adGroupName = adGroupResourceName.split('/').pop() || 'Service';
+    // Not enough unique headlines - add keyword-rich fallbacks (NO generic phrases)
+    // 🚨 CRITICAL: Fallbacks must contain service keywords for Ad Strength
+    // Helper to truncate at word boundary (prevents mid-word truncation like "Boiler Repai")
+    const truncateAtWord = (text: string, maxLen: number): string => {
+      if (text.length <= maxLen) return text;
+      // Build word by word to prevent mid-word truncation
+      const words = text.split(' ');
+      let result = '';
+      for (const word of words) {
+        const candidate = result ? result + ' ' + word : word;
+        if (candidate.length <= maxLen) {
+          result = candidate;
+        } else {
+          break;
+        }
+      }
+      return result.trim() || ''; // Return empty if first word too long
+    };
+    
+    // Extract service keyword from adCopy or use generic trade term
+    const serviceHint = adCopy.headlines?.[0]?.toLowerCase() || '';
+    let serviceKeyword = 'Service';
+    if (serviceHint.includes('plumb')) serviceKeyword = 'Plumber';
+    else if (serviceHint.includes('electric')) serviceKeyword = 'Electrician';
+    else if (serviceHint.includes('boiler')) serviceKeyword = 'Boiler Repair';
+    else if (serviceHint.includes('drain')) serviceKeyword = 'Drain Service';
+    else if (serviceHint.includes('heating')) serviceKeyword = 'Heating Engineer';
+    else if (serviceHint.includes('gas')) serviceKeyword = 'Gas Engineer';
+    
+    // Keyword-rich fallbacks that match search intent
     const fallbackHeadlines = [
-      `${adGroupName.substring(0, 20)} Expert`,
-      `Call Now - ${adGroupName.substring(0, 15)}`,
-      `${adGroupName.substring(0, 15)} Today`,
-      `Best ${adGroupName.substring(0, 18)}`,
-      `Local ${adGroupName.substring(0, 17)}`
-    ].filter(h => h.length <= 30 && !usedHeadlinesInCampaign.has(h.toLowerCase().trim()));
+      truncateAtWord(`${serviceKeyword} Near Me`, 30),
+      truncateAtWord(`24/7 ${serviceKeyword}`, 30),
+      truncateAtWord(`Emergency ${serviceKeyword}`, 30),
+      truncateAtWord(`Local ${serviceKeyword}`, 30),
+      truncateAtWord(`Same Day ${serviceKeyword}`, 30),
+      'Free Quotes',
+      'No Call Out Fee',
+      'Call Now',
+      'Book Today'
+    ].filter(h => h.length > 0 && h.length <= 30 && !usedHeadlinesInCampaign.has(h.toLowerCase().trim()));
     
     headlines = [...availableHeadlines, ...fallbackHeadlines].slice(0, 15);
     
-    // If still not enough, use generic fallbacks with timestamp to ensure uniqueness
+    // If still not enough, use keyword-rich fallbacks with timestamp
     if (headlines.length < 3) {
       const timestamp = Date.now().toString().slice(-4);
-      const genericFallbacks = [
-        `Quality Service ${timestamp}`,
-        `Professional Work ${timestamp}`,
-        `Call Today ${timestamp}`
+      const keywordFallbacks = [
+        `${serviceKeyword} ${timestamp}`,
+        `Fast ${serviceKeyword}`,
+        `Get Help Today`
       ];
-      headlines = [...headlines, ...genericFallbacks].slice(0, 15);
+      headlines = [...headlines, ...keywordFallbacks].slice(0, 15);
     }
     
     console.warn('⚠️ Had to add fallback headlines due to duplicates:', {
@@ -1233,10 +1333,18 @@ async function createResponsiveSearchAd(
 
   // 🔒 SECURITY: Sanitize descriptions to remove any phone numbers
   // Using 80 char limit (not 90) to prevent truncation - AI should generate within this limit
+  // 🚨 CRITICAL: Use sentence-boundary shortening for descriptions to ensure complete sentences
   const rawDescriptions = adCopy.descriptions?.slice(0, 4) || ['Quality service you can trust'];
   const sanitizedDescriptions = rawDescriptions
-    .map((d: string) => sanitizeAdText(d, 80))
-    .filter((d: string | null): d is string => d !== null);
+    .map((d: string) => {
+      if (!d || typeof d !== 'string') return null;
+      // Remove phone numbers first
+      const phoneSanitized = sanitizePhoneNumbersFromText(d);
+      // Clean and shorten at sentence boundary for complete, readable text
+      const cleaned = phoneSanitized.trim().replace(/[\x00-\x1F\x7F]/g, '');
+      return shortenDescriptionAtSentenceBoundary(cleaned, 80);
+    })
+    .filter((d: string | null): d is string => d !== null && d.length > 0);
   
   // 🔧 FIX: Deduplicate descriptions within this ad group
   const uniqueDescriptions = deduplicateAssets(sanitizedDescriptions);

@@ -1,9 +1,28 @@
 # Progress: Ad Quality Improvements
 
 ## Current Status
-Implementation phase - fixing headline duplication and Google Ads push issues
+Implementation complete - keyword-rich headline generation implemented
 
 ## Completed
+- ✅ **Keyword-First Headline Strategy** in AI prompt:
+  - Added detailed KEYWORD RULES section to `buildCampaignPrompt`
+  - Mandates 4-6 of 15 headlines contain main service keyword
+  - Requires at least 2 headlines with service + city together
+  - Prioritizes search-style phrases over marketing slogans
+  - Examples of good vs bad keyword headlines
+
+- ✅ **Updated `generateFallbackHeadlines`**:
+  - Extracts service type from ad group name for specific keywords
+  - First 8 templates prioritize KEYWORD + LOCATION combinations
+  - Added KEYWORD + URGENCY templates (24/7 Plumber, Emergency Plumber)
+  - Added KEYWORD + TRUST templates (Gas Safe Plumber, Certified Plumber)
+
+- ✅ **Updated `generateFallbackAdGroup`**:
+  - Reordered headlines to prioritize keyword-rich phrases
+  - Added more keyword + location headlines (4-5 instead of 3)
+  - Added keyword + urgency headlines (24/7, Emergency, Same Day)
+  - Keywords now include more popular search variations
+
 - ✅ Centralized length constants in `convex/campaigns.ts`:
   - `MAX_HEADLINE_CHARS = 25`
   - `MAX_DESCRIPTION_CHARS = 80`
@@ -47,25 +66,28 @@ Implementation phase - fixing headline duplication and Google Ads push issues
 - ✅ Verified dashboard MVP (status-only display) - already implemented correctly
 
 ## Current Work
-- 🔄 Need to run typecheck to verify no type errors
+- ✅ Keyword-rich headline generation implemented
 
 ## Blockers
-- ⚠️ None currently
+- ⚠️ None
 
 ## Recently Fixed (This Session)
+- ✅ **Keyword-First Headline Strategy** - Updated AI prompt and fallback generators to prioritize popular search keywords
 - ✅ **"B'ham Birmingham" duplication** - Added detection for duplicate city references in headlines
 - ✅ **Only 2 ad groups in Google Ads** - Fixed DUPLICATE_ADGROUP_NAME error by checking for existing ad groups before creating
 
 ## Next Steps
-- ⏭️ Run `npm run typecheck` to verify changes
 - ⏭️ Manual testing with real campaign generation
+- ⏭️ Verify headlines contain keyword phrases (e.g., "Plumber London", "24/7 Plumber")
 - ⏭️ Test with long city names (Birmingham, Stoke-on-Trent)
-- ⏭️ Verify 15 headlines per ad group in generated campaigns
-- ⏭️ Test regeneration limits (cooldown, trial, paid)
+- ⏭️ Verify 15 headlines per ad group with strong keyword coverage
+- ⏭️ Check Ad Strength in Google Ads after push
 
 ## Key Decisions
-- **No mid-word truncation**: Instead of truncating "Birmingham" to "Birm", we use abbreviations or generic fallbacks
-- **City abbreviations**: Long city names get abbreviated (Birmingham → B'ham) to fit 25-char limit
+- **Keyword-First Headlines**: Prioritize headlines that match what users actually search for (e.g., "Plumber London", "24/7 Plumber")
+- **4-6 keyword headlines per ad group**: Ensures better Ad Relevance and Ad Strength in Google Ads
+- **Service + City together**: At least 2 headlines must have both (e.g., "Boiler Repair Birmingham")
+- **No mid-word truncation**: Instead of truncating "Birmingham" to "Birm", we use full words or omit city
 - **Stricter limits**: Using 25/80 chars (vs Google's 30/90 max) as safety buffer for display variations
 - **15 headlines per ad group**: RSA optimal for Google Ads performance
 - **Weighted Ad Strength**: 70% compliance + 30% headline completeness (matches PRD)
