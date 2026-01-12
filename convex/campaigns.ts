@@ -1034,12 +1034,52 @@ const POLICY_COMPLIANT_TRANSFORMATIONS: Record<string, string> = {
 function sanitizeForGoogleAdsPolicy(text: string): string {
   let sanitized = text;
   
+  // 🚨 CRITICAL: Remove ellipses from descriptions/headlines (all variations)
+  sanitized = sanitized.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+  sanitized = sanitized.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+  sanitized = sanitized.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+  sanitized = sanitized.replace(/\s+\.\s*$/g, ' '); // Remove trailing single dot with space
+  sanitized = sanitized.replace(/\.\s*\./g, '.'); // Remove double periods
+  
+  // 🚨 CRITICAL: Remove years of experience mentions (user may not have 10 years)
+  sanitized = sanitized.replace(/\b(over\s+)?\d+\s+years?\s+(of\s+)?experience\b/gi, '');
+  sanitized = sanitized.replace(/\b\d+\+\s+years?\s+(of\s+)?experience\b/gi, '');
+  sanitized = sanitized.replace(/\byears?\s+of\s+experience\b/gi, '');
+  sanitized = sanitized.replace(/\bwith\s+years?\s+of\s+experience\b/gi, 'with expertise');
+  
+  // 🚨 CRITICAL: Fix unnatural headline patterns - make "No Call Out Fee" more natural
+  sanitized = sanitized.replace(/\bNo\s+Call\s+Out\s+Fee\b/gi, 'No Call Out Fees');
+  sanitized = sanitized.replace(/\bPlumber\s+No\s+Call\s+Out\s+Fee\b/gi, 'Plumber With No Call Out Fees');
+  sanitized = sanitized.replace(/\bElectrician\s+No\s+Call\s+Out\s+Fee\b/gi, 'Electrician With No Call Out Fees');
+  
   // Apply all transformations (case-insensitive where needed)
   for (const [problematic, compliant] of Object.entries(POLICY_COMPLIANT_TRANSFORMATIONS)) {
     // Create case-insensitive regex for matching
     const regex = new RegExp(problematic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     sanitized = sanitized.replace(regex, compliant);
   }
+  
+  // 🚨 CRITICAL: Remove "Pro" from headlines (more aggressive replacement)
+  // Replace "Pro" at word boundaries with better alternatives
+  sanitized = sanitized.replace(/\bPro\b/gi, (match, offset, string) => {
+    // Context-aware replacement
+    const before = string.substring(Math.max(0, offset - 20), offset).toLowerCase();
+    const after = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 20)).toLowerCase();
+    
+    // If it's "Maintenance Pro" or "Service Pro", replace with "Service" or "Engineer"
+    if (before.includes('maintenance') || before.includes('service') || before.includes('boiler') || before.includes('heating')) {
+      return 'Engineer';
+    }
+    // If it's "Help Pro" or similar, replace with "Service"
+    if (before.includes('help') || before.includes('repair')) {
+      return 'Service';
+    }
+    // Default: remove it (empty string)
+    return '';
+  });
+  
+  // Clean up extra spaces created by replacements
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
   
   return sanitized;
 }
@@ -1244,147 +1284,152 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
 
 2. Generate exactly **15 headlines** per ad group (RSA optimal for Google Ads):
    
+   🎯 PRIMARY GOAL: Create natural, human-sounding ads that match real high-performing Google ads
+   
+   Your writing style must match real high-performing Google ads, for example:
+   - "Book a Plumber – Checkatrade official site – Find a Plumber today"
+   - "From emergencies to new fittings, find a checked and reviewed plumber…"
+   
+   These ads are:
+   - Clear
+   - Natural
+   - Search-intent focused
+   - Not robotic
+   - Not repetitive
+   - Not stitched together
+   
    🚨🚨🚨 CRITICAL: STANDALONE HEADLINE RULE 🚨🚨🚨
    
    **HOW GOOGLE ADS WORKS:**
    Google automatically JOINS your headlines together with " - " separators in the live ad.
-   Example: Your headlines "Drain Service Birmingham" + "24/7 Drain Service" + "Free Drain Quotes"
-   Become: "Drain Service Birmingham - 24/7 Drain Service - Free Drain Quotes"
+   Example: Your headlines "Plumber Birmingham" + "24 Hour Plumber" + "Gas Safe Registered"
+   Become: "Plumber Birmingham - 24 Hour Plumber - Gas Safe Registered"
    
    **THEREFORE: Each headline MUST be ONE simple, standalone phrase.**
-   - NO dashes (-) or separators in headlines - Google adds them
+   - NO dashes (-) or separators in headlines - Google adds them automatically
    - NO chaining multiple ideas in one headline
-   - Each headline must work ALONE and also work when Google joins them
+   - Each headline must work on its own AND when joined with others
+   - Each headline must be a complete, natural phrase
+   - Every headline must be meaningfully different
    
    ⚠️ HARD LIMIT: Each headline MUST be ≤ 30 characters
    - Count EVERY character including spaces BEFORE outputting
    - If > 30 characters, DO NOT OUTPUT IT - rewrite shorter
-   - Headlines are 3-5 words max, NOT sentences
    - NEVER truncate words - if it doesn't fit, rewrite completely
-
-   🚨 KEYWORD-FIRST STRATEGY (CRITICAL FOR AD STRENGTH) 🚨
+   - NEVER abbreviate words or city names
    
-   Include POPULAR SEARCH KEYWORDS to improve Google Ads relevance.
-   Headlines must look like real Google searches, not marketing slogans.
+   🚨 KEYWORD & INTENT RULES 🚨
    
-   **🎯 CRITICAL: HEADLINES MUST SOUND LIKE REAL SEARCH QUERIES**
+   You will receive:
+   - Service: ${serviceOfferings.join(', ')}
+   - City: ${city}
+   - Keyword list: (plumber, electrician, boiler, heating, emergency, 24 hour, near me, gas safe, part p)
    
-   Think about what customers actually type into Google. They search for:
-   - "Emergency Plumber Birmingham"
-   - "24 Hour Electrician"
-   - "Boiler Repair Near Me"
-   - "Gas Safe Plumber"
+   You MUST:
+   - Include popular search keywords naturally
+   - Ensure at least:
+     * 4 headlines = service + city (e.g., "Plumber Birmingham", "Boiler Repair Birmingham")
+     * 3 headlines = high-intent (emergency, same day, near me, 24 hour)
+     * 3 headlines = trust/credibility (Gas Safe, Part P, Certified)
+     * 2 headlines = price/value (Free Quotes, No Call Out Fee)
+     * 2 headlines = action (Call Now, Book Today)
+   - Headlines must look like real searches, not slogans
    
-   NOT marketing slogans like:
-   - "Professional Service" (too generic, no keyword)
-   - "Quality Guaranteed" (sounds like marketing, not a search)
-   - "Trusted Experts" (no service keyword)
+   ✅ GOOD EXAMPLES (natural, search-intent focused):
+   - "Plumber Birmingham" (matches search: "plumber birmingham")
+   - "Emergency Plumber Birmingham" (matches search: "emergency plumber birmingham")
+   - "Same Day Boiler Repair" (matches search: "same day boiler repair")
+   - "Gas Safe Plumber" (matches search: "gas safe plumber")
+   - "24 Hour Electrician" (matches search: "24 hour electrician")
+   - "Boiler Repair Near Me" (matches search: "boiler repair near me")
    
-   **✅ REAL-WORLD EXAMPLES OF NATURAL HEADLINES:**
+   ❌ BAD EXAMPLES (robotic, marketing slogans):
+   - "Best Ultimate Plumbing Solutions" (too generic, no keyword, sounds like marketing)
+   - "Birmingham Plumber – Fast – Cheap – Call" (contains dashes, chained ideas)
+   - "Plumber Birmingham – No – Hidden – Fees" (contains dashes, chained ideas)
+   - "Professional Service" (no keyword, generic)
+   - "Quality Guaranteed" (no keyword, marketing jargon)
    
-   Example for Plumbing & Boiler Repair in Birmingham:
-   - "Emergency Plumber Birmingham" (27 chars) ✅
-   - "Boiler Repair Birmingham" (25 chars) ✅
-   - "Same Day Plumber Birmingham" (28 chars) ✅
-   - "24 Hour Plumber Birmingham" (27 chars) ✅
-   - "Gas Safe Plumber Birmingham" (28 chars) ✅
-   - "Boiler Breakdown Repair" (23 chars) ✅
-   - "Local Plumber Near You" (22 chars) ✅
-   - "Fast Boiler Repair Today" (24 chars) ✅
-   - "Central Heating Repair" (22 chars) ✅
-   - "Plumbing Repairs Birmingham" (28 chars) ✅
-   - "No Heating? Call A Plumber" (25 chars) ✅
-   - "Same Day Boiler Repair" (23 chars) ✅
-   - "Trusted Local Plumbers" (23 chars) ✅
-   - "Gas Safe Heating Engineers" (27 chars) ✅
-   - "Call Now For Boiler Repair" (26 chars) ✅
+   **EXACT HEADLINE DISTRIBUTION (15 total):**
    
-   Example for Electrical in Birmingham:
-   - "Emergency Electrician Birmingham" (30 chars) ✅
-   - "24 Hour Electrician" (19 chars) ✅
-   - "Same Day Electrician" (20 chars) ✅
-   - "Part P Electrician" (18 chars) ✅
-   - "Electrician Near Me" (18 chars) ✅
-   - "Local Electrician" (17 chars) ✅
-   - "Emergency Electrical Repair" (27 chars) ✅
-   - "Fuse Box Repair" (15 chars) ✅
-   - "Rewiring Services" (17 chars) ✅
-   - "Electrical Installation" (23 chars) ✅
+   a) **SERVICE + CITY** (EXACTLY 4 headlines with city name):
+      ✅ "Plumber ${city}" (e.g., "Plumber Birmingham")
+      ✅ "Boiler Repair ${city}" (e.g., "Boiler Repair Birmingham")
+      ✅ "Emergency Plumber ${city}" (e.g., "Emergency Plumber Birmingham")
+      ✅ "Heating Engineer ${city}" (e.g., "Heating Engineer Birmingham")
+      🚨 Use city name naturally - these are the most important headlines for local SEO
+      🚨 Create 4 different service+city combinations based on the services offered
    
-   **HOW GOOGLE COMBINES HEADLINES:**
+   b) **HIGH-INTENT** (EXACTLY 3 headlines - emergency, urgency, near me):
+      ✅ "Emergency Plumber" (or "Emergency Electrician", "Emergency Boiler Repair")
+      ✅ "Same Day Plumber" (or "Same Day Electrician", "Same Day Boiler Repair")
+      ✅ "24 Hour Plumber" (or "24 Hour Electrician", "24 Hour Heating Engineer")
+      ✅ "Plumber Near Me" (or "Electrician Near Me", "Boiler Repair Near Me")
+      ✅ "Urgent Plumber" (or "Urgent Electrician")
+      🚨 These match high commercial intent searches
    
-   Google automatically joins 3 headlines with " - " separators. Your headlines:
-   - "Emergency Plumber Birmingham"
-   - "24 Hour Plumber"
-   - "Gas Safe Registered"
+   c) **TRUST/CREDIBILITY** (EXACTLY 3 headlines):
+      ✅ "Gas Safe Plumber" (for plumbing/gas services)
+      ✅ "Gas Safe Registered" (for gas/heating services)
+      ✅ "Part P Electrician" (for electrical services)
+      ✅ "Certified Plumber" (or "Certified Electrician")
+      ✅ "Fully Insured Plumber" (if fits in 30 chars)
+      🚨 These match credential searches - critical for trust
    
-   Become: "Emergency Plumber Birmingham - 24 Hour Plumber - Gas Safe Registered"
-   
-   This is why each headline must work ALONE and also work when combined.
-   
-   **HEADLINE CATEGORIES (generate from each):**
-   
-   a) **SERVICE + CITY** (EXACTLY 1 headline with city name):
-      ✅ "Plumber ${city}" OR "Electrician ${city}" OR "Boiler Repair ${city}"
-      🚨 ONLY ONE headline should contain the city name "${city}"
-      🚨 Google combines headlines - multiple city names look bad:
-         ❌ "Plumber Birmingham - Birmingham Plumber" = DUPLICATE CITY!
-   
-   b) **SERVICE + NEAR ME** (2-3 headlines):
-      ✅ "Plumber Near Me"
-      ✅ "Boiler Repair Near Me"
-      ✅ "Emergency Electrician Near Me"
-   
-   c) **URGENCY / EMERGENCY** (2-3 headlines):
-      ✅ "24/7 Plumber"
-      ✅ "Emergency Plumber"
-      ✅ "Same Day Boiler Repair"
-      ✅ "24 Hour Electrician"
-      ✅ "Urgent Plumber"
-   
-   d) **TRUST / CREDENTIALS** (2-3 headlines):
-      ✅ "Gas Safe Plumber"
-      ✅ "Gas Safe Registered"
-      ✅ "Part P Electrician"
-      ✅ "Certified Electrician"
-   
-   e) **VALUE** (2 headlines):
+   d) **PRICE/VALUE** (EXACTLY 2 headlines):
       ✅ "Free Quotes"
-      ✅ "No Call Out Fee"
+      ✅ "No Call Out Fees" (natural: sounds like human speech)
+      ✅ "No Call Out Charges" (natural alternative)
+      ✅ "Free Call Out" (natural alternative)
       ✅ "Free Estimates"
+      ✅ "Transparent Pricing" (if fits in 30 chars)
+      🚨 These match value-focused searches
+      🚨 CRITICAL: Headlines must sound NATURAL - avoid keyword-stuffed phrases like "Plumber No Call Out Fee"
+      🚨 Use natural phrasing: "No Call Out Fees", "No Call Out Charges", "Free Call Out" - NOT "No Call Out Fee" (sounds like database label)
    
-   f) **ACTION** (2-3 headlines):
+   e) **ACTION** (EXACTLY 2 headlines):
       ✅ "Call Now"
       ✅ "Book Today"
-      ✅ "Get Help Fast"
+      ✅ "Get Help Fast" (if fits in 30 chars)
+      ✅ "Contact Us Today" (if fits in 30 chars)
+      🚨 These are clear calls-to-action
    
    ❌ FORBIDDEN HEADLINE PATTERNS:
-     - "Plumber ${city} - No - Gas" (DASHES FORBIDDEN)
-     - "Birmingham Plumber" + "Plumber Birmingham" (DUPLICATE CITY!)
-     - "Professional Service" (no keyword - generic)
-     - "Quality Guaranteed" (no keyword - generic)
-     - "Trusted Experts" (no keyword - generic)
-     - "Plumber Birm" (truncated city)
-     - Any headline ending with: "No", "With", "And", "For"
+     - Headlines with dashes (-) inside them - Google adds separators automatically
+     - Truncated words (❌ "Birm", "Londo", "Emergen", "Plumb")
+     - Abbreviated city names (❌ "B'ham" → ✅ "Birmingham" or omit)
+     - Generic marketing slogans (❌ "Professional Service", "Quality Guaranteed")
+     - Chained phrases (❌ "Plumber - Fast - Cheap")
+     - Headlines ending with incomplete words (❌ "Plumber Birm", "Boiler Repai")
+     - Words like "Pro" (❌ "Boiler Maintenance Pro" → ✅ "Boiler Maintenance Engineer" or "Boiler Service Birmingham")
+     - Use natural alternatives: "Engineer", "Service", "Experts", "Birmingham" instead of "Pro"
    
    🚨 CRITICAL RULES:
-     a) NO DASHES or separators - Google adds " - " between headlines
+     a) NO DASHES or separators - Google adds " - " between headlines automatically
      b) ONE idea per headline - simple, natural phrases that sound like search queries
      c) Each headline UNIQUE and meaningfully different
      d) NO city abbreviations (❌ "B'ham" → ✅ "Birmingham" or omit)
-     e) NO truncated words (❌ "Birm", "Emerg")
-     f) EXACTLY 1 headline with city name (not 2, not 3, not 4 - JUST ONE)
-     g) At least 6-8 headlines MUST contain popular keywords (plumber, electrician, boiler, heating, drain, rewiring, emergency, 24 hour, near me)
-     h) Headlines must sound NATURAL - like what a real person would search for, not marketing copy
+     e) NO truncated words (❌ "Birm", "Emerg", "Plumb")
+     f) EXACTLY 4 headlines with city name (service + city combinations)
+   g) Headlines must sound NATURAL - like what a real person would search for, not marketing copy
+   h) If too long → rewrite shorter, do NOT cut
+   i) Avoid keyword-stuffed phrases - use natural linking words (e.g., "No Call Out Fees" not "No Call Out Fee", "Plumber With No Call Out Fee" not "Plumber No Call Out Fee")
+   
+   ✅ QUALITY CONTROL (MANDATORY):
    
    Before outputting EACH headline:
-     1. Does it contain a real search KEYWORD? (plumber, drain, boiler, electrician, heating, rewiring)
-     2. Does it contain ANY dashes? If yes, REWRITE without dashes
-     3. Count characters - must be ≤ 30
-     4. Is it ONE simple phrase (not chained ideas)?
-     5. Does it sound like something a customer would ACTUALLY TYPE into Google? (This is critical!)
-     6. Have I already used the city name in another headline? If yes, DO NOT include city again
-     7. Read it aloud - does it sound natural and conversational, or like marketing jargon?
+     1. Check character count - must be ≤ 30 (count spaces and punctuation)
+     2. Confirm no broken phrases - all words complete
+     3. Confirm no repeated sentences - each headline unique
+     4. Confirm headlines sound natural when joined - read them together with " - "
+     5. Confirm wording sounds like a real company wrote it - not keyword spam
+     6. Does it contain a real search KEYWORD? (plumber, drain, boiler, electrician, heating, rewiring)
+     7. Does it contain ANY dashes? If yes, REWRITE without dashes
+     8. Is it ONE simple phrase (not chained ideas)?
+     9. Does it sound like something a customer would ACTUALLY TYPE into Google?
+     10. Read it aloud - does it sound natural and conversational, or like marketing jargon?
+     11. Is this headline meaningfully different from all other headlines? (not just word order changed)
+     12. Have I used the same key words in multiple headlines? (e.g., "Plumber" + "Birmingham" should not appear in 4+ headlines)
 
 3. Generate exactly **4 descriptions** per ad group (RSA optimal):
    
@@ -1392,20 +1437,23 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
    - Descriptions ARE full sentences - write naturally
    - Each sentence must be COMPLETE and make sense when read alone
    - NEVER truncate - if it doesn't fit in 80 chars, rewrite the whole sentence
+   - 🚨 NEVER use ellipses (...) - descriptions must be complete sentences
    
    🚨 CRITICAL: Each description MUST be UNIQUE and DIFFERENT 🚨
    - Google flags "Poor" Ad Strength if descriptions are too similar
    - Each description serves a DIFFERENT purpose - do not repeat themes
    - Use different sentence structures, different keywords, different angles
+   - 🚨 NEVER repeat the same phrase within a single description
+   - 🚨 NEVER repeat phrases across multiple descriptions (e.g., "Professional plumber in Birmingham" should appear at most once)
    
    The 4 descriptions MUST cover these DISTINCT roles (one each):
      a) **Problem + solution**: Address the customer's pain point directly
         ✅ "Blocked drain causing problems? We're here to unblock it quickly."
         ✅ "Boiler stopped working? Our Gas Safe experts are ready to help."
      
-     b) **Trust / credentials**: Highlight experience and qualifications
+     b) **Trust / credentials**: Highlight qualifications and credentials (NEVER mention specific years of experience)
         ✅ "Experienced in all heating systems. Quality service guaranteed."
-        ✅ "Over 10 years experience in boiler repairs. Fully insured."
+        ✅ "Gas Safe registered engineers. Fully insured and trusted."
      
      c) **Value / pricing**: Emphasize transparency and value
         ✅ "Get your heating fixed today. Contact us for swift service."
@@ -1418,6 +1466,7 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
    ❌ BAD DESCRIPTIONS (too similar, repetitive):
      - "Quality service guaranteed." + "Guaranteed quality work." (SAME THEME!)
      - "Professional plumber Birmingham." + "Birmingham professional plumbing." (SAME!)
+     - "Professional plumber in Birmingham. Transparent pricing. Professional plumber in Birmingham." (REPEATED PHRASE!)
      - "We offer professional plumbing services in Birmingham with Gas Safe registered eng..." (cut off!)
    
    Before outputting EACH description:
@@ -1425,6 +1474,8 @@ ${serviceOfferings.map((service: string, i: number) => `   ${i + 1}. "${service}
      2. Does it serve a UNIQUE role (problem/trust/value/action)?
      3. Count characters - must be ≤ 80
      4. Does it sound natural when read aloud?
+     5. Have I repeated any phrase from this description in another description?
+     6. Have I repeated any phrase WITHIN this description? (CRITICAL - check for duplicate sentences or phrases)
 
 4. Generate 8-10 high-intent keywords per ad group:
    - Keywords MUST derive ONLY from the services in that theme's serviceOfferings
@@ -1533,17 +1584,29 @@ CRITICAL REQUIREMENTS:
 1. Each ad group MUST have exactly 15 headlines. Google Ads RSA performs best with 15 diverse headlines.
 2. Each ad group MUST have exactly 4 descriptions. Each description must serve a different role (problem/solution, trust, value, action).
 3. Each headline MUST be ≤ 30 characters with NO truncated words. Test with long city names like "Birmingham" (11 chars) or "Stoke-on-Trent" (14 chars).
-4. Before outputting, verify every headline:
-   - Character count ≤ 30
-   - All words are complete (no "Birm", "Londo", "Emergen")
+4. EXACT headline distribution per ad group:
+   - 4 headlines = service + city (e.g., "Plumber Birmingham", "Boiler Repair Birmingham")
+   - 3 headlines = high-intent (emergency, same day, near me, 24 hour)
+   - 3 headlines = trust/credibility (Gas Safe, Part P, Certified)
+   - 2 headlines = price/value (Free Quotes, No Call Out Fee)
+   - 2 headlines = action (Call Now, Book Today)
+5. Before outputting, verify every headline:
+   - Character count ≤ 30 (count spaces and punctuation)
+   - All words are complete (no "Birm", "Londo", "Emergen", "Plumb")
+   - No dashes (-) inside headlines - Google adds separators automatically
    - Sounds like a REAL Google search query (not marketing jargon)
    - Natural and conversational when read aloud
    - Meaningfully different from other headlines
    - Contains a service keyword (plumber, electrician, boiler, heating, etc.)
-5. If a city name is too long, omit it from that headline rather than abbreviating (other headlines will include the city).
-6. Headlines should sound like what customers actually type into Google, not like advertising copy.
+   - Works alone AND when joined with others (Google combines with " - ")
+6. If a city name is too long, omit it from that headline rather than abbreviating (other headlines will include the city).
+7. Headlines must match real high-performing Google ads style:
+   - Clear, natural, search-intent focused
+   - Not robotic, repetitive, or stitched together
+   - Sound like what customers actually type into Google
+   - Example style: "Book a Plumber – Checkatrade official site – Find a Plumber today"
 
-Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers. Remember: headlines must sound NATURAL and search-like, not like marketing slogans.
+Focus on LOCAL SEO optimization for ${city}, emergency service keywords (high commercial intent), and compliance-safe language that builds trust with UK consumers. Remember: headlines must sound NATURAL and search-like, matching real high-performing Google ads, not like marketing slogans.
 `;
 }
 
@@ -1835,7 +1898,7 @@ function shortenDescriptionAtSentenceBoundary(description: string, maxLength: nu
   const lastSpaceIndex = truncated.lastIndexOf(' ');
   
   if (lastSpaceIndex > 20) {
-    // Add ellipsis to indicate truncation, but only if we have room
+    // 🚨 CRITICAL: Never add ellipses - return clean word boundary
     const wordBoundary = truncated.substring(0, lastSpaceIndex).trim();
     // Don't add period if already ends with punctuation
     if (/[.!?]$/.test(wordBoundary)) {
@@ -1858,6 +1921,60 @@ function shortenDescriptionAtSentenceBoundary(description: string, maxLength: nu
   }
   
   return result.trim() || cleaned.substring(0, maxLength).trim();
+}
+
+// Helper function to detect repeated phrases within a single description
+// Returns true if the same phrase (3+ words) appears multiple times
+function detectInternalRepetition(text: string): boolean {
+  const sentences = text.split(/[.!?]\s+/).filter(s => s.trim().length > 10);
+  if (sentences.length < 2) return false;
+  
+  const phrases = new Set<string>();
+  
+  for (const sentence of sentences) {
+    const words = sentence.toLowerCase().trim().split(/\s+/).filter((w: string) => w.length > 2);
+    // Extract key phrases (3+ consecutive words)
+    for (let i = 0; i <= words.length - 3; i++) {
+      const phrase = words.slice(i, i + 3).join(' ');
+      if (phrases.has(phrase)) {
+        console.warn(`⚠️ Found repeated phrase in description: "${phrase}"`);
+        return true; // Found repetition
+      }
+      phrases.add(phrase);
+    }
+  }
+  return false;
+}
+
+// Helper function to remove repeated phrases from a description
+function removeRepeatedPhrases(text: string): string {
+  const sentences = text.split(/[.!?]\s+/).filter(s => s.trim().length > 0);
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  
+  for (const sentence of sentences) {
+    const normalized = sentence.toLowerCase().trim();
+    // Check if this sentence is too similar to an existing one
+    let isDuplicate = false;
+    for (const existing of seen) {
+      // If 70%+ of words match, consider it a duplicate
+      const sentenceWords = normalized.split(/\s+/).filter((w: string) => w.length > 2);
+      const existingWords = existing.split(/\s+/).filter((w: string) => w.length > 2);
+      const commonWords = sentenceWords.filter((w: string) => existingWords.includes(w));
+      const similarity = commonWords.length / Math.max(sentenceWords.length, existingWords.length);
+      if (similarity > 0.7) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      seen.add(normalized);
+      unique.push(sentence.trim());
+    }
+  }
+  
+  return unique.join('. ').trim() + (text.endsWith('.') ? '.' : '');
 }
 
 // Validate and fix headline length (≤ MAX_HEADLINE_CHARS chars, no truncated words)
@@ -1898,11 +2015,26 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
   // Strategy 1: Remove only truly low-value words (preserve important keywords for Ad Relevance)
   // 🚨 IMPORTANT: Do NOT remove service keywords like "emergency", "service", "local" - these are critical for Google Ads relevance
   // 🚨 CRITICAL: Do NOT remove natural words like "now", "today", "fast" - these make headlines sound natural and search-like
-  const lowValueWords = ['professional', 'expert', 'trusted', 'qualified', 'reliable', 'experienced', 'best', 'top'];
+  // 🚨 CRITICAL: Remove "Pro" - replace with better alternatives or remove entirely
+  const lowValueWords = ['professional', 'expert', 'trusted', 'qualified', 'reliable', 'experienced', 'best', 'top', 'pro'];
   let shortened = cleaned;
   for (const word of lowValueWords) {
     const regex = new RegExp(`\\b${word}\\b`, 'gi');
-    shortened = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
+    if (word.toLowerCase() === 'pro') {
+      // Replace "Pro" contextually with better alternatives
+      shortened = shortened.replace(regex, (match, offset, string) => {
+        const before = string.substring(Math.max(0, offset - 15), offset).toLowerCase();
+        if (before.includes('maintenance') || before.includes('service') || before.includes('boiler') || before.includes('heating')) {
+          return 'Engineer';
+        }
+        if (before.includes('help') || before.includes('repair')) {
+          return 'Service';
+        }
+        return ''; // Remove standalone "Pro"
+      });
+    } else {
+      shortened = shortened.replace(regex, '').replace(/\s+/g, ' ').trim();
+    }
     if (shortened.length <= maxLength) {
       return shortened;
     }
@@ -1956,12 +2088,24 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
     
     // Edge case: single word exceeds maxLength
     // Instead of truncating mid-word (which creates "Birm", "Londo"), 
-    // return a keyword-rich fallback - NO abbreviations allowed
+    // try to extract service keyword and create a meaningful fallback
     const firstWord = words[0] || '';
     if (firstWord.length > maxLength) {
-      // Log warning and return a keyword-rich fallback instead of truncating mid-word
-      console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - using keyword-rich fallback (truncation avoided)`);
-      // Return a keyword-rich fallback that will match search intent
+      // Try to extract service keyword from the original headline
+      const serviceKeywords = ['plumber', 'electrician', 'boiler', 'heating', 'emergency', 'drain', 'leak', 'gas', 'rewire', 'fuse'];
+      const foundKeyword = serviceKeywords.find(kw => cleaned.toLowerCase().includes(kw));
+      
+      if (foundKeyword) {
+        // Create a keyword-rich fallback with the service keyword
+        const keywordFallback = `${foundKeyword.charAt(0).toUpperCase() + foundKeyword.slice(1)} Service`;
+        if (keywordFallback.length <= maxLength) {
+          console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - using service-specific fallback: "${keywordFallback}"`);
+          return keywordFallback;
+        }
+      }
+      
+      // Last resort: return a short, keyword-rich fallback
+      console.warn(`⚠️ Headline word "${firstWord}" exceeds ${maxLength} chars - using generic keyword-rich fallback (truncation avoided)`);
       return 'Call Now Free Quote';
     }
     
@@ -1970,6 +2114,43 @@ function validateAndFixHeadline(headline: string, maxLength: number = MAX_HEADLI
   }
 
   return shortened;
+}
+
+// Helper function to check if two headlines are semantically similar
+// Enhanced to catch word-swap variations (e.g., "Heating Repair Birmingham" vs "Heating Fix Birmingham")
+function areHeadlinesSimilar(headline1: string, headline2: string): boolean {
+  const words1 = headline1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const words2 = headline2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  
+  if (words1.length === 0 || words2.length === 0) return false;
+  
+  // Check for exact word match
+  const commonWords = words1.filter(w => words2.includes(w));
+  const similarity = commonWords.length / Math.max(words1.length, words2.length);
+  
+  // Lower threshold (0.6) to catch word-swap variations
+  if (similarity >= 0.6) return true;
+  
+  // Check for semantic synonyms (repair/fix, service/help, etc.)
+  const synonyms: Record<string, string[]> = {
+    'repair': ['fix', 'service', 'help'],
+    'fix': ['repair', 'service', 'help'],
+    'service': ['repair', 'fix', 'help'],
+    'help': ['repair', 'fix', 'service'],
+  };
+  
+  // If they differ by only one word and that word is a synonym, consider them similar
+  if (words1.length === words2.length && words1.length >= 2) {
+    const differences = words1.filter((w, i) => w !== words2[i]);
+    if (differences.length === 1) {
+      const [diff1, diff2] = [differences[0], words2[words1.indexOf(differences[0])]];
+      if (synonyms[diff1]?.includes(diff2) || synonyms[diff2]?.includes(diff1)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 // Generate fallback headlines if AI returns fewer than TARGET_HEADLINES_PER_AD_GROUP
@@ -2033,9 +2214,11 @@ function generateFallbackHeadlines(
     tradeType === 'plumbing' || tradeType === 'both' ? 'Gas Safe Registered' : 'Part P Certified',
     `Certified ${tradeTerm}`,                // "Certified Plumber"
     
-    // VALUE / PRICING
+    // VALUE / PRICING (natural phrasing)
     `Free Quotes`,                           // (11 chars)
-    `No Call Out Fee`,                       // (15 chars)
+    `No Call Out Fees`,                      // (16 chars - natural)
+    `No Call Out Charges`,                   // (18 chars - natural alternative)
+    `Free Call Out`,                         // (13 chars - natural alternative)
     `Free Estimates`,                        // (14 chars)
     
     // CTA
@@ -2057,11 +2240,16 @@ function generateFallbackHeadlines(
       continue; // Skip - we already have a city headline
     }
     
-    // Skip if too similar to existing headline
-    const isSimilar = existingLower.some(existing => 
-      existing.includes(candidateLower.substring(0, 10)) || 
-      candidateLower.includes(existing.substring(0, 10))
-    );
+    // Skip if too similar to existing headline (enhanced similarity check)
+    const isSimilar = existingLower.some(existing => {
+      // Check exact substring match (quick check)
+      if (existing.includes(candidateLower.substring(0, 10)) || 
+          candidateLower.includes(existing.substring(0, 10))) {
+        return true;
+      }
+      // Enhanced similarity check for word-swap variations
+      return areHeadlinesSimilar(existing, candidateLower);
+    });
     
     if (!isSimilar && candidate.length > 0 && candidate.length <= MAX_HEADLINE_CHARS) {
       fallbacks.push(candidate);
@@ -2142,9 +2330,9 @@ function generateFallbackDescriptions(
     `Need ${tradeTerm} help? Our expert team solves problems fast. Same day service available.`,
     `${tradeTerm.charAt(0).toUpperCase() + tradeTerm.slice(1)} issue? We fix it right the first time. Fast, reliable service.`,
     
-    // Trust / Experience
+    // Trust / Credentials (NEVER mention years of experience)
     `Professional ${tradeTerm} services in ${city}. ${credential.charAt(0).toUpperCase() + credential.slice(1)}. Fully insured.`,
-    `Trusted ${tradeTerm} experts with years of experience. Quality work guaranteed.`,
+    `Trusted ${tradeTerm} experts. Quality work guaranteed.`,
     `${credential.charAt(0).toUpperCase() + credential.slice(1)} engineers. Reliable service you can count on.`,
     
     // Value / Pricing
@@ -2158,23 +2346,74 @@ function generateFallbackDescriptions(
     `Get in touch for a free quote. Available 7 days a week for your convenience.`,
   ];
 
-  // Filter out templates that match existing descriptions too closely
-  const existingLower = existingDescriptions.map(d => d.toLowerCase());
+  // Filter out templates that match existing descriptions too closely (enhanced similarity check)
+  const existingLower = existingDescriptions.map(d => d.toLowerCase().trim());
+  const seenPhrases = new Set<string>();
+  
+  // Extract phrases from existing descriptions
+  for (const existing of existingLower) {
+    const words = existing.split(/\s+/).filter(w => w.length > 2);
+    for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+      for (let i = 0; i <= words.length - phraseLength; i++) {
+        seenPhrases.add(words.slice(i, i + phraseLength).join(' '));
+      }
+    }
+  }
+  
   for (const template of templates) {
     // 🚨 CRITICAL: Use sentence-boundary shortening instead of substring()
     // This ensures descriptions are never cut mid-word or mid-sentence
     const candidate = shortenDescriptionAtSentenceBoundary(template, MAX_DESCRIPTION_CHARS);
-    const candidateLower = candidate.toLowerCase();
+    const candidateLower = candidate.toLowerCase().trim();
     
-    // Skip if too similar to existing description (use first 20 chars for comparison only)
-    const comparePrefix = candidateLower.length >= 20 ? candidateLower.slice(0, 20) : candidateLower;
-    const isSimilar = existingLower.some(existing => {
-      const existingPrefix = existing.length >= 20 ? existing.slice(0, 20) : existing;
-      return existing.includes(comparePrefix) || candidateLower.includes(existingPrefix);
-    });
+    if (candidate.length === 0 || candidate.length > MAX_DESCRIPTION_CHARS) {
+      continue;
+    }
     
-    if (!isSimilar && candidate.length > 0 && candidate.length <= MAX_DESCRIPTION_CHARS) {
+    // Check for exact duplicate
+    if (existingLower.includes(candidateLower)) {
+      continue;
+    }
+    
+    // Check for similar descriptions (enhanced similarity check)
+    let isSimilar = false;
+    for (const existing of existingLower) {
+      const existingWords = existing.split(/\s+/).filter(w => w.length > 2);
+      const candidateWords = candidateLower.split(/\s+/).filter(w => w.length > 2);
+      const commonWords = candidateWords.filter(w => existingWords.includes(w));
+      const similarity = commonWords.length / Math.max(existingWords.length, candidateWords.length);
+      if (similarity > 0.6) {
+        isSimilar = true;
+        break;
+      }
+    }
+    
+    if (isSimilar) {
+      continue;
+    }
+    
+    // Check for repeated phrases
+    const candidateWords = candidateLower.split(/\s+/).filter(w => w.length > 2);
+    let hasRepeatedPhrase = false;
+    for (let phraseLength = 2; phraseLength <= Math.min(4, candidateWords.length); phraseLength++) {
+      for (let i = 0; i <= candidateWords.length - phraseLength; i++) {
+        const phrase = candidateWords.slice(i, i + phraseLength).join(' ');
+        if (seenPhrases.has(phrase)) {
+          hasRepeatedPhrase = true;
+          break;
+        }
+      }
+      if (hasRepeatedPhrase) break;
+    }
+    
+    if (!hasRepeatedPhrase) {
       fallbacks.push(candidate);
+      // Mark phrases as seen
+      for (let phraseLength = 2; phraseLength <= Math.min(4, candidateWords.length); phraseLength++) {
+        for (let i = 0; i <= candidateWords.length - phraseLength; i++) {
+          seenPhrases.add(candidateWords.slice(i, i + phraseLength).join(' '));
+        }
+      }
       if (fallbacks.length >= targetCount - existingDescriptions.length) {
         break;
       }
@@ -2230,9 +2469,9 @@ function generateFallbackAdGroup(
     validateAndFixHeadline(`${credential}`, MAX_HEADLINE_CHARS),                   // "Gas Safe Registered"
     validateAndFixHeadline(`Certified ${tradeTerm}`, MAX_HEADLINE_CHARS),         // "Certified Plumber"
     
-    // VALUE (pricing keywords)
+    // VALUE (pricing keywords - natural phrasing)
     validateAndFixHeadline(`Free Quotes`, MAX_HEADLINE_CHARS),
-    validateAndFixHeadline(`No Call Out Fee`, MAX_HEADLINE_CHARS),
+    validateAndFixHeadline(`No Call Out Fees`, MAX_HEADLINE_CHARS),
     
     // CTA
     validateAndFixHeadline(`Call Now`, MAX_HEADLINE_CHARS),
@@ -2435,6 +2674,37 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
         .map((h: string) => validateAndFixHeadline(h, MAX_HEADLINE_CHARS))
         .filter((h: string) => h.length > 0); // Remove empty headlines from failed validation
       
+      // 🚨 CRITICAL: Deduplicate similar headlines (enhanced similarity check)
+      const uniqueHeadlines: string[] = [];
+      const seenHeadlines = new Set<string>();
+      
+      for (const headline of headlines) {
+        const normalized = headline.toLowerCase().trim();
+        
+        // Check for exact duplicate
+        if (seenHeadlines.has(normalized)) {
+          console.warn(`⚠️ Removing exact duplicate headline: "${headline}"`);
+          continue;
+        }
+        
+        // Check for similar headlines (word-swap variations)
+        let isSimilar = false;
+        for (const existing of seenHeadlines) {
+          if (areHeadlinesSimilar(existing, normalized)) {
+            console.warn(`⚠️ Removing similar headline: "${headline}" (similar to existing)`);
+            isSimilar = true;
+            break;
+          }
+        }
+        
+        if (!isSimilar) {
+          uniqueHeadlines.push(headline);
+          seenHeadlines.add(normalized);
+        }
+      }
+      
+      headlines = uniqueHeadlines;
+      
       // 🚨 CRITICAL: Deduplicate headlines containing city name - keep only ONE
       // Google combines headlines with " - ", so multiple city headlines look bad:
       // "Plumber Birmingham - Birmingham Plumber - Local Plumber Birmingham" = BAD
@@ -2474,7 +2744,15 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       // 🚨 POLICY COMPLIANCE: Sanitize descriptions to avoid policy violations
       let descriptions = adGroup.adCopy?.descriptions || [];
       descriptions = descriptions
-        .map((d: string) => sanitizeForGoogleAdsPolicy(d)) // Apply policy transformations
+        .map((d: string) => {
+          const sanitized = sanitizeForGoogleAdsPolicy(d); // Apply policy transformations
+          // 🚨 CRITICAL: Check for internal repetition within the description
+          if (sanitized && detectInternalRepetition(sanitized)) {
+            console.warn(`⚠️ Description has internal repetition, cleaning: "${sanitized}"`);
+            return removeRepeatedPhrases(sanitized);
+          }
+          return sanitized;
+        })
         .filter((d: string) => d && d.length <= MAX_DESCRIPTION_CHARS);
       
       // Generate fallback descriptions to reach exactly 4 (RSA optimal)
@@ -2486,6 +2764,69 @@ function validateAndEnhanceCampaignData(data: any, onboardingData: any): any {
       if (descriptions.length > MAX_DESCRIPTIONS_PER_AD_GROUP) {
         descriptions.splice(MAX_DESCRIPTIONS_PER_AD_GROUP);
       }
+      
+      // 🚨 FINAL CHECK: Ensure no repetition across descriptions (enhanced)
+      const finalDescriptions: string[] = [];
+      const seenPhrases = new Set<string>();
+      const seenDescriptions = new Set<string>();
+      
+      for (const desc of descriptions) {
+        const normalized = desc.toLowerCase().trim();
+        
+        // Check for exact duplicate
+        if (seenDescriptions.has(normalized)) {
+          console.warn(`⚠️ Filtering out exact duplicate description: "${desc}"`);
+          continue;
+        }
+        
+        // Check for similar descriptions (word-swap variations)
+        let isSimilar = false;
+        for (const existing of seenDescriptions) {
+          const existingWords = existing.split(/\s+/).filter((w: string) => w.length > 2);
+          const descWords = normalized.split(/\s+/).filter((w: string) => w.length > 2);
+          const commonWords = descWords.filter((w: string) => existingWords.includes(w));
+          const similarity = commonWords.length / Math.max(existingWords.length, descWords.length);
+          if (similarity > 0.6) {
+            isSimilar = true;
+            break;
+          }
+        }
+        
+        if (isSimilar) {
+          console.warn(`⚠️ Filtering out similar description: "${desc}"`);
+          continue;
+        }
+        
+        // Check if this description contains phrases we've already seen
+        const words = normalized.split(/\s+/).filter((w: string) => w.length > 2);
+        let hasRepeatedPhrase = false;
+        
+        // Check for 2-word, 3-word, and 4-word phrases
+        for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+          for (let i = 0; i <= words.length - phraseLength; i++) {
+            const phrase = words.slice(i, i + phraseLength).join(' ');
+            if (seenPhrases.has(phrase)) {
+              hasRepeatedPhrase = true;
+              break;
+            }
+          }
+          if (hasRepeatedPhrase) break;
+        }
+        
+        if (!hasRepeatedPhrase) {
+          finalDescriptions.push(desc);
+          seenDescriptions.add(normalized);
+          // Mark phrases as seen
+          for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+            for (let i = 0; i <= words.length - phraseLength; i++) {
+              seenPhrases.add(words.slice(i, i + phraseLength).join(' '));
+            }
+          }
+        } else {
+          console.warn(`⚠️ Filtering out description with repeated phrases: "${desc}"`);
+        }
+      }
+      descriptions = finalDescriptions.length >= 2 ? finalDescriptions : descriptions; // Keep original if filtering too aggressive
 
       // Validate and ensure keywords exist
       let keywords = adGroup.keywords || [];

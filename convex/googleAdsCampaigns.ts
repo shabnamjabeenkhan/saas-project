@@ -426,9 +426,42 @@ function sanitizeAdText(text: string, maxLength: number): string | null {
   // First remove phone numbers, then trim and validate
   const phoneSanitized = sanitizePhoneNumbersFromText(text);
   // Trim whitespace and remove invalid characters
-  const cleaned = phoneSanitized
+  let cleaned = phoneSanitized
     .trim()
     .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+  
+  // 🚨 CRITICAL: Remove ellipses from descriptions/headlines (all variations)
+  cleaned = cleaned.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+  cleaned = cleaned.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+  cleaned = cleaned.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+  cleaned = cleaned.replace(/\s+\.\s*$/g, ' '); // Remove trailing single dot with space
+  cleaned = cleaned.replace(/\.\s*\./g, '.'); // Remove double periods
+  
+  // 🚨 CRITICAL: Remove years of experience mentions (user may not have 10 years)
+  cleaned = cleaned.replace(/\b(over\s+)?\d+\s+years?\s+(of\s+)?experience\b/gi, '');
+  cleaned = cleaned.replace(/\b\d+\+\s+years?\s+(of\s+)?experience\b/gi, '');
+  cleaned = cleaned.replace(/\byears?\s+of\s+experience\b/gi, '');
+  cleaned = cleaned.replace(/\bwith\s+years?\s+of\s+experience\b/gi, 'with expertise');
+  
+  // 🚨 CRITICAL: Fix unnatural headline patterns
+  cleaned = cleaned.replace(/\bNo\s+Call\s+Out\s+Fee\b/gi, 'No Call Out Fees');
+  cleaned = cleaned.replace(/\bPlumber\s+No\s+Call\s+Out\s+Fee\b/gi, 'Plumber With No Call Out Fees');
+  cleaned = cleaned.replace(/\bElectrician\s+No\s+Call\s+Out\s+Fee\b/gi, 'Electrician With No Call Out Fees');
+  
+  // 🚨 CRITICAL: Remove "Pro" from headlines - replace with better alternatives
+  cleaned = cleaned.replace(/\bPro\b/gi, (match, offset, string) => {
+    const before = string.substring(Math.max(0, offset - 20), offset).toLowerCase();
+    if (before.includes('maintenance') || before.includes('service') || before.includes('boiler') || before.includes('heating')) {
+      return 'Engineer';
+    }
+    if (before.includes('help') || before.includes('repair')) {
+      return 'Service';
+    }
+    return ''; // Remove standalone "Pro"
+  });
+  
+  // Clean up extra spaces
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
   
   // Truncate at word boundary to prevent mid-word truncation
   const sanitized = truncateAtWordBoundary(cleaned, maxLength).trim();
@@ -1171,7 +1204,152 @@ async function createKeywords(
   };
 }
 
+// Helper function to detect repeated phrases within a single description
+// Returns true if the same phrase (3+ words) appears multiple times
+function detectInternalRepetition(text: string): boolean {
+  const sentences = text.split(/[.!?]\s+/).filter(s => s.trim().length > 10);
+  if (sentences.length < 2) return false;
+  
+  const phrases = new Set<string>();
+  
+  for (const sentence of sentences) {
+    const words = sentence.toLowerCase().trim().split(/\s+/).filter(w => w.length > 2);
+    
+    // Check for exact sentence repetition
+    const normalizedSentence = words.join(' ');
+    if (phrases.has(normalizedSentence)) {
+      console.warn(`⚠️ Found repeated sentence in description: "${sentence}"`);
+      return true;
+    }
+    phrases.add(normalizedSentence);
+    
+    // Extract key phrases (2+ consecutive words for shorter phrases, 3+ for longer)
+    // This catches both short and long repeated phrases
+    for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+      for (let i = 0; i <= words.length - phraseLength; i++) {
+        const phrase = words.slice(i, i + phraseLength).join(' ');
+        if (phrases.has(phrase)) {
+          console.warn(`⚠️ Found repeated phrase in description: "${phrase}"`);
+          return true; // Found repetition
+        }
+        phrases.add(phrase);
+      }
+    }
+  }
+  return false;
+}
+
+// Helper function to remove repeated phrases from a description
+function removeRepeatedPhrases(text: string): string {
+  const sentences = text.split(/[.!?]\s+/).filter(s => s.trim().length > 0);
+  const seen = new Set<string>();
+  const seenPhrases = new Set<string>();
+  const unique: string[] = [];
+  
+  for (const sentence of sentences) {
+    const normalized = sentence.toLowerCase().trim();
+    const words = normalized.split(/\s+/).filter(w => w.length > 2);
+    
+    // Check for exact sentence duplicate
+    if (seen.has(normalized)) {
+      console.warn(`⚠️ Removing duplicate sentence: "${sentence}"`);
+      continue;
+    }
+    
+    // Check for similar sentences (lower threshold to catch more variations)
+    let isDuplicate = false;
+    for (const existing of seen) {
+      const existingWords = existing.split(/\s+/).filter(w => w.length > 2);
+      const commonWords = words.filter(w => existingWords.includes(w));
+      const similarity = commonWords.length / Math.max(words.length, existingWords.length);
+      // Lower threshold to catch more variations
+      if (similarity > 0.6) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    // Check for repeated phrases within this sentence
+    let hasRepeatedPhrase = false;
+    for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+      for (let i = 0; i <= words.length - phraseLength; i++) {
+        const phrase = words.slice(i, i + phraseLength).join(' ');
+        if (seenPhrases.has(phrase)) {
+          hasRepeatedPhrase = true;
+          break;
+        }
+        seenPhrases.add(phrase);
+      }
+      if (hasRepeatedPhrase) break;
+    }
+    
+    if (!isDuplicate && !hasRepeatedPhrase) {
+      seen.add(normalized);
+      unique.push(sentence.trim());
+      // Mark phrases as seen
+      for (let phraseLength = 2; phraseLength <= Math.min(4, words.length); phraseLength++) {
+        for (let i = 0; i <= words.length - phraseLength; i++) {
+          seenPhrases.add(words.slice(i, i + phraseLength).join(' '));
+        }
+      }
+    } else {
+      console.warn(`⚠️ Removing duplicate or repetitive sentence: "${sentence}"`);
+    }
+  }
+  
+  return unique.join('. ').trim() + (text.endsWith('.') ? '.' : '');
+}
+
+// Helper function to check if two assets are semantically similar
+// Enhanced to catch word-swap variations (e.g., "Heating Repair Birmingham" vs "Heating Fix Birmingham")
+function areAssetsSimilar(asset1: string, asset2: string, threshold: number = 0.6): boolean {
+  const words1 = asset1.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const words2 = asset2.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  
+  if (words1.length === 0 || words2.length === 0) return false;
+  
+  // Check for exact word match (most strict)
+  const commonWords = words1.filter(w => words2.includes(w));
+  const similarity = commonWords.length / Math.max(words1.length, words2.length);
+  
+  // Lower threshold to catch word-swap variations (e.g., Repair vs Fix)
+  if (similarity >= threshold) return true;
+  
+  // Additional check: if they share the same core structure (same position words match)
+  // This catches "Heating Repair Birmingham" vs "Heating Fix Birmingham"
+  if (words1.length === words2.length && words1.length >= 2) {
+    let matchingPositions = 0;
+    for (let i = 0; i < Math.min(words1.length, words2.length); i++) {
+      if (words1[i] === words2[i]) matchingPositions++;
+    }
+    // If most positions match, they're likely word-swap variations
+    if (matchingPositions >= words1.length - 1) return true;
+  }
+  
+  // Check for semantic synonyms (repair/fix, service/help, etc.)
+  const synonyms: Record<string, string[]> = {
+    'repair': ['fix', 'service', 'help'],
+    'fix': ['repair', 'service', 'help'],
+    'service': ['repair', 'fix', 'help'],
+    'help': ['repair', 'fix', 'service'],
+  };
+  
+  // If they differ by only one word and that word is a synonym, consider them similar
+  if (words1.length === words2.length && words1.length >= 2) {
+    const differences = words1.filter((w, i) => w !== words2[i]);
+    if (differences.length === 1) {
+      const [diff1, diff2] = [differences[0], words2[words1.indexOf(differences[0])]];
+      if (synonyms[diff1]?.includes(diff2) || synonyms[diff2]?.includes(diff1)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 // Helper function to deduplicate headlines/descriptions to avoid DUPLICATE_ASSET errors
+// Enhanced to catch similar assets, not just exact duplicates
 function deduplicateAssets(assets: string[]): string[] {
   const seen = new Set<string>();
   const unique: string[] = [];
@@ -1179,7 +1357,24 @@ function deduplicateAssets(assets: string[]): string[] {
   for (const asset of assets) {
     // Normalize for comparison (lowercase, trim)
     const normalized = asset.toLowerCase().trim();
-    if (!seen.has(normalized)) {
+    
+    // Check for exact duplicate
+    if (seen.has(normalized)) {
+      console.warn(`⚠️ Filtering out exact duplicate: "${asset}"`);
+      continue;
+    }
+    
+    // Check for similar assets (same key words, different order, word-swap variations)
+    let isSimilar = false;
+    for (const existing of seen) {
+      if (areAssetsSimilar(normalized, existing, 0.6)) {
+        console.warn(`⚠️ Filtering out similar asset: "${asset}" (similar to existing)`);
+        isSimilar = true;
+        break;
+      }
+    }
+    
+    if (!isSimilar) {
       seen.add(normalized);
       unique.push(asset);
     }
@@ -1307,7 +1502,7 @@ async function createResponsiveSearchAd(
       truncateAtWord(`Local ${serviceKeyword}`, 30),
       truncateAtWord(`Same Day ${serviceKeyword}`, 30),
       'Free Quotes',
-      'No Call Out Fee',
+      'No Call Out Fees',
       'Call Now',
       'Book Today'
     ].filter(h => h.length > 0 && h.length <= 30 && !usedHeadlinesInCampaign.has(h.toLowerCase().trim()));
@@ -1341,8 +1536,32 @@ async function createResponsiveSearchAd(
       // Remove phone numbers first
       const phoneSanitized = sanitizePhoneNumbersFromText(d);
       // Clean and shorten at sentence boundary for complete, readable text
-      const cleaned = phoneSanitized.trim().replace(/[\x00-\x1F\x7F]/g, '');
-      return shortenDescriptionAtSentenceBoundary(cleaned, 80);
+      let cleaned = phoneSanitized.trim().replace(/[\x00-\x1F\x7F]/g, '');
+      
+      // 🚨 CRITICAL: Remove ellipses from descriptions (all variations)
+      cleaned = cleaned.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+      cleaned = cleaned.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+      cleaned = cleaned.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+      cleaned = cleaned.replace(/\s+\.\s*$/g, ' '); // Remove trailing single dot with space
+      cleaned = cleaned.replace(/\.\s*\./g, '.'); // Remove double periods
+      
+      // 🚨 CRITICAL: Remove years of experience mentions (user may not have 10 years)
+      cleaned = cleaned.replace(/\b(over\s+)?\d+\s+years?\s+(of\s+)?experience\b/gi, '');
+      cleaned = cleaned.replace(/\b\d+\+\s+years?\s+(of\s+)?experience\b/gi, '');
+      cleaned = cleaned.replace(/\byears?\s+of\s+experience\b/gi, '');
+      cleaned = cleaned.replace(/\bwith\s+years?\s+of\s+experience\b/gi, 'with expertise');
+      
+      cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+      
+      const shortened = shortenDescriptionAtSentenceBoundary(cleaned, 80);
+      
+      // 🚨 CRITICAL: Check for internal repetition within the description
+      if (detectInternalRepetition(shortened)) {
+        console.warn(`⚠️ Description has internal repetition, cleaning: "${shortened}"`);
+        return removeRepeatedPhrases(shortened);
+      }
+      
+      return shortened;
     })
     .filter((d: string | null): d is string => d !== null && d.length > 0);
   
@@ -1376,6 +1595,38 @@ async function createResponsiveSearchAd(
       finalCount: descriptions.length
     });
   }
+  
+  // 🚨 FINAL SAFETY CHECK: Post-process descriptions to catch any remaining repetition
+  // This handles cases where descriptions might be concatenated or contain repeated phrases
+  descriptions = descriptions.map((desc: string) => {
+    // Check if description looks like multiple descriptions concatenated
+    if (desc.includes('. ') && desc.split(/\.\s+/).length > 2) {
+      const sentences = desc.split(/\.\s+/).filter(s => s.trim().length > 0);
+      // Check if any sentence repeats
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      for (const sentence of sentences) {
+        const normalized = sentence.toLowerCase().trim();
+        if (!seen.has(normalized)) {
+          seen.add(normalized);
+          unique.push(sentence.trim());
+        } else {
+          console.warn(`⚠️ Removing repeated sentence from description: "${sentence}"`);
+        }
+      }
+      if (unique.length < sentences.length) {
+        return unique.join('. ').trim() + (desc.endsWith('.') ? '.' : '');
+      }
+    }
+    
+    // Final check for internal repetition
+    if (detectInternalRepetition(desc)) {
+      console.warn(`⚠️ Final check: Description still has repetition, cleaning: "${desc}"`);
+      return removeRepeatedPhrases(desc);
+    }
+    
+    return desc;
+  }).filter((d: string) => d && d.length > 0);
 
   // 🔍 Log sanitization results for debugging
   console.log('🔒 Phone sanitization applied to ad content:', {
