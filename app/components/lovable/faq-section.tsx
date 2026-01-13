@@ -38,6 +38,11 @@ export const LovableFAQSection = () => {
       question: 'What certifications do I need to use TradeBoost AI?',
       answer: 'All trades require valid Business Registration. It\'s legally required for all engineers who work on boilers, heating systems, gas appliances, and gas pipework to be on the Gas Safe Register. Electricians must have Part P Electrical Certification for domestic electrical work.',
     },
+    {
+      id: 'item-10',
+      question: 'Can I add more information or customise my ads?',
+      answer: 'Yes! Once your campaigns are published, you have full access to your Google Ads account. You can add extra details, tweak ad copy, adjust targeting, or add additional extensions like sitelinks and callouts. TradeBoost AI gives you a professional starting point—you\'re always free to customise further in Google Ads.',
+    },
   ];
 
   return (

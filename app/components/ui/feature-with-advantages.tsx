@@ -21,7 +21,7 @@ function Feature() {
         </div>
         <div className="flex gap-10 pt-12 flex-col w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            <div className="flex flex-row gap-6 w-full items-start">
+            {/* <div className="flex flex-row gap-6 w-full items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
                 <p className="font-semibold">Predictable Lead Flow</p>
@@ -29,7 +29,7 @@ function Feature() {
                   Replace unreliable word-of-mouth with steady, qualified leads every month
                 </p>
               </div>
-            </div>
+            </div> */}
             <div className="flex flex-row gap-6 items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
@@ -48,15 +48,15 @@ function Feature() {
                 </p>
               </div>
             </div> */}
-            <div className="flex flex-row gap-6 w-full items-start">
+            {/* <div className="flex flex-row gap-6 w-full items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
                 <p className="font-semibold">Seasonal Automation</p>
                 <p className="text-muted-foreground text-sm">
                   AI automatically ramps up boiler campaigns in winter, AC in summer. No manual work
                 </p>
-              </div>
-            </div>
+              </div>2
+            </div> */}
             <div className="flex flex-row gap-6 items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
@@ -75,7 +75,7 @@ function Feature() {
                 </p>
               </div>
             </div>
-            <div className="flex flex-row gap-6 items-start">
+            {/* <div className="flex flex-row gap-6 items-start">
               <Check className="w-4 h-4 mt-2 text-primary" />
               <div className="flex flex-col gap-1">
                 <p className="font-semibold">Cross-Sell Services</p>
@@ -83,7 +83,7 @@ function Feature() {
                   Multi-trade businesses can promote both plumbing AND electrical to the same customers
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 
