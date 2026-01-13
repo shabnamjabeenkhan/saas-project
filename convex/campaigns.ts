@@ -1020,6 +1020,11 @@ const POLICY_COMPLIANT_TRANSFORMATIONS: Record<string, string> = {
   'Gas Certificate': 'Gas Safety Check',
   'CP12 Certificate': 'CP12 Gas Check',
   'Landlord Gas Certificate': 'Landlord Gas Safety',
+  // 🔧 FIX: Add "Gas Safety Inspections" transformation to avoid policy violations
+  'Gas Safety Inspections': 'Gas Safety Checks',
+  'Gas Safety Inspection': 'Gas Safety Check',
+  'gas safety inspections': 'gas safety checks',
+  'gas safety inspection': 'gas safety check',
   
   // Electrical services - same issue
   'Electrical Safety Certificates': 'Electrical Safety Testing',

@@ -74,11 +74,24 @@ export const AdGroupCard = memo(function AdGroupCard({
               ))}
 
               {/* Descriptions */}
-              {adGroup.adCopy.descriptions.map((description, idx) => (
-                <div key={idx} className="text-gray-300 text-sm">
-                  {description}
-                </div>
-              ))}
+              {(() => {
+                // 🔧 FIX: Deduplicate descriptions client-side to prevent repeated display
+                const seenDescriptions = new Set<string>();
+                const uniqueDescriptions = adGroup.adCopy.descriptions.filter((description: string) => {
+                  const normalized = description.toLowerCase().trim();
+                  if (seenDescriptions.has(normalized)) {
+                    return false; // Skip duplicate
+                  }
+                  seenDescriptions.add(normalized);
+                  return true;
+                });
+                
+                return uniqueDescriptions.map((description, idx) => (
+                  <div key={idx} className="text-gray-300 text-sm">
+                    {description}
+                  </div>
+                ));
+              })()}
 
               {/* URL */}
               <div className="text-green-400 text-sm">

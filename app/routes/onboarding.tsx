@@ -86,7 +86,6 @@ const plumbingServices = [
   "Bathroom Installation",
   "Leak Repair",
   "Drainage",
-  "Gas Safety Certificates",
 ];
 
 const electricalServices = [

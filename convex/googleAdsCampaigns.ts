@@ -801,10 +801,21 @@ export const createGoogleAdsCampaign = action({
       }
 
       if (!allAdsCreated) {
+        // 🔧 FIX: Allow partial success - campaign was created, some ads succeeded
+        // Return success with warnings instead of failure
+        // This allows users to see their campaign even if some ad groups had issues
+        console.warn('⚠️ Partial success: Some ads failed but campaign was created', {
+          adsCreated: adGroupResults.adsCreated,
+          adsExpected: expectedAdGroups,
+          failedAds: adGroupResults.failedAds,
+          errors: adGroupResults.errors
+        });
+        
         return {
-          success: false,
+          success: true, // Changed to true - partial success is still success
           partialSuccess: true,
-          error: `Only ${adGroupResults.adsCreated}/${expectedAdGroups} ads were created. Some ad groups failed: ${adGroupResults.failedAds.join(', ')}`,
+          warning: `Campaign created successfully, but only ${adGroupResults.adsCreated}/${expectedAdGroups} ads were created. Some ad groups failed: ${adGroupResults.failedAds.join(', ')}`,
+          error: undefined, // No error, just a warning
           googleCampaignId,
           resourceName: campaignResourceName,
           adGroupsCreated: adGroupResults.adGroupsCreated,
@@ -815,7 +826,7 @@ export const createGoogleAdsCampaign = action({
           failedAdGroups: adGroupResults.failedAdGroups,
           failedAds: adGroupResults.failedAds,
           failedKeywords: adGroupResults.failedKeywords,
-          errors: adGroupResults.errors
+          errors: adGroupResults.errors.length > 0 ? adGroupResults.errors : undefined
         };
       }
 
@@ -959,9 +970,28 @@ async function createAdGroupsWithAdsAndKeywords(
           // Use same status logic as main flow (default to PAUSED for safety)
           const adGroupStatus = 'PAUSED'; // Default to paused in helper function
           
+          // 🔧 FIX: Sanitize ad group name for policy compliance before creating
+          // Import sanitizeForGoogleAdsPolicy from campaigns module
+          // For now, apply basic sanitization inline to avoid policy violations
+          let sanitizedAdGroupName = adGroup.name || 'Default Ad Group';
+          
+          // Apply policy transformations to ad group name
+          sanitizedAdGroupName = sanitizedAdGroupName
+            .replace(/Gas Safety Inspections/gi, 'Gas Safety Checks')
+            .replace(/Gas Safety Inspection/gi, 'Gas Safety Check')
+            .replace(/Gas Safety Certificates/gi, 'Gas Safety Checks')
+            .replace(/Gas Safety Certificate/gi, 'Gas Safety Check')
+            .replace(/Electrical Safety Certificates/gi, 'Electrical Safety Testing')
+            .replace(/Electrical Safety Certificate/gi, 'Electrical Safety Test');
+          
+          console.log('🔧 Sanitized ad group name:', {
+            original: adGroup.name,
+            sanitized: sanitizedAdGroupName
+          });
+          
           const adGroupResult = await customer.adGroups.create([
             {
-                name: adGroup.name || 'Default Ad Group',
+                name: sanitizedAdGroupName,
                 campaign: campaignResourceName,
               status: adGroupStatus,
                 type: 'SEARCH_STANDARD',
@@ -1435,7 +1465,28 @@ async function createResponsiveSearchAd(
   // so headlines like "Plumber - Birmingham" become unreadable when combined
   const rawHeadlines = adCopy.headlines?.slice(0, 15) || ['Your Business Name'];
   const sanitizedHeadlines = rawHeadlines
-    .map((h: string) => sanitizeAdText(h, 30))
+    .map((h: string) => {
+      // 🔧 FIX: Apply city abbreviation replacement before sanitization
+      // This ensures abbreviations like "B'ham" are replaced with full city names
+      let cleaned = h;
+      const CITY_ABBREVIATIONS: Record<string, string> = {
+        "B'ham": 'Birmingham',
+        "M'cr": 'Manchester',
+        "Notts": 'Nottingham',
+        "S'ton": 'Southampton',
+        'Stoke': 'Stoke-on-Trent',
+        'Newcastle': 'Newcastle upon Tyne',
+        'Hull': 'Kingston upon Hull',
+      };
+      
+      for (const [abbrev, city] of Object.entries(CITY_ABBREVIATIONS)) {
+        const escapedAbbrev = abbrev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const abbrevPattern = new RegExp(escapedAbbrev, 'gi');
+        cleaned = cleaned.replace(abbrevPattern, city);
+      }
+      
+      return sanitizeAdText(cleaned, 30);
+    })
     .filter((h: string | null): h is string => {
       if (h === null) return false;
       // 🚨 Reject headlines containing dashes - they break when Google joins headlines
@@ -1628,6 +1679,20 @@ async function createResponsiveSearchAd(
     return desc;
   }).filter((d: string) => d && d.length > 0);
 
+  // 🔧 FIX: Final ellipses removal before sending to Google Ads API
+  // This catches any ellipses that might have been introduced during processing
+  descriptions = descriptions.map((desc: string) => {
+    let cleaned = desc;
+    // Remove all ellipsis variations one more time
+    cleaned = cleaned.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+    cleaned = cleaned.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+    cleaned = cleaned.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+    cleaned = cleaned.replace(/\s+\.\s*$/g, ''); // Remove trailing single dot with space
+    cleaned = cleaned.replace(/\.\s*\./g, '.'); // Remove double periods
+    cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+    return cleaned;
+  }).filter((d: string) => d && d.length > 0);
+
   // 🔍 Log sanitization results for debugging
   console.log('🔒 Phone sanitization applied to ad content:', {
     rawHeadlinesCount: rawHeadlines.length,
@@ -1710,6 +1775,31 @@ async function createResponsiveSearchAd(
     // Default to PAUSED for safety in helper function
     const adStatus = 'PAUSED';
     
+    // 🔧 FIX: Final ellipses removal on headlines and descriptions before sending to Google Ads
+    const finalHeadlines = headlines.map((headline: string) => {
+      let cleaned = headline;
+      // Remove all ellipsis variations
+      cleaned = cleaned.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+      cleaned = cleaned.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+      cleaned = cleaned.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+      cleaned = cleaned.replace(/\s+\.\s*$/g, ''); // Remove trailing single dot with space
+      cleaned = cleaned.replace(/\.\s*\./g, '.'); // Remove double periods
+      cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+      return cleaned;
+    }).filter((h: string) => h && h.length > 0);
+
+    const finalDescriptions = descriptions.map((description: string) => {
+      let cleaned = description;
+      // Remove all ellipsis variations
+      cleaned = cleaned.replace(/\.{2,}/g, ''); // Remove 2+ consecutive dots
+      cleaned = cleaned.replace(/\s*\.\.\.\s*/g, ' '); // Remove "..." with surrounding spaces
+      cleaned = cleaned.replace(/\s*\.\.\s*/g, ' '); // Remove ".." with surrounding spaces
+      cleaned = cleaned.replace(/\s+\.\s*$/g, ''); // Remove trailing single dot with space
+      cleaned = cleaned.replace(/\.\s*\./g, '.'); // Remove double periods
+      cleaned = cleaned.replace(/\s+/g, ' ').trim(); // Clean up extra spaces
+      return cleaned;
+    }).filter((d: string) => d && d.length > 0);
+
     // 🔍 ULTRA-VERBOSE PAYLOAD LOGGING: Capture exact content being sent to Google Ads
     const adPayloadData = {
       ad_group: adGroupResourceName,
@@ -1718,11 +1808,11 @@ async function createResponsiveSearchAd(
           type: 'RESPONSIVE_SEARCH_AD',
         final_urls: [finalUrl],
         responsive_search_ad: {
-            headlines: headlines.map((headline: string) => ({
-              text: headline // Already sanitized to ≤30 chars with word-boundary truncation
+            headlines: finalHeadlines.map((headline: string) => ({
+              text: headline // Already sanitized to ≤30 chars with word-boundary truncation and ellipses removed
             })),
-            descriptions: descriptions.map((description: string) => ({
-              text: description // Already sanitized to ≤90 chars with word-boundary truncation
+            descriptions: finalDescriptions.map((description: string) => ({
+              text: description // Already sanitized to ≤90 chars with word-boundary truncation and ellipses removed
             }))
           }
         }
