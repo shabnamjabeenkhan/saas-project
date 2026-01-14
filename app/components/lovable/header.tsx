@@ -28,6 +28,9 @@ export const LovableHeader = ({ isSignedIn = false, user }: LovableHeaderProps) 
             <Link to="/" className="text-sm text-foreground hover:text-primary transition-colors whitespace-nowrap">
               Home
             </Link>
+            <a href="#demo" className="text-sm text-foreground hover:text-primary transition-colors whitespace-nowrap">
+              Demo
+            </a>
             <a href="#how-it-works" className="text-sm text-foreground hover:text-primary transition-colors whitespace-nowrap">
               How It Works
             </a>
@@ -99,6 +102,13 @@ export const LovableHeader = ({ isSignedIn = false, user }: LovableHeaderProps) 
                 >
                   Home
                 </Link>
+                <a
+                  href="#demo"
+                  className="text-white hover:text-primary transition-colors text-2xl font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Demo
+                </a>
                 <a
                   href="#how-it-works"
                   className="text-white hover:text-primary transition-colors text-2xl font-medium"

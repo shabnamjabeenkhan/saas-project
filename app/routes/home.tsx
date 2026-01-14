@@ -12,7 +12,7 @@ export function meta({}: Route.MetaArgs) {
   const description =
     "Stop paying £4,000/month to marketing agencies. Answer 5 simple questions and let AI generate high-converting Google Ads campaigns in minutes.";
   const keywords = "Google Ads, Plumbers, Electricians, AI Marketing, UK Trades, Lead Generation";
-  const siteUrl = "https://www.kaizen.codeandcreed.tech/";
+  const siteUrl = "https://tradeboostai.tech/";
   const imageUrl = "/kaizen.svg";
 
   return [
